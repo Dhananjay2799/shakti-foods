@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import { updateFulfillmentStatus } from "@/app/admin/orders/actions";
+import { updateOrderDetails } from "@/app/admin/orders/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -47,16 +47,11 @@ function formatAddress(address) {
     : "No shipping address available";
 }
 
-export default async function AdminOrderDetailsPage({
-  params
-}) {
+export default async function AdminOrderDetailsPage({ params }) {
   const orderId = params.id;
   const supabase = createSupabaseAdmin();
 
-  const [
-    orderResult,
-    itemsResult
-  ] = await Promise.all([
+  const [orderResult, itemsResult] = await Promise.all([
     supabase
       .from("orders")
       .select(
@@ -76,6 +71,14 @@ export default async function AdminOrderDetailsPage({
           total_amount,
           payment_status,
           fulfillment_status,
+          shipping_carrier,
+          tracking_number,
+          tracking_url,
+          internal_notes,
+          packed_at,
+          shipped_at,
+          delivered_at,
+          canceled_at,
           created_at,
           updated_at
         `
@@ -99,23 +102,13 @@ export default async function AdminOrderDetailsPage({
       .order("product_name")
   ]);
 
-  if (
-    orderResult.error ||
-    !orderResult.data
-  ) {
-    console.error(
-      "Unable to load order:",
-      orderResult.error
-    );
-
+  if (orderResult.error || !orderResult.data) {
+    console.error("Unable to load order:", orderResult.error);
     notFound();
   }
 
   if (itemsResult.error) {
-    console.error(
-      "Unable to load order items:",
-      itemsResult.error
-    );
+    console.error("Unable to load order items:", itemsResult.error);
   }
 
   const order = orderResult.data;
@@ -126,7 +119,7 @@ export default async function AdminOrderDetailsPage({
       <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-12">
         <Link
           href="/admin/orders"
-          className="inline-flex rounded-full bg-white px-5 py-3 font-bold text-black shadow"
+          className="inline-flex rounded-full bg-white px-5 py-3 font-bold text-black shadow transition hover:bg-[#f1eadf]"
         >
           ← Back to Orders
         </Link>
@@ -138,7 +131,7 @@ export default async function AdminOrderDetailsPage({
             </div>
 
             <h1 className="mt-2 font-display text-4xl font-bold text-black md:text-6xl">
-              Order #{order.id.slice(0, 8)}
+              Order #{order.id.slice(0, 8).toUpperCase()}
             </h1>
 
             <p className="mt-2 text-black/60">
@@ -152,14 +145,15 @@ export default async function AdminOrderDetailsPage({
             </span>
 
             <span className="rounded-full bg-[#eee7db] px-4 py-2 font-bold text-black">
-              Fulfillment:{" "}
-              {order.fulfillment_status || "new"}
+              Fulfillment: {order.fulfillment_status || "new"}
             </span>
           </div>
         </div>
 
         <div className="mt-10 grid gap-6 xl:grid-cols-[1.35fr_.75fr]">
+          {/* Main Left Column */}
           <div className="grid gap-6">
+            {/* Order Items */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-3xl font-bold text-black">
                 Order Items
@@ -174,30 +168,17 @@ export default async function AdminOrderDetailsPage({
                   <table className="w-full min-w-[650px] text-left">
                     <thead>
                       <tr className="border-b border-black/10 text-sm text-black/50">
-                        <th className="pb-3 pr-4">
-                          Product
-                        </th>
-                        <th className="pb-3 pr-4">
-                          Product ID
-                        </th>
-                        <th className="pb-3 pr-4">
-                          Quantity
-                        </th>
-                        <th className="pb-3 pr-4">
-                          Unit Price
-                        </th>
-                        <th className="pb-3">
-                          Total
-                        </th>
+                        <th className="pb-3 pr-4">Product</th>
+                        <th className="pb-3 pr-4">Product ID</th>
+                        <th className="pb-3 pr-4">Quantity</th>
+                        <th className="pb-3 pr-4">Unit Price</th>
+                        <th className="pb-3">Total</th>
                       </tr>
                     </thead>
 
                     <tbody>
                       {orderItems.map((item) => (
-                        <tr
-                          key={item.id}
-                          className="border-b border-black/5"
-                        >
+                        <tr key={item.id} className="border-b border-black/5">
                           <td className="py-4 pr-4 font-bold text-black">
                             {item.product_name}
                           </td>
@@ -207,19 +188,15 @@ export default async function AdminOrderDetailsPage({
                           </td>
 
                           <td className="py-4 pr-4 text-black">
-                            {item.quantity}
+                            {Number(item.quantity || 0).toLocaleString()}
                           </td>
 
                           <td className="py-4 pr-4 text-black">
-                            {formatMoney(
-                              item.unit_price
-                            )}
+                            {formatMoney(item.unit_price)}
                           </td>
 
                           <td className="py-4 font-bold text-black">
-                            {formatMoney(
-                              item.line_total
-                            )}
+                            {formatMoney(item.line_total)}
                           </td>
                         </tr>
                       ))}
@@ -229,6 +206,7 @@ export default async function AdminOrderDetailsPage({
               )}
             </section>
 
+            {/* Customer & Delivery */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-3xl font-bold text-black">
                 Customer & Delivery
@@ -245,13 +223,11 @@ export default async function AdminOrderDetailsPage({
                   </p>
 
                   <p className="mt-2 text-black/70">
-                    {order.customer_email ||
-                      "No email provided"}
+                    {order.customer_email || "No email provided"}
                   </p>
 
                   <p className="mt-1 text-black/70">
-                    {order.customer_phone ||
-                      "No phone provided"}
+                    {order.customer_phone || "No phone provided"}
                   </p>
                 </div>
 
@@ -261,40 +237,114 @@ export default async function AdminOrderDetailsPage({
                   </div>
 
                   <p className="mt-3 leading-7 text-black">
-                    {formatAddress(
-                      order.shipping_address
-                    )}
+                    {formatAddress(order.shipping_address)}
                   </p>
 
                   <p className="mt-3 text-sm text-black/60">
-                    Shipping method:{" "}
-                    {order.shipping_method ||
-                      "Not recorded"}
+                    Shipping method: {order.shipping_method || "Not recorded"}
                   </p>
                 </div>
               </div>
             </section>
+
+            {/* Shipping Information */}
+            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
+              <h2 className="font-display text-3xl font-bold text-black">
+                Shipping Information
+              </h2>
+
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                <div className="rounded-2xl bg-[#faf7f1] p-5">
+                  <div className="text-xs uppercase tracking-[0.15em] text-black/50 font-bold">
+                    Carrier
+                  </div>
+
+                  <div className="mt-2 text-lg font-bold text-black capitalize">
+                    {order.shipping_carrier || "Not assigned"}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-[#faf7f1] p-5">
+                  <div className="text-xs uppercase tracking-[0.15em] text-black/50 font-bold">
+                    Tracking Number
+                  </div>
+
+                  <div className="mt-2 text-lg font-bold text-black">
+                    {order.tracking_number || "Not available"}
+                  </div>
+                </div>
+              </div>
+
+              {order.tracking_url ? (
+                <div className="mt-6">
+                  <a
+                    href={order.tracking_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex rounded-full bg-black px-6 py-3 font-bold text-white transition hover:bg-black/80"
+                  >
+                    Track Package ↗
+                  </a>
+                </div>
+              ) : null}
+            </section>
+
+            {/* Internal Notes */}
+            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
+              <h2 className="font-display text-3xl font-bold text-black">
+                Internal Notes
+              </h2>
+
+              <div className="mt-4 min-h-[60px] rounded-2xl bg-[#faf7f1] p-5 whitespace-pre-wrap text-black/80">
+                {order.internal_notes || "No internal notes recorded."}
+              </div>
+            </section>
+
+            {/* Timeline */}
+            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
+              <h2 className="font-display text-3xl font-bold text-black">
+                Fulfillment Timeline
+              </h2>
+
+              <div className="mt-6 space-y-4">
+                {[
+                  ["Packed", order.packed_at],
+                  ["Shipped", order.shipped_at],
+                  ["Delivered", order.delivered_at],
+                  ["Canceled", order.canceled_at]
+                ].map(([label, time]) => (
+                  <div
+                    key={label}
+                    className="flex justify-between items-center border-b border-black/5 pb-3 text-sm"
+                  >
+                    <span className="font-bold text-black">{label}</span>
+                    <span className="text-black/60">
+                      {time ? formatDate(time) : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
+          {/* Right Sidebar */}
           <aside className="grid h-fit gap-6">
+            {/* Fulfillment Management Form */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-3xl font-bold text-black">
                 Fulfillment
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-black/60">
-                Update the operational status of this order.
+                Update status, carrier, tracking number, and notes.
               </p>
 
               <form
-                action={updateFulfillmentStatus}
+                action={updateOrderDetails}
+                aria-label="Update order fulfillment"
                 className="mt-6 grid gap-4"
               >
-                <input
-                  type="hidden"
-                  name="orderId"
-                  value={order.id}
-                />
+                <input type="hidden" name="orderId" value={order.id} />
 
                 <label className="grid gap-2">
                   <span className="text-sm font-bold text-black">
@@ -303,47 +353,77 @@ export default async function AdminOrderDetailsPage({
 
                   <select
                     name="fulfillmentStatus"
-                    defaultValue={
-                      order.fulfillment_status ||
-                      "new"
-                    }
+                    defaultValue={order.fulfillment_status || "new"}
                     className="rounded-2xl border border-black/15 bg-white px-4 py-3 font-semibold text-black outline-none focus:border-black"
                   >
-                    <option value="new">
-                      New
-                    </option>
-
-                    <option value="processing">
-                      Processing
-                    </option>
-
-                    <option value="packed">
-                      Packed
-                    </option>
-
-                    <option value="shipped">
-                      Shipped
-                    </option>
-
-                    <option value="delivered">
-                      Delivered
-                    </option>
-
-                    <option value="canceled">
-                      Canceled
-                    </option>
+                    <option value="new">New</option>
+                    <option value="processing">Processing</option>
+                    <option value="packed">Packed</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="canceled">Canceled</option>
                   </select>
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-black">
+                    Carrier
+                  </span>
+
+                  <select
+                    name="shippingCarrier"
+                    defaultValue={order.shipping_carrier || ""}
+                    className="rounded-2xl border border-black/15 bg-white px-4 py-3 font-semibold text-black outline-none focus:border-black"
+                  >
+                    <option value="">None / Unassigned</option>
+                    <option value="ups">UPS</option>
+                    <option value="fedex">FedEx</option>
+                    <option value="usps">USPS</option>
+                    <option value="dhl">DHL</option>
+                    <option value="local_pickup">Local Pickup</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-black">
+                    Tracking Number
+                  </span>
+
+                  <input
+                    type="text"
+                    inputMode="text"
+                    name="trackingNumber"
+                    defaultValue={order.tracking_number || ""}
+                    placeholder="e.g. 1Z9999999999999999"
+                    className="rounded-2xl border border-black/15 bg-white px-4 py-3 text-sm font-semibold text-black outline-none focus:border-black"
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-black">
+                    Internal Notes
+                  </span>
+
+                  <textarea
+                    name="internalNotes"
+                    rows={4}
+                    defaultValue={order.internal_notes || ""}
+                    placeholder="Warehouse / delivery notes..."
+                    className="rounded-2xl border border-black/15 bg-white px-4 py-3 text-sm font-semibold text-black outline-none focus:border-black resize-y"
+                  />
                 </label>
 
                 <button
                   type="submit"
                   className="rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333]"
                 >
-                  Update Status
+                  Save Changes
                 </button>
               </form>
             </section>
 
+            {/* Order Summary */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-3xl font-bold text-black">
                 Order Summary
@@ -352,44 +432,31 @@ export default async function AdminOrderDetailsPage({
               <div className="mt-6 grid gap-4 text-black">
                 <div className="flex justify-between gap-4">
                   <span>Subtotal</span>
-
-                  <span className="font-bold">
-                    {formatMoney(order.subtotal)}
-                  </span>
+                  <span className="font-bold">{formatMoney(order.subtotal)}</span>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <span>Shipping</span>
-
                   <span className="font-bold">
-                    {formatMoney(
-                      order.shipping_amount
-                    )}
+                    {formatMoney(order.shipping_amount)}
                   </span>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <span>Tax</span>
-
-                  <span className="font-bold">
-                    {formatMoney(order.tax_amount)}
-                  </span>
+                  <span className="font-bold">{formatMoney(order.tax_amount)}</span>
                 </div>
 
                 <div className="flex justify-between gap-4 border-t border-black/10 pt-4 text-lg">
+                  <span className="font-bold">Total</span>
                   <span className="font-bold">
-                    Total
-                  </span>
-
-                  <span className="font-bold">
-                    {formatMoney(
-                      order.total_amount
-                    )}
+                    {formatMoney(order.total_amount)}
                   </span>
                 </div>
               </div>
             </section>
 
+            {/* Stripe Information */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-2xl font-bold text-black">
                 Stripe Information
@@ -397,24 +464,16 @@ export default async function AdminOrderDetailsPage({
 
               <div className="mt-5 grid gap-4 text-sm">
                 <div>
-                  <div className="font-bold text-black">
-                    Checkout Session
-                  </div>
-
+                  <div className="font-bold text-black">Checkout Session</div>
                   <div className="mt-1 break-all text-black/60">
-                    {order.stripe_session_id ||
-                      "Not recorded"}
+                    {order.stripe_session_id || "Not recorded"}
                   </div>
                 </div>
 
                 <div>
-                  <div className="font-bold text-black">
-                    Payment Intent
-                  </div>
-
+                  <div className="font-bold text-black">Payment Intent</div>
                   <div className="mt-1 break-all text-black/60">
-                    {order.stripe_payment_intent_id ||
-                      "Not recorded"}
+                    {order.stripe_payment_intent_id || "Not recorded"}
                   </div>
                 </div>
               </div>

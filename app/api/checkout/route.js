@@ -1,87 +1,451 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
-import { products } from "@/lib/data";
 import { commerce } from "@/lib/commerce";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
-export async function POST(request) {
-  let reservationId = null;
-  let supabase = null;
+const MAX_ITEM_QUANTITY = 100;
+const RESERVATION_DURATION_MINUTES = 10;
+const STRIPE_SESSION_DURATION_MINUTES = 30;
+const CHECKOUT_CURRENCY = "USD";
+
+function normalizeCartItems(items) {
+  const quantitiesByProductId = new Map();
+
+  for (const item of items) {
+    const productId = String(
+      item?.id || item?.productId || ""
+    ).trim();
+
+    if (!productId) {
+      throw new Error(
+        "A cart item is missing its product ID."
+      );
+    }
+
+    const rawQuantity = String(
+      item?.quantity ?? 1
+    ).trim();
+
+    if (!/^\d+$/.test(rawQuantity)) {
+      throw new Error(
+        `Invalid quantity for product ${productId}.`
+      );
+    }
+
+    const quantity = Number(rawQuantity);
+
+    if (
+      !Number.isSafeInteger(quantity) ||
+      quantity < 1 ||
+      quantity > MAX_ITEM_QUANTITY
+    ) {
+      throw new Error(
+        `Invalid quantity for product ${productId}.`
+      );
+    }
+
+    const currentQuantity =
+      quantitiesByProductId.get(productId) || 0;
+
+    const combinedQuantity =
+      currentQuantity + quantity;
+
+    if (combinedQuantity > MAX_ITEM_QUANTITY) {
+      throw new Error(
+        `Maximum quantity exceeded for product ${productId}.`
+      );
+    }
+
+    quantitiesByProductId.set(
+      productId,
+      combinedQuantity
+    );
+  }
+
+  return Array.from(
+    quantitiesByProductId,
+    ([productId, quantity]) => ({
+      productId,
+      quantity
+    })
+  );
+}
+
+function getBaseUrl() {
+  return (
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
+}
+
+async function releaseReservation({
+  supabase,
+  reservationId
+}) {
+  if (!supabase || !reservationId) {
+    return false;
+  }
 
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
+    const { error } = await supabase.rpc(
+      "release_inventory_reservation",
+      {
+        p_reservation_id: reservationId
+      }
+    );
+
+    if (error) {
+      console.error(
+        "Unable to release inventory reservation:",
+        {
+          reservationId,
+          error
+        }
+      );
+
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(
+      "Unexpected reservation release error:",
+      {
+        reservationId,
+        error
+      }
+    );
+
+    return false;
+  }
+}
+
+async function expireCheckoutSession({
+  stripe,
+  sessionId
+}) {
+  if (!stripe || !sessionId) {
+    return false;
+  }
+
+  try {
+    await stripe.checkout.sessions.expire(
+      sessionId
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "Unable to expire Stripe Checkout Session:",
+      {
+        sessionId,
+        error
+      }
+    );
+
+    return false;
+  }
+}
+
+async function deleteIncompleteOrder({
+  supabase,
+  orderId
+}) {
+  if (!supabase || !orderId) {
+    return false;
+  }
+
+  try {
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("id", orderId);
+
+    if (error) {
+      console.error(
+        "Unable to delete incomplete order:",
+        {
+          orderId,
+          error
+        }
+      );
+
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(
+      "Unexpected incomplete-order cleanup error:",
+      {
+        orderId,
+        error
+      }
+    );
+
+    return false;
+  }
+}
+export async function POST(request) {
+  let reservationId = null;
+  let createdOrderId = null;
+  let stripeSessionId = null;
+  let supabase = null;
+  let stripe = null;
+
+  try {
+    const stripeSecretKey =
+      process.env.STRIPE_SECRET_KEY;
+
+    if (!stripeSecretKey) {
+      console.error(
+        "STRIPE_SECRET_KEY is not configured."
+      );
+
       return NextResponse.json(
         {
           message:
-            "Missing STRIPE_SECRET_KEY. Add it to .env.local or Vercel environment variables."
+            "Checkout is temporarily unavailable."
         },
         { status: 500 }
       );
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    stripe = new Stripe(stripeSecretKey);
 
-    const body = await request.json();
-    const cartItems = Array.isArray(body.items) ? body.items : [];
+    let body;
 
-    if (!cartItems.length) {
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          message: "Invalid checkout request."
+        },
+        { status: 400 }
+      );
+    }
+
+    const rawCartItems = Array.isArray(body?.items)
+      ? body.items
+      : [];
+
+    if (rawCartItems.length === 0) {
       return NextResponse.json(
         { message: "Cart is empty." },
         { status: 400 }
       );
     }
 
-    const checkoutItems = cartItems.map((cartItem) => {
-      const product = products.find(
-        (item) => item.id === cartItem.id
-      );
+    const cartItems =
+      normalizeCartItems(rawCartItems);
 
-      if (!product) {
-        throw new Error(
-          `Product not found: ${cartItem.id}`
-        );
-      }
-
-      if (
-        product.unitPrice === null ||
-        product.unitPrice === undefined ||
-        product.unitPrice <= 0
-      ) {
-        throw new Error(
-          `Missing valid price for product: ${product.name}`
-        );
-      }
-
-      return {
-        product,
-        quantity: Math.max(
-          1,
-          Number(cartItem.quantity) || 1
-        )
-      };
-    });
-
-    const subtotal = checkoutItems.reduce(
-      (sum, item) =>
-        sum +
-        item.product.unitPrice * item.quantity,
-      0
+    const productIds = cartItems.map(
+      (item) => item.productId
     );
 
     supabase = createSupabaseAdmin();
 
-    /*Reserve inventory for 30 minutes before opening Stripe Checkout.*/
-    const reservationExpiresAt = new Date(
-      Date.now() + 30 * 60 * 1000
+    const [productsResult, inventoryResult] =
+      await Promise.all([
+        supabase
+          .from("products")
+          .select(`
+            product_id,
+            title,
+            short_description,
+            price_cents,
+            currency,
+            status,
+            is_active,
+            requires_shipping,
+            deleted_at
+          `)
+          .in("product_id", productIds)
+          .is("deleted_at", null),
+
+        supabase
+          .from("inventory")
+          .select(`
+            product_id,
+            stock_quantity,
+            reserved_quantity,
+            is_active
+          `)
+          .in("product_id", productIds)
+      ]);
+
+    if (productsResult.error) {
+      console.error(
+        "Unable to load checkout products:",
+        productsResult.error
+      );
+
+      throw new Error(
+        "Unable to load checkout products."
+      );
+    }
+
+    if (inventoryResult.error) {
+      console.error(
+        "Unable to load product inventory:",
+        inventoryResult.error
+      );
+
+      throw new Error(
+        "Unable to load product inventory."
+      );
+    }
+
+    const productsById = new Map(
+      (productsResult.data || []).map(
+        (product) => [
+          product.product_id,
+          product
+        ]
+      )
     );
 
-    const reservationItems = checkoutItems.map(
-      ({ product, quantity }) => ({
-        product_id: product.id,
-        quantity
-      })
+    const inventoryById = new Map(
+      (inventoryResult.data || []).map(
+        (inventory) => [
+          inventory.product_id,
+          inventory
+        ]
+      )
+    );
+
+    const checkoutItems = cartItems.map(
+      ({ productId, quantity }) => {
+        const product =
+          productsById.get(productId);
+
+        if (!product) {
+          throw new Error(
+            `Product is no longer available: ${productId}`
+          );
+        }
+
+        if (
+          product.status !== "active" ||
+          product.is_active !== true
+        ) {
+          throw new Error(
+            `${product.title} is not currently available.`
+          );
+        }
+
+        const priceCents = Number(
+          product.price_cents
+        );
+
+        if (
+          !Number.isSafeInteger(priceCents) ||
+          priceCents <= 0
+        ) {
+          throw new Error(
+            `${product.title} does not have a valid checkout price.`
+          );
+        }
+
+        const productCurrency = String(
+          product.currency || CHECKOUT_CURRENCY
+        ).toUpperCase();
+
+        if (
+          productCurrency !== CHECKOUT_CURRENCY
+        ) {
+          throw new Error(
+            `${product.title} cannot be purchased in this checkout currency.`
+          );
+        }
+
+        const inventory =
+          inventoryById.get(productId);
+
+        if (
+          !inventory ||
+          inventory.is_active !== true
+        ) {
+          throw new Error(
+            `${product.title} is not currently available for purchase.`
+          );
+        }
+
+        const stockQuantity = Number(
+          inventory.stock_quantity || 0
+        );
+
+        const reservedQuantity = Number(
+          inventory.reserved_quantity || 0
+        );
+
+        if (
+          !Number.isSafeInteger(stockQuantity) ||
+          !Number.isSafeInteger(reservedQuantity)
+        ) {
+          throw new Error(
+            `Inventory information is invalid for ${product.title}.`
+          );
+        }
+
+        const availableQuantity =
+          stockQuantity - reservedQuantity;
+
+        if (availableQuantity < quantity) {
+          throw new Error(
+            availableQuantity > 0
+              ? `Only ${availableQuantity} unit(s) of ${product.title} are currently available.`
+              : `${product.title} is out of stock.`
+          );
+        }
+
+        return {
+          product,
+          quantity,
+          priceCents
+        };
+      }
+    );
+
+    const subtotalCents =
+      checkoutItems.reduce(
+        (total, item) =>
+          total +
+          item.priceCents * item.quantity,
+        0
+      );
+
+    if (
+      !Number.isSafeInteger(subtotalCents) ||
+      subtotalCents <= 0
+    ) {
+      throw new Error(
+        "The checkout total is invalid."
+      );
+    }
+
+    const reservationItems =
+      checkoutItems.map(
+        ({ product, quantity }) => ({
+          product_id: product.product_id,
+          quantity
+        })
+      );
+
+    const reservationExpiresAt = new Date(
+      Date.now() +
+        RESERVATION_DURATION_MINUTES *
+          60 *
+          1000
+    );
+
+    const stripeSessionExpiresAt = Math.floor(
+      Date.now() / 1000 +
+        STRIPE_SESSION_DURATION_MINUTES * 60
     );
 
     const {
@@ -97,6 +461,11 @@ export async function POST(request) {
     );
 
     if (reservationError) {
+      console.error(
+        "Unable to reserve checkout inventory:",
+        reservationError
+      );
+
       throw new Error(
         reservationError.message ||
           "Unable to reserve inventory."
@@ -112,137 +481,182 @@ export async function POST(request) {
     }
 
     const lineItems = checkoutItems.map(
-      ({ product, quantity }) => ({
+      ({ product, quantity, priceCents }) => ({
         quantity,
         price_data: {
-          currency: "usd",
-          unit_amount: Math.round(
-            product.unitPrice * 100
-          ),
+          currency:
+            CHECKOUT_CURRENCY.toLowerCase(),
+          unit_amount: priceCents,
           product_data: {
-            name: product.name,
+            name: product.title,
             description:
-              product.subtitle || product.name,
+              product.short_description ||
+              product.title,
             metadata: {
-              product_id: product.id
+              product_id: product.product_id
             }
           }
         }
       })
     );
 
-    const baseUrl = (
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      "http://localhost:3000"
-    ).replace(/\/$/, "");
+    const baseUrl = getBaseUrl();
 
-    const shippingAmount =
-      subtotal >= commerce.freeShippingThreshold
+    const freeShippingThresholdCents =
+      Math.round(
+        Number(
+          commerce.freeShippingThreshold
+        ) * 100
+      );
+
+    const standardShippingCents =
+      Math.round(
+        Number(commerce.standardShipping) *
+          100
+      );
+
+    if (
+      !Number.isSafeInteger(
+        freeShippingThresholdCents
+      ) ||
+      freeShippingThresholdCents < 0 ||
+      !Number.isSafeInteger(
+        standardShippingCents
+      ) ||
+      standardShippingCents < 0
+    ) {
+      throw new Error(
+        "Shipping configuration is invalid."
+      );
+    }
+
+    const shippingAmountCents =
+      subtotalCents >=
+      freeShippingThresholdCents
         ? 0
-        : commerce.standardShipping;
+        : standardShippingCents;
 
     let session;
 
     try {
       session =
-        await stripe.checkout.sessions.create({
-          mode: "payment",
+        await stripe.checkout.sessions.create(
+          {
+            mode: "payment",
+            line_items: lineItems,
+            expires_at: stripeSessionExpiresAt,
 
-          line_items: lineItems,
+            allow_promotion_codes: true,
 
-          /*Stripe expects expires_at as a Unix timestamp.*/
-          expires_at: Math.floor(
-            reservationExpiresAt.getTime() / 1000
-          ),
+            phone_number_collection: {
+              enabled: true
+            },
 
-          allow_promotion_codes: true,
+            billing_address_collection: "auto",
 
-          phone_number_collection: {
-            enabled: true
-          },
+            shipping_address_collection: {
+              allowed_countries: ["US"]
+            },
 
-          billing_address_collection: "auto",
+            automatic_tax: {
+              enabled:
+                process.env.STRIPE_AUTOMATIC_TAX ===
+                "true"
+            },
 
-          shipping_address_collection: {
-            allowed_countries: ["US"]
-          },
-
-          automatic_tax: {
-            enabled:
-              process.env
-                .STRIPE_AUTOMATIC_TAX === "true"
-          },
-
-          shipping_options: [
-            {
-              shipping_rate_data: {
-                type: "fixed_amount",
-                fixed_amount: {
-                  amount: Math.round(
-                    shippingAmount * 100
-                  ),
-                  currency: "usd"
-                },
-                display_name:
-                  shippingAmount === 0
-                    ? "Free Standard Shipping"
-                    : "Standard Shipping",
-                delivery_estimate: {
-                  minimum: {
-                    unit: "business_day",
-                    value: 3
+            shipping_options: [
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  fixed_amount: {
+                    amount: shippingAmountCents,
+                    currency:
+                      CHECKOUT_CURRENCY.toLowerCase()
                   },
-                  maximum: {
-                    unit: "business_day",
-                    value: 7
+                  display_name:
+                    shippingAmountCents === 0
+                      ? "Free Standard Shipping"
+                      : "Standard Shipping",
+                  delivery_estimate: {
+                    minimum: {
+                      unit: "business_day",
+                      value: 3
+                    },
+                    maximum: {
+                      unit: "business_day",
+                      value: 7
+                    }
                   }
                 }
+              },
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  fixed_amount: {
+                    amount: 0,
+                    currency:
+                      CHECKOUT_CURRENCY.toLowerCase()
+                  },
+                  display_name:
+                    "Local Pickup - Weston, Florida"
+                }
               }
+            ],
+
+            metadata: {
+              business: "Shakti Foods",
+              order_type: "online-order",
+              reservation_id: String(reservationId)
             },
-            {
-              shipping_rate_data: {
-                type: "fixed_amount",
-                fixed_amount: {
-                  amount: 0,
-                  currency: "usd"
-                },
-                display_name:
-                  "Local Pickup - Weston, Florida"
-              }
-            }
-          ],
 
-          metadata: {
-            business: "Shakti Foods",
-            orderType: "online-order",
-            reservation_id: reservationId
+            success_url:
+              `${baseUrl}/checkout/success` +
+              "?session_id={CHECKOUT_SESSION_ID}",
+
+            cancel_url:
+              `${baseUrl}/checkout/cancel` +
+              `?reservation_id=${encodeURIComponent(
+                reservationId
+              )}`
           },
-
-          success_url:
-            `${baseUrl}/checkout/success` +
-            `?session_id={CHECKOUT_SESSION_ID}`,
-
-          cancel_url:
-            `${baseUrl}/checkout/cancel?reservation_id=${encodeURIComponent(
-              reservationId
-            )}`
-        });
-    } catch (stripeError) {
-      /*If Stripe Session creation fails, release the inventory hold.*/
-      await supabase.rpc(
-        "release_inventory_reservation",
-        {
-          p_reservation_id: reservationId
-        }
-      );
+          {
+            idempotencyKey:
+              `checkout-reservation-${reservationId}`
+          }
+        );
+    }  
+    catch (stripeError) {
+      await releaseReservation({
+        supabase,
+        reservationId
+      });
 
       reservationId = null;
 
       throw stripeError;
     }
 
-    /*Link the Stripe Checkout Session to the reservation.*/
+    stripeSessionId = session.id;
+
+    if (!session.url) {
+      await expireCheckoutSession({
+        stripe,
+        sessionId: stripeSessionId
+      });
+
+      await releaseReservation({
+        supabase,
+        reservationId
+      });
+
+      reservationId = null;
+      stripeSessionId = null;
+
+      throw new Error(
+        "Stripe did not return a checkout URL."
+      );
+    }
+
     const {
       error: reservationUpdateError
     } = await supabase
@@ -251,40 +665,164 @@ export async function POST(request) {
         stripe_session_id: session.id,
         updated_at: new Date().toISOString()
       })
-      .eq("id", reservationId);
+      .eq("id", reservationId)
+      .eq("status", "pending");
 
     if (reservationUpdateError) {
-      await supabase.rpc(
-        "release_inventory_reservation",
-        {
-          p_reservation_id: reservationId
-        }
+      console.error(
+        "Unable to link reservation to Stripe session:",
+        reservationUpdateError
       );
 
+      await expireCheckoutSession({
+        stripe,
+        sessionId: stripeSessionId
+      });
+
+      await releaseReservation({
+        supabase,
+        reservationId
+      });
+
+      reservationId = null;
+      stripeSessionId = null;
+
       throw new Error(
-        "Checkout was created, but the inventory reservation could not be linked."
+        "Checkout was created, but its inventory reservation could not be linked."
+      );
+    }
+        const {
+      data: order,
+      error: orderError
+    } = await supabase
+      .from("orders")
+      .insert({
+        stripe_session_id: session.id,
+        reservation_id: reservationId,
+
+        payment_status: "pending",
+        fulfillment_status: "new",
+
+        subtotal: subtotalCents,
+        shipping_amount: shippingAmountCents,
+        tax_amount: 0,
+        total_amount:
+          subtotalCents + shippingAmountCents,
+
+        currency: CHECKOUT_CURRENCY
+      })
+      .select("id")
+      .single();
+
+    if (orderError || !order) {
+      console.error(
+        "Unable to create checkout order:",
+        orderError
+      );
+
+      await expireCheckoutSession({
+        stripe,
+        sessionId: stripeSessionId
+      });
+
+      await releaseReservation({
+        supabase,
+        reservationId
+      });
+
+      reservationId = null;
+      stripeSessionId = null;
+
+      throw new Error(
+        "Unable to record order in database."
+      );
+    }
+
+    createdOrderId = order.id;
+
+    const orderItemsToInsert =
+      checkoutItems.map(
+        ({
+          product,
+          quantity,
+          priceCents
+        }) => ({
+          order_id: order.id,
+          product_id: product.product_id,
+          product_name: product.title,
+          quantity,
+          unit_price: priceCents,
+          line_total: priceCents * quantity
+        })
+      );
+
+    const {
+      error: orderItemsError
+    } = await supabase
+      .from("order_items")
+      .insert(orderItemsToInsert);
+
+    if (orderItemsError) {
+      console.error(
+        "Unable to create order items:",
+        orderItemsError
+      );
+
+      await expireCheckoutSession({
+        stripe,
+        sessionId: stripeSessionId
+      });
+
+      await deleteIncompleteOrder({
+        supabase,
+        orderId: createdOrderId
+      });
+
+      createdOrderId = null;
+
+      await releaseReservation({
+        supabase,
+        reservationId
+      });
+
+      reservationId = null;
+      stripeSessionId = null;
+
+      throw new Error(
+        "Unable to save order items."
       );
     }
 
     return NextResponse.json({
-      url: session.url
+      url: session.url,
+      sessionId: session.id,
+      reservationId
     });
   } catch (error) {
-    /*Final safety cleanup for errors after reservation creation.*/
+    /*
+     * This is a final safety-net cleanup.
+     * Failure branches above normally clear these
+     * variables after performing cleanup.
+     */
+    if (stripeSessionId && stripe) {
+      await expireCheckoutSession({
+        stripe,
+        sessionId: stripeSessionId
+      });
+    }
+
+    if (createdOrderId && supabase) {
+      await deleteIncompleteOrder({
+        supabase,
+        orderId: createdOrderId
+      });
+    }
+
     if (reservationId && supabase) {
-      try {
-        await supabase.rpc(
-          "release_inventory_reservation",
-          {
-            p_reservation_id: reservationId
-          }
-        );
-      } catch (releaseError) {
-        console.error(
-          "Unable to release inventory reservation:",
-          releaseError
-        );
-      }
+      await releaseReservation({
+        supabase,
+        reservationId
+      });
     }
 
     console.error(
@@ -292,13 +830,14 @@ export async function POST(request) {
       error
     );
 
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to create checkout session.";
+
     return NextResponse.json(
-      {
-        message:
-          error.message ||
-          "Unable to create checkout session."
-      },
-      { status: 500 }
+      { message },
+      { status: 400 }
     );
   }
 }

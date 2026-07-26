@@ -60,15 +60,16 @@ export default function CheckoutSuccessClient() {
         }
 
         /*
-         * Clear the cart after the paid order has been verified
-         * and fulfilled successfully.
-         */
+        * This checkout is finished.
+        * Do not let the browser-back watcher
+        * treat it as abandoned.
+        */
+        sessionStorage.removeItem(
+          "activeStripeCheckout"
+        );
+
         removeCart();
 
-        /*
-         * Clear it again after CartProvider hydration to prevent
-         * an older localStorage cart from being restored.
-         */
         window.setTimeout(removeCart, 500);
 
         setStatus(

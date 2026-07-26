@@ -3,72 +3,77 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  LayoutDashboard,
+  ShoppingBag,
+  Users,
+  Package,
+  FolderTree,
   Boxes,
-  ClipboardList,
-  History,
-  LayoutDashboard
+  History
 } from "lucide-react";
 
-const navigationItems = [
-  {
-    label: "Dashboard",
-    href: "/admin",
-    icon: LayoutDashboard
-  },
-  {
-    label: "Orders",
-    href: "/admin/orders",
-    icon: ClipboardList
-  },
-  {
-    label: "Inventory",
-    href: "/admin/inventory",
-    icon: Boxes
-  },
-  {
-    label: "History",
-    href: "/admin/inventory/history",
-    icon: History
-  }
-];
+const iconMap = {
+  dashboard: LayoutDashboard,
+  orders: ShoppingBag,
+  customers: Users,
+  products: Package,
+  categories: FolderTree,
+  inventory: Boxes,
+  history: History
+};
 
-function isCurrentRoute(pathname, href) {
-  if (href === "/admin") {
-    return pathname === "/admin";
-  }
-
-  return pathname.startsWith(href);
-}
-
-export default function AdminNavigation() {
+export default function AdminNavigation({ navItems = [] }) {
   const pathname = usePathname();
 
+  const isRouteActive = (href) => {
+    // Dashboard should only be active on /admin
+    if (href === "/admin") {
+      return pathname === "/admin";
+    }
+
+    return pathname.startsWith(href);
+  };
+
   return (
-    <nav className="border-b border-black/10 bg-white">
-      <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-5 py-3 md:px-8">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = isCurrentRoute(
-            pathname,
-            item.href
-          );
+    <nav
+      className="border-b border-black/10 bg-[#f8f6f1]"
+      aria-label="Admin Navigation"
+    >
+      <div className="mx-auto max-w-7xl overflow-x-auto px-5 md:px-8">
+        <div className="flex min-w-max items-center gap-2 py-3">
+          {navItems.map((item) => {
+            const Icon =
+              iconMap[item.icon] ||
+              LayoutDashboard;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
-                isActive
-                  ? "bg-black text-white"
-                  : "bg-[#f3ede3] text-black hover:bg-[#e5d9c8]"
-              }`}
-            >
-              <Icon size={17} />
+            const active = isRouteActive(item.href);
 
-              {item.label}
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                prefetch={true}
+                aria-current={
+                  active ? "page" : undefined
+                }
+                className={[
+                  "inline-flex items-center gap-2 rounded-full",
+                  "px-4 py-2.5",
+                  "text-sm font-bold",
+                  "transition-all duration-200",
+                  "whitespace-nowrap",
+                  active
+                    ? "bg-black text-white shadow-md"
+                    : "bg-white text-black hover:bg-[#f1eadf] hover:shadow"
+                ].join(" ")}
+              >
+                <Icon size={16} />
+
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

@@ -1,18 +1,38 @@
 import HeroV3 from "@/components/HeroV3";
 import RiceSizeShowcaseV3 from "@/components/RiceSizeShowcaseV3";
 import EcoWareShowcaseV3 from "@/components/EcoWareShowcaseV3";
-import ProductGrid from "@/components/ProductGrid";
+import FeaturedProducts from "@/components/FeaturedProducts";
 import Testimonials from "@/components/Testimonials";
 import CTASection from "@/components/CTASection";
+import {
+  getStorefrontProducts
+} from "@/lib/storefront-products";
 
-export default function Home() {
+export const dynamic =
+  "force-dynamic";
+
+export default async function Home() {
+  const products =
+    await getStorefrontProducts();
+
   return (
     <main>
       <HeroV3 />
-      <RiceSizeShowcaseV3 />
-      <EcoWareShowcaseV3 />
-      <ProductGrid />
+
+      <FeaturedProducts
+        products={products}
+      />
+
+      <RiceSizeShowcaseV3
+        products={products}
+      />
+
+      <EcoWareShowcaseV3
+        products={products}
+      />
+
       <Testimonials />
+
       <CTASection />
     </main>
   );

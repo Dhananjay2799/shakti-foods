@@ -4,22 +4,38 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const REFRESH_DELAY = 300;
+
 export default function AdminLiveRefresh() {
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createClient();
-    let refreshTimer;
 
-    function refreshDashboard(payload) {
-      console.log("Admin realtime change:", payload);
+    let refreshTimer = null;
+    let isRefreshing = false;
 
-      window.clearTimeout(refreshTimer);
+    const scheduleRefresh = (payload) => {
+      if (process.env.NODE_ENV === "development") {
+        console.log("Admin realtime change:", payload);
+      }
 
-      refreshTimer = window.setTimeout(() => {
-        router.refresh();
-      }, 300);
-    }
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+
+      refreshTimer = window.setTimeout(async () => {
+        if (isRefreshing) return;
+
+        isRefreshing = true;
+
+        try {
+          router.refresh();
+        } finally {
+          isRefreshing = false;
+        }
+      }, REFRESH_DELAY);
+    };
 
     const channel = supabase
       .channel("admin-dashboard-changes")
@@ -30,7 +46,7 @@ export default function AdminLiveRefresh() {
           schema: "public",
           table: "orders"
         },
-        refreshDashboard
+        scheduleRefresh
       )
       .on(
         "postgres_changes",
@@ -39,10 +55,12 @@ export default function AdminLiveRefresh() {
           schema: "public",
           table: "inventory"
         },
-        refreshDashboard
+        scheduleRefresh
       )
       .subscribe((status, error) => {
-        console.log("Admin realtime status:", status);
+        if (process.env.NODE_ENV === "development") {
+          console.log("Admin realtime status:", status);
+        }
 
         if (error) {
           console.error(
@@ -53,7 +71,10 @@ export default function AdminLiveRefresh() {
       });
 
     return () => {
-      window.clearTimeout(refreshTimer);
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+
       supabase.removeChannel(channel);
     };
   }, [router]);

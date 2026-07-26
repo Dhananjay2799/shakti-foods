@@ -6,11 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate:products": "node scripts/migrate-static-products.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.3",
+    "dotenv": "^17.4.2",
     "framer-motion": "^11.3.19",
     "lucide-react": "^0.468.0",
     "next": "^14.2.35",
