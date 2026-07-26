@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import { updateOrderDetails } from "@/app/admin/orders/actions";
+import FulfillmentForm from "./FulfillmentForm";
 
 export const dynamic = "force-dynamic";
 
@@ -339,88 +339,7 @@ export default async function AdminOrderDetailsPage({ params }) {
                 Update status, carrier, tracking number, and notes.
               </p>
 
-              <form
-                action={updateOrderDetails}
-                aria-label="Update order fulfillment"
-                className="mt-6 grid gap-4"
-              >
-                <input type="hidden" name="orderId" value={order.id} />
-
-                <label className="grid gap-2">
-                  <span className="text-sm font-bold text-black">
-                    Order Status
-                  </span>
-
-                  <select
-                    name="fulfillmentStatus"
-                    defaultValue={order.fulfillment_status || "new"}
-                    className="rounded-2xl border border-black/15 bg-white px-4 py-3 font-semibold text-black outline-none focus:border-black"
-                  >
-                    <option value="new">New</option>
-                    <option value="processing">Processing</option>
-                    <option value="packed">Packed</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="canceled">Canceled</option>
-                  </select>
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-sm font-bold text-black">
-                    Carrier
-                  </span>
-
-                  <select
-                    name="shippingCarrier"
-                    defaultValue={order.shipping_carrier || ""}
-                    className="rounded-2xl border border-black/15 bg-white px-4 py-3 font-semibold text-black outline-none focus:border-black"
-                  >
-                    <option value="">None / Unassigned</option>
-                    <option value="ups">UPS</option>
-                    <option value="fedex">FedEx</option>
-                    <option value="usps">USPS</option>
-                    <option value="dhl">DHL</option>
-                    <option value="local_pickup">Local Pickup</option>
-                    <option value="other">Other</option>
-                  </select>
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-sm font-bold text-black">
-                    Tracking Number
-                  </span>
-
-                  <input
-                    type="text"
-                    inputMode="text"
-                    name="trackingNumber"
-                    defaultValue={order.tracking_number || ""}
-                    placeholder="e.g. 1Z9999999999999999"
-                    className="rounded-2xl border border-black/15 bg-white px-4 py-3 text-sm font-semibold text-black outline-none focus:border-black"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-sm font-bold text-black">
-                    Internal Notes
-                  </span>
-
-                  <textarea
-                    name="internalNotes"
-                    rows={4}
-                    defaultValue={order.internal_notes || ""}
-                    placeholder="Warehouse / delivery notes..."
-                    className="rounded-2xl border border-black/15 bg-white px-4 py-3 text-sm font-semibold text-black outline-none focus:border-black resize-y"
-                  />
-                </label>
-
-                <button
-                  type="submit"
-                  className="rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333]"
-                >
-                  Save Changes
-                </button>
-              </form>
+              <FulfillmentForm order={order} />
             </section>
 
             {/* Order Summary */}

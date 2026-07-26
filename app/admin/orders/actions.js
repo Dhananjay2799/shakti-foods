@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { sendTransactionalEmail } from "@/lib/email";
+import { buildOrderStatusEmail } from "@/lib/order-email-template";
 
 const allowedStatuses = Object.freeze([
   "new",
@@ -154,6 +156,11 @@ export async function updateOrderDetails(
     5000
   );
 
+  console.log("Status:", fulfillmentStatus);
+  console.log("Carrier:", shippingCarrier);
+  console.log("Tracking:", trackingNumber);
+  console.log("Notes:", internalNotes);
+
   if (!orderId) {
     throw new Error("Missing order ID.");
   }
@@ -287,6 +294,88 @@ export async function updateOrderDetails(
   }
 
   /*
+ * Send customer email after
+ * the database update succeeds.
+ */
+if (
+  existingOrder.fulfillment_status !==
+  fulfillmentStatus
+) {
+  try {
+    const [
+      emailOrderResult,
+      orderItemsResult
+    ] = await Promise.all([
+      supabase
+        .from("orders")
+        .select(`
+          id,
+          customer_name,
+          customer_email,
+          fulfillment_status,
+          total_amount,
+          shipping_carrier,
+          tracking_number,
+          tracking_url
+        `)
+        .eq("id", orderId)
+        .single(),
+
+      supabase
+        .from("order_items")
+        .select(`
+          product_name,
+          quantity,
+          line_total
+        `)
+        .eq("order_id", orderId)
+    ]);
+
+    if (emailOrderResult.error) {
+      throw new Error(
+        emailOrderResult.error.message ||
+          "Unable to load order email details."
+      );
+    }
+
+    if (orderItemsResult.error) {
+      throw new Error(
+        orderItemsResult.error.message ||
+          "Unable to load order items for email."
+      );
+    }
+
+    const emailOrder =
+      emailOrderResult.data;
+
+    const orderItems =
+      orderItemsResult.data || [];
+
+    if (emailOrder?.customer_email) {
+      const email =
+        buildOrderStatusEmail({
+          order: emailOrder,
+          items: orderItems
+        });
+
+      await sendTransactionalEmail({
+        to: emailOrder.customer_email,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+        idempotencyKey:
+          `order-status/${orderId}/${fulfillmentStatus}/${updatedOrder.updated_at}`
+      });
+    }
+  } catch (emailError) {
+    console.error(
+      "Unable to send customer email:",
+      emailError
+    );
+  }
+}
+
+  /*
    * Future Kafka integration point:
    *
    * Publish an event only after the database update succeeds.
@@ -324,6 +413,8 @@ export async function updateOrderDetails(
 export async function updateFulfillmentStatus(
   formData
 ) {
+  await requireAuthenticatedAdmin();
+  
   const orderId = normalizeText(
     formData.get("orderId"),
     100
