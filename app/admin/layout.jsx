@@ -48,6 +48,21 @@ export default async function AdminLayout({ children }) {
       icon: "inventory"
     },
     {
+      label: "Samples",
+      href: "/admin/sample-requests",
+      icon: "samples"
+    },
+    {
+      label: "Wholesale",
+      href: "/admin/wholesale",
+      icon: "wholesale"
+    },
+    {
+      label: "Reviews",
+      href: "/admin/reviews",
+      icon: "reviews"
+    },
+    {
       label: "History",
       href: "/admin/inventory/history",
       icon: "history"

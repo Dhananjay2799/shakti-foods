@@ -555,21 +555,135 @@ function readProductForm(formData) {
   };
 }
 
+function readPriceTiers(formData) {
+  const tiers = [];
+
+  for (let index = 0; index < 3; index += 1) {
+    const quantityRaw = String(
+      formData.get(`tierQuantity_${index}`) || ""
+    ).trim();
+
+    const priceRaw = String(
+      formData.get(`tierPrice_${index}`) || ""
+    ).trim();
+
+    const isActive =
+      formData.get(`tierActive_${index}`) === "on";
+
+    if (!quantityRaw && !priceRaw) {
+      continue;
+    }
+
+    const minQuantity =
+      Number.parseInt(quantityRaw, 10);
+
+    if (
+      !Number.isInteger(minQuantity) ||
+      minQuantity <= 0
+    ) {
+      throw new Error(
+        `Tier ${index + 1} quantity must be a positive whole number.`
+      );
+    }
+
+    /*
+     * Empty price means this tier should not exist.
+     */
+    if (!priceRaw) {
+      continue;
+    }
+
+    const price = Number(priceRaw);
+
+    if (
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
+      throw new Error(
+        `Tier ${index + 1} price must be greater than zero.`
+      );
+    }
+
+    tiers.push({
+      min_quantity: minQuantity,
+      unit_price_cents:
+        Math.round(price * 100),
+
+      tier_name:
+        `${minQuantity}+ Unit Price`,
+
+      sort_order:
+        (index + 1) * 10,
+
+      is_active: isActive
+    });
+  }
+
+  /*
+   * Prevent duplicate quantity breaks.
+   */
+  const quantities =
+    tiers.map(
+      (tier) => tier.min_quantity
+    );
+
+  if (
+    new Set(quantities).size !==
+    quantities.length
+  ) {
+    throw new Error(
+      "Each quantity pricing tier must use a different minimum quantity."
+    );
+  }
+
+  /*
+   * Put tiers in quantity order.
+   */
+  tiers.sort(
+    (a, b) =>
+      a.min_quantity -
+      b.min_quantity
+  );
+
+  /*
+   * Automatically calculate max_quantity.
+   *
+   * Example:
+   * 5  -> 9
+   * 10 -> 24
+   * 25 -> null
+   */
+  return tiers.map(
+    (tier, index) => ({
+      ...tier,
+
+      max_quantity:
+        tiers[index + 1]
+          ? tiers[index + 1]
+              .min_quantity - 1
+          : null,
+
+      sort_order:
+        (index + 1) * 10
+    })
+  );
+}
+
 export async function createProduct(
   formData
 ) {
   const user = await requireAdmin();
 
-  const {
-    productId,
-    slug,
-    sku,
-    productData,
-    inventoryData
-  } = readProductForm(formData);
+    const {
+      productId,
+      slug,
+      sku,
+      productData,
+      inventoryData
+    } = readProductForm(formData);
 
-  const supabase =
-    createSupabaseAdmin();
+    const supabase =
+      createSupabaseAdmin();
 
   await assertIdentifiersAvailable({
     supabase,
@@ -692,6 +806,9 @@ export async function updateProduct(
     productData,
     inventoryData
   } = readProductForm(formData);
+
+  const priceTiers =
+    readPriceTiers(formData);
 
   const supabase =
     createSupabaseAdmin();
@@ -839,6 +956,76 @@ export async function updateProduct(
       inventoryError.message ||
         "The product was not updated because the inventory record could not be changed."
     );
+  }
+
+  /*
+   * Save quantity / bulk pricing.
+   *
+   * We replace the existing tiers with the values
+   * submitted from the admin product editor.
+   */
+  const {
+    error: deletePriceTiersError
+  } = await supabase
+    .from("product_price_tiers")
+    .delete()
+    .eq("product_id", originalProductId);
+
+  if (deletePriceTiersError) {
+    console.error(
+      "Unable to remove existing price tiers:",
+      deletePriceTiersError
+    );
+
+    throw new Error(
+      deletePriceTiersError.message ||
+        "Unable to update product quantity pricing."
+    );
+  }
+
+  if (priceTiers.length > 0) {
+    const priceTierRows =
+      priceTiers.map(
+        (tier) => ({
+          product_id: productId,
+
+          min_quantity:
+            tier.min_quantity,
+
+          max_quantity:
+            tier.max_quantity,
+
+          unit_price_cents:
+            tier.unit_price_cents,
+
+          tier_name:
+            tier.tier_name,
+
+          sort_order:
+            tier.sort_order,
+
+          is_active:
+            tier.is_active
+        })
+      );
+
+    const {
+      error: insertPriceTiersError
+    } = await supabase
+      .from("product_price_tiers")
+      .insert(priceTierRows);
+
+    if (insertPriceTiersError) {
+      console.error(
+        "Unable to save product price tiers:",
+        insertPriceTiersError
+      );
+
+      throw new Error(
+        insertPriceTiersError.message ||
+          "Unable to save product quantity pricing."
+      );
+    }
   }
 
   refreshProductPages({

@@ -9,6 +9,9 @@ import {
   Package,
   FolderTree,
   Boxes,
+  ClipboardList,
+  Handshake,
+  Star,
   History
 } from "lucide-react";
 
@@ -19,6 +22,9 @@ const iconMap = {
   products: Package,
   categories: FolderTree,
   inventory: Boxes,
+  samples: ClipboardList,
+  wholesale: Handshake,
+  reviews: Star,
   history: History
 };
 

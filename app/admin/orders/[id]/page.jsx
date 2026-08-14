@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import FulfillmentForm from "./FulfillmentForm";
+import ShippingForm from "./ShippingForm";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,16 @@ export default async function AdminOrderDetailsPage({ params }) {
           customer_phone,
           shipping_address,
           shipping_method,
+          shipping_service,
+          shipping_cost,
+          label_url,
+          shippo_shipment_id,
+          shippo_rate_id,
+          shippo_transaction_id,
+          parcel_weight,
+          parcel_length,
+          parcel_width,
+          parcel_height,
           currency,
           subtotal,
           shipping_amount,
@@ -241,7 +252,11 @@ export default async function AdminOrderDetailsPage({ params }) {
                   </p>
 
                   <p className="mt-3 text-sm text-black/60">
-                    Shipping method: {order.shipping_method || "Not recorded"}
+                    Shipping service: {
+                      order.shipping_service ||
+                      order.shipping_method ||
+                      "Not recorded"
+                    }
                   </p>
                 </div>
               </div>
@@ -275,18 +290,32 @@ export default async function AdminOrderDetailsPage({ params }) {
                 </div>
               </div>
 
-              {order.tracking_url ? (
-                <div className="mt-6">
-                  <a
-                    href={order.tracking_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex rounded-full bg-black px-6 py-3 font-bold text-white transition hover:bg-black/80"
-                  >
-                    Track Package ↗
-                  </a>
+              {order.tracking_url || order.label_url ? (
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {order.tracking_url ? (
+                    <a
+                      href={order.tracking_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-black px-6 py-3 font-bold text-white transition hover:bg-black/80"
+                    >
+                      Track Package ↗
+                    </a>
+                  ) : null}
+
+                  {order.label_url ? (
+                    <a
+                      href={order.label_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[#eee7db] px-6 py-3 font-bold text-black transition hover:bg-[#e2d8c8]"
+                    >
+                      Open Shipping Label ↗
+                    </a>
+                  ) : null}
                 </div>
               ) : null}
+
             </section>
 
             {/* Internal Notes */}
@@ -339,7 +368,14 @@ export default async function AdminOrderDetailsPage({ params }) {
                 Update status, carrier, tracking number, and notes.
               </p>
 
-              <FulfillmentForm order={order} />
+              <FulfillmentForm
+                key={`${order.updated_at}-${order.fulfillment_status}-${order.shipping_carrier}`}
+                order={order}
+              />
+              
+              <hr className="my-8 border-black/10" />
+
+              <ShippingForm order={order} />
             </section>
 
             {/* Order Summary */}

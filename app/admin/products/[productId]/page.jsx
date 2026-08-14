@@ -82,28 +82,41 @@ export default async function AdminProductEditorPage({ params }) {
 
   const [
     inventoryResult,
-    specificationsResult
+    specificationsResult,
+    productResult
   ] = await Promise.all([
     supabase
       .from("inventory")
-      .select(
-        `
-          product_id,
-          product_name,
-          stock_quantity,
-          reserved_quantity,
-          is_active
-        `
-      )
+      .select(`
+        product_id,
+        product_name,
+        stock_quantity,
+        reserved_quantity,
+        is_active
+      `)
       .eq("product_id", productId)
       .maybeSingle(),
 
+    // SECOND
     supabase
       .from("product_specifications")
       .select("*")
       .eq("product_id", productId)
+      .maybeSingle(),
+
+    // THIRD
+    supabase
+      .from("products")
+      .select(`
+        product_id,
+        shipping_weight_lb,
+        shipping_length_in,
+        shipping_width_in,
+        shipping_height_in
+      `)
+      .eq("product_id", productId)
       .maybeSingle()
-  ]);
+  ]);   
 
   if (
     inventoryResult.error ||
@@ -123,8 +136,16 @@ export default async function AdminProductEditorPage({ params }) {
     );
   }
 
+  if (productResult.error) {
+  console.error(
+    "Unable to load product shipping measurements:",
+    productResult.error
+  );
+}
+
   const inventory = inventoryResult.data;
   const specifications = specificationsResult.data || {};
+  const product = productResult.data || {};
 
   const catalogProduct = catalogProducts.find(
     (product) => product.id === productId
@@ -232,6 +253,14 @@ export default async function AdminProductEditorPage({ params }) {
             </h2>
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              
+              <NumberField
+                label="Shipping Weight (lb)"
+                name="shippingWeightLb"
+                value={product.shipping_weight_lb}
+                step="0.01"
+              />
+              
               <NumberField
                 label="Width, inches"
                 name="widthInches"

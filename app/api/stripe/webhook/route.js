@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { fulfillCheckoutSession } from "@/lib/fulfill-checkout";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
@@ -81,6 +82,12 @@ export async function POST(request) {
             session.id
           );
 
+        /*
+         * Payment succeeded:
+         * capture customer contact details and
+         * permanently stop cart recovery.
+         */
+
         console.log(
           "Stripe checkout fulfillment result:",
           {
@@ -136,6 +143,14 @@ export async function POST(request) {
   }
 }
 
+/*
+ * Handles Stripe sessions that expire or
+ * whose asynchronous payment fails.
+ *
+ * Inventory is released, while the separate
+ * recovery record is preserved and marked
+ * abandoned.
+ */
 async function releaseExpiredReservation(
   session
 ) {
@@ -153,6 +168,9 @@ async function releaseExpiredReservation(
   const supabase =
     createSupabaseAdmin();
 
+  /*
+   * Release inventory first.
+   */
   const {
     error: releaseError
   } = await supabase.rpc(
@@ -170,7 +188,129 @@ async function releaseExpiredReservation(
     );
   }
 
+  /*
+   * Preserve the cart snapshot but mark it
+   * eligible for recovery.
+   *
+   * Only active recovery sessions are changed,
+   * so a completed/recovered record cannot be
+   * accidentally moved backward.
+   */
+  const {
+    error: recoveryError
+  } = await supabase
+    .from("cart_recovery_sessions")
+    .update({
+      status: "abandoned",
+      abandoned_at:
+        new Date().toISOString()
+    })
+    .eq(
+      "reservation_id",
+      reservationId
+    )
+    .eq(
+      "status",
+      "active"
+    );
+
+  if (recoveryError) {
+    console.error(
+      "Unable to mark Stripe recovery session abandoned:",
+      {
+        reservationId,
+        sessionId: session.id,
+        recoveryError
+      }
+    );
+  }
+
   console.log(
     `Released inventory reservation ${reservationId} for Stripe session ${session.id}.`
   );
+}
+
+/*
+ * Successful payment:
+ *
+ * - store Stripe customer contact information
+ * - mark recovery completed
+ * - prevent future abandoned-cart messages
+ *
+ * A collected phone number is NOT automatically
+ * treated as SMS marketing consent.
+ */
+async function completeStripeRecovery(
+  session
+) {
+  const reservationId =
+    session.metadata?.reservation_id;
+
+  if (!reservationId) {
+    console.warn(
+      `Stripe session ${session.id} has no reservation_id for recovery completion.`
+    );
+
+    return;
+  }
+
+  const customerDetails =
+    session.customer_details || {};
+
+  const email =
+    typeof customerDetails.email === "string"
+      ? customerDetails.email
+          .trim()
+          .toLowerCase()
+      : null;
+
+  const phone =
+    typeof customerDetails.phone === "string"
+      ? customerDetails.phone.trim()
+      : null;
+
+  const supabase =
+    createSupabaseAdmin();
+
+  const {
+    error
+  } = await supabase
+    .from("cart_recovery_sessions")
+    .update({
+      email,
+      phone,
+
+      status: "completed",
+
+      completed_at:
+        new Date().toISOString(),
+
+      /*
+       * Stripe collecting a phone number does
+       * not constitute SMS marketing consent.
+       */
+      sms_consent: false
+    })
+    .eq(
+      "reservation_id",
+      reservationId
+    )
+    .in(
+      "status",
+      [
+        "active",
+        "abandoned"
+      ]
+    );
+
+  if (error) {
+    console.error(
+      "Unable to complete Stripe recovery session:",
+      {
+        reservationId,
+        sessionId: session.id,
+        error
+      }
+    );
+  }
 }

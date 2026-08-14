@@ -213,7 +213,8 @@ export default async function EditProductPage({
   const [
     productResult,
     inventoryResult,
-    categoriesResult
+    categoriesResult,
+    priceTiersResult
   ] = await Promise.all([
     supabase
       .from("products")
@@ -234,7 +235,7 @@ export default async function EditProductPage({
       .eq("product_id", productId)
       .maybeSingle(),
 
-    supabase
+        supabase
       .from("product_categories")
       .select(`
         id,
@@ -247,6 +248,26 @@ export default async function EditProductPage({
         ascending: true
       })
       .order("name", {
+        ascending: true
+      }),
+
+    supabase
+      .from("product_price_tiers")
+      .select(`
+        id,
+        product_id,
+        min_quantity,
+        max_quantity,
+        unit_price_cents,
+        tier_name,
+        sort_order,
+        is_active
+      `)
+      .eq("product_id", productId)
+      .order("sort_order", {
+        ascending: true
+      })
+      .order("min_quantity", {
         ascending: true
       })
   ]);
@@ -270,12 +291,15 @@ export default async function EditProductPage({
     );
   }
 
-  if (categoriesResult.error) {
-    console.error(
-      "Unable to load categories:",
-      categoriesResult.error
-    );
-  }
+  if (priceTiersResult.error) {
+  console.error(
+    "Unable to load price tiers:",
+    priceTiersResult.error
+  );
+}
+
+const priceTiers =
+  priceTiersResult.data || [];
 
   const product =
     productResult.data;
@@ -593,6 +617,128 @@ export default async function EditProductPage({
                   </option>
                 </select>
               </label>
+              <div className="md:col-span-2 mt-3 border-t border-black/10 pt-6">
+                <div className="mb-5">
+                  <h3 className="text-lg font-bold text-black">
+                    Bulk / Quantity Pricing
+                  </h3>
+
+                  <p className="mt-1 text-sm leading-6 text-black/50">
+                    Offer a lower per-unit price when customers buy larger quantities.
+                  </p>
+                </div>
+
+                <div className="grid gap-4">
+                  {[5, 10, 25].map((quantity, index) => {
+                    const existingTier =
+                      priceTiers.find(
+                        (tier) =>
+                          Number(tier.min_quantity) ===
+                          quantity
+                      );
+
+                    return (
+                      <div
+                        key={quantity}
+                        className="grid gap-4 rounded-2xl border border-black/10 bg-[#faf8f4] p-4 md:grid-cols-[1fr_1fr_auto]"
+                      >
+                        <label className="grid gap-2">
+                          <span className="text-sm font-bold text-black">
+                            Minimum Quantity
+                          </span>
+
+                          <select
+                            name={`tierQuantity_${index}`}
+                            defaultValue={String(quantity)}
+                            className="h-12 rounded-2xl border border-black/10 bg-white px-4 text-sm font-semibold text-black outline-none transition focus:border-black"
+                          >
+                            <option value="5">
+                              5 units
+                            </option>
+
+                            <option value="10">
+                              10 units
+                            </option>
+
+                            <option value="25">
+                              25 units
+                            </option>
+
+                            <option value="50">
+                              50 units
+                            </option>
+
+                            <option value="100">
+                              100 units
+                            </option>
+                          </select>
+                        </label>
+
+                        <label className="grid gap-2">
+                          <span className="text-sm font-bold text-black">
+                            Price Per Unit
+                          </span>
+
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-black/50">
+                              $
+                            </span>
+
+                            <input
+                              type="number"
+                              name={`tierPrice_${index}`}
+                              min="0"
+                              step="0.01"
+                              defaultValue={
+                                existingTier
+                                  ? centsToDollars(
+                                      existingTier.unit_price_cents
+                                    )
+                                  : ""
+                              }
+                              placeholder="0.00"
+                              className="h-12 w-full rounded-2xl border border-black/10 bg-white pl-8 pr-4 text-sm text-black outline-none transition focus:border-black"
+                            />
+                          </div>
+                        </label>
+
+                        <label className="flex items-end">
+                          <span className="flex h-12 items-center gap-2 rounded-2xl border border-black/10 bg-white px-4">
+                            <input
+                              type="checkbox"
+                              name={`tierActive_${index}`}
+                              defaultChecked={
+                                existingTier
+                                  ? existingTier.is_active !== false
+                                  : false
+                              }
+                              className="h-4 w-4"
+                            />
+
+                            <span className="text-sm font-bold text-black">
+                              Active
+                            </span>
+                          </span>
+                        </label>
+
+                        {existingTier ? (
+                          <input
+                            type="hidden"
+                            name={`tierId_${index}`}
+                            value={existingTier.id}
+                          />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="mt-4 text-xs leading-5 text-black/45">
+                  Example: if the 5-unit price is $13.99, customers purchasing
+                  5 or more units qualify for that tier until the next pricing
+                  tier begins.
+                </p>
+              </div>
             </div>
           </FormSection>
 

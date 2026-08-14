@@ -127,6 +127,117 @@ export async function POST(request) {
       }
     }
 
+        /*
+    * Keep the recovery record after inventory
+    * is released so the customer can be
+    * contacted/restored later.
+    *
+    * Only active recovery sessions should move
+    * to abandoned. Completed/recovered sessions
+    * must never move backward.
+    */
+    /*
+  * Capture any customer contact information
+  * Stripe collected before the checkout was
+  * abandoned.
+  *
+  * A collected phone number does NOT imply
+  * SMS marketing consent.
+  */
+  const customerDetails =
+    session.customer_details || {};
+
+  const recoveryEmail =
+    typeof customerDetails.email === "string"
+      ? customerDetails.email
+          .trim()
+          .toLowerCase()
+      : null;
+
+  const recoveryPhone =
+    typeof customerDetails.phone === "string"
+      ? customerDetails.phone.trim()
+      : null;
+
+  const abandonedAt =
+    new Date().toISOString();
+
+  const recoveryUpdate = {
+    status:
+      "abandoned",
+
+    abandoned_at:
+      abandonedAt,
+
+    /*
+    * Never infer marketing consent merely
+    * because Stripe collected contact data.
+    */
+    sms_consent:
+      false
+  };
+
+  /*
+  * Do not overwrite previously captured
+  * contact information with null.
+  */
+  if (recoveryEmail) {
+    recoveryUpdate.email =
+      recoveryEmail;
+  }
+
+  if (recoveryPhone) {
+    recoveryUpdate.phone =
+      recoveryPhone;
+  }
+
+  const {
+    data: updatedRecovery,
+    error: recoveryError
+  } = await supabase
+    .from("cart_recovery_sessions")
+    .update(recoveryUpdate)
+    .eq(
+      "reservation_id",
+      reservationId
+    )
+    .eq(
+      "status",
+      "active"
+    )
+    .select(`
+      id,
+      email,
+      phone,
+      status,
+      abandoned_at
+    `);
+
+  if (recoveryError) {
+    console.error(
+      "Unable to mark cart recovery session abandoned:",
+      {
+        reservationId,
+        sessionId,
+        recoveryError
+      }
+    );
+  } else {
+    console.log(
+      "Cart recovery session abandoned:",
+      {
+        reservationId,
+        sessionId,
+        emailCaptured:
+          Boolean(recoveryEmail),
+        phoneCaptured:
+          Boolean(recoveryPhone),
+        updatedRows:
+          updatedRecovery?.length || 0
+      }
+    );
+  }
+
     return NextResponse.json({
       success: true,
       released:

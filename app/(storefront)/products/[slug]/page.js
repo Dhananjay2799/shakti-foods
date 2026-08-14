@@ -75,7 +75,12 @@ export default async function ProductPage({ params }) {
 
   const supabase = createSupabaseAdmin();
 
-  const [specificationsResult, certificationsResult] = await Promise.all([
+  const [
+    specificationsResult, 
+    certificationsResult, 
+    priceTiersResult, 
+    reviewsResult
+  ] = await Promise.all([
     supabase
       .from("product_specifications")
       .select("*")
@@ -102,7 +107,42 @@ export default async function ProductPage({ params }) {
         )
       `)
       .eq("product_id", product.id)
-      .order("created_at", { ascending: true })
+      .order("created_at", {
+        ascending: true
+      }),
+
+    supabase
+      .from("product_price_tiers")
+      .select(`
+        id,
+        min_quantity,
+        max_quantity,
+        unit_price_cents,
+        tier_name,
+        sort_order
+      `)
+      .eq("product_id", product.id)
+      .eq("is_active", true)
+      .order("min_quantity", {
+        ascending: true
+      }),
+
+      supabase
+        .from("product_reviews")
+        .select(`
+          id,
+          customer_name,
+          rating,
+          review_title,
+          review_text,
+          verified_purchase,
+          created_at
+        `)
+        .eq("product_id", product.id)
+        .eq("status", "approved")
+        .order("created_at", {
+          ascending: false
+        })
   ]);
 
   if (specificationsResult.error) {
@@ -111,6 +151,14 @@ export default async function ProductPage({ params }) {
 
   if (certificationsResult.error) {
     console.error("Unable to load certifications:", certificationsResult.error);
+  }
+
+  if (priceTiersResult.error) {
+    console.error("Unable to load product price tiers:", priceTiersResult.error);
+  }
+
+  if (reviewsResult.error) {
+  console.error("Unable to load product reviews:", reviewsResult.error);
   }
 
   // 1. Clamp available stock at zero
@@ -165,9 +213,21 @@ export default async function ProductPage({ params }) {
 
       <ProductDetailClient
         product={product}
-        specifications={specificationsResult.data || null}
-        certifications={certificationsResult.data || []}
-        relatedProducts={relatedProducts}
+        specifications={
+          specificationsResult.data || null
+        }
+        certifications={
+          certificationsResult.data || []
+        }
+        priceTiers={
+          priceTiersResult.data || []
+        }
+        relatedProducts={
+          relatedProducts
+        }
+        reviews={
+          reviewsResult.data || []
+        }
       />
     </>
   );

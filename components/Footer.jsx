@@ -27,6 +27,7 @@ export default function Footer() {
           <div className="mt-4 grid gap-3 text-black">
             <Link href="/">Home</Link>
             <Link href="/products">Products</Link>
+            <Link href="/sustainability">Sustainability</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
           </div>

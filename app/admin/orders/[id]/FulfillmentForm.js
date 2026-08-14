@@ -16,6 +16,9 @@ export default function FulfillmentForm({
       order.shipping_carrier || ""
     );
 
+  const [trackingNumber, setTrackingNumber] =
+    useState(order.tracking_number || "");
+
   const requiresCarrier =
     status === "shipped";
 
@@ -110,18 +113,18 @@ export default function FulfillmentForm({
           type="text"
           inputMode="text"
           name="trackingNumber"
-          defaultValue={
-            order.tracking_number || ""
+          value={trackingNumber}
+          onChange={(event) =>
+            setTrackingNumber(event.target.value)
           }
           required={requiresTracking}
           placeholder="e.g. 1Z9999999999999999"
           className="rounded-2xl border border-black/15 bg-white px-4 py-3 text-sm font-semibold text-black outline-none focus:border-black"
         />
 
-        {requiresTracking ? (
+        {requiresTracking && !trackingNumber.trim() ? (
           <span className="text-xs font-semibold text-amber-700">
-            Enter a tracking number before
-            marking this order as shipped.
+            Enter a tracking number before marking this order as shipped.
           </span>
         ) : null}
       </label>

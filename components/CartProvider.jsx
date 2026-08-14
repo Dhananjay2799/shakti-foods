@@ -152,6 +152,36 @@ export function CartProvider({ children }) {
     }
   }
 
+  function replaceCart(nextItems) {
+    if (!Array.isArray(nextItems)) {
+      return false;
+    }
+
+    const normalizedItems =
+      nextItems
+        .filter(
+          (item) =>
+            item &&
+            item.id &&
+            Number(item.quantity) > 0
+        )
+        .map((item) => ({
+          ...item,
+
+          quantity:
+            Math.max(
+              1,
+              Math.floor(
+                Number(item.quantity)
+              )
+            )
+        }));
+
+    setItems(normalizedItems);
+
+    return true;
+  }
+
   const subtotal = useMemo(
     () =>
       items.reduce(
@@ -175,6 +205,7 @@ export function CartProvider({ children }) {
         increase,
         decrease,
         clearCart,
+        replaceCart,
         subtotal,
         itemCount,
         cartLoaded

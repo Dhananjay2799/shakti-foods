@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendTransactionalEmail } from "@/lib/email";
 import { buildOrderStatusEmail } from "@/lib/order-email-template";
+import { requireAuthenticatedAdmin } from "@/lib/admin-auth";
 
 const allowedStatuses = Object.freeze([
   "new",
@@ -75,20 +74,6 @@ function generateTrackingUrl(
   }
 }
 
-async function requireAuthenticatedAdmin() {
-  const authClient = await createClient();
-
-  const {
-    data: { user },
-    error
-  } = await authClient.auth.getUser();
-
-  if (error || !user) {
-    redirect("/admin/login");
-  }
-
-  return user;
-}
 
 function getStatusTimestampUpdates(
   previousStatus,
@@ -128,9 +113,9 @@ function getStatusTimestampUpdates(
   return updates;
 }
 
-export async function updateOrderDetails(
-  formData
-) {
+export async function updateOrderDetails(formData) {
+  await requireAuthenticatedAdmin();
+
   const orderId = normalizeText(
     formData.get("orderId"),
     100
@@ -194,8 +179,6 @@ export async function updateOrderDetails(
       "A tracking number is required before marking a shipped order."
     );
   }
-
-  await requireAuthenticatedAdmin();
 
   const supabase = createSupabaseAdmin();
 

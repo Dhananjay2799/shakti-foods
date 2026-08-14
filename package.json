@@ -10,6 +10,7 @@
     "migrate:products": "node scripts/migrate-static-products.mjs"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^10.3.0",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.3",
     "dotenv": "^17.4.2",

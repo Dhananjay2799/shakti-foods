@@ -3,6 +3,7 @@ import "./globals.css";
 import Analytics from "@/components/Analytics";
 import CheckoutReturnWatcher from "@/components/CheckoutReturnWatcher";
 import { site } from "@/lib/site";
+import { CartProvider } from "@/components/CartProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,6 +22,13 @@ export const metadata = {
       "Shakti Foods | Premium Basmati Rice & Simpli Ecoware",
     template: "%s | Shakti Foods"
   },
+
+  icons: {
+  icon: "/images/logo-shakti.png",
+  shortcut: "/images/logo-shakti.png",
+  apple: "/images/logo-shakti.png"
+  },
+
   description:
     "Premium Shakti Foods Basmati rice and Simpli Ecoware compostable sugarcane bagasse plates, bowls, trays, and food containers for families, restaurants, caterers, and wholesale buyers.",
   keywords: [
@@ -49,9 +57,11 @@ export default function RootLayout({ children }) {
       <body
         className={`${inter.variable} ${playfair.variable}`}
       >
-        <Analytics />
-        <CheckoutReturnWatcher />
-        {children}
+        <CartProvider>
+          <Analytics />
+          <CheckoutReturnWatcher />
+          {children}
+        </CartProvider>
       </body>
     </html>
   );

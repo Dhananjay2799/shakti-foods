@@ -10,6 +10,7 @@ import { useCart } from "@/components/CartProvider";
 const links = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
+  { href: "/sustainability", label: "Sustainability" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" }
 ];

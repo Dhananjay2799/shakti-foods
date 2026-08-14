@@ -80,6 +80,11 @@ export async function saveProductSpecifications(
     formData.get("productSlug") || ""
   ).trim();
 
+  const shippingWeightLb = optionalNumber(
+    formData,
+    "shippingWeightLb"
+  );
+
   if (!productId) {
     throw new Error("Missing product ID.");
   }
@@ -173,25 +178,63 @@ export async function saveProductSpecifications(
 
   const supabase = createSupabaseAdmin();
 
-  const { error } = await supabase
-    .from("product_specifications")
-    .upsert(specifications, {
-      onConflict: "product_id"
-    });
+  /*
+   * Save the specification fields.
+   */
+  const { error: specificationsError } =
+    await supabase
+      .from("product_specifications")
+      .upsert(specifications, {
+        onConflict: "product_id"
+      });
 
-  if (error) {
+  if (specificationsError) {
     console.error(
-      "Unable to save specifications:",
-      error
+      "Unable to save product specifications:",
+      specificationsError
     );
 
     throw new Error(
-      error.message ||
+      specificationsError.message ||
         "Unable to save product specifications."
     );
   }
 
+  /*
+   * Save the shipping measurements used by Shippo.
+   */
+  const { error: shippingError } =
+    await supabase
+      .from("products")
+      .update({
+        shipping_weight_lb:
+          shippingWeightLb,
+
+        shipping_length_in:
+          specifications.length_inches,
+
+        shipping_width_in:
+          specifications.width_inches,
+
+        shipping_height_in:
+          specifications.height_inches
+      })
+      .eq("product_id", productId);
+
+  if (shippingError) {
+    console.error(
+      "Unable to save shipping measurements:",
+      shippingError
+    );
+
+    throw new Error(
+      shippingError.message ||
+        "Unable to save shipping measurements."
+    );
+  }
+
   revalidatePath("/admin/products");
+
   revalidatePath(
     `/admin/products/${productId}`
   );
@@ -201,4 +244,8 @@ export async function saveProductSpecifications(
       `/products/${productSlug}`
     );
   }
+
+  return {
+    success: true
+  };
 }
