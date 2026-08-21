@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import FulfillmentForm from "./FulfillmentForm";
 import ShippingForm from "./ShippingForm";
+import WholesalePaymentForm from "./WholesalePaymentForm";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,13 @@ export default async function AdminOrderDetailsPage({ params }) {
           shipping_amount,
           tax_amount,
           total_amount,
+          payment_provider,
+          payment_method,
+          payment_reference,
+          paid_at,
+          discount_amount,
+          paypal_order_id,
+          paypal_capture_id,
           payment_status,
           fulfillment_status,
           shipping_carrier,
@@ -390,6 +398,20 @@ export default async function AdminOrderDetailsPage({ params }) {
                   <span className="font-bold">{formatMoney(order.subtotal)}</span>
                 </div>
 
+                {Number(
+                  order.discount_amount || 0
+                ) > 0 ? (
+                  <div className="flex justify-between gap-4">
+                    <span>Discount</span>
+                    <span className="font-bold">
+                      -
+                      {formatMoney(
+                        order.discount_amount
+                      )}
+                    </span>
+                  </div>
+                ) : null}
+
                 <div className="flex justify-between gap-4">
                   <span>Shipping</span>
                   <span className="font-bold">
@@ -411,27 +433,70 @@ export default async function AdminOrderDetailsPage({ params }) {
               </div>
             </section>
 
-            {/* Stripe Information */}
+            {/* Payment Information */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-2xl font-bold text-black">
-                Stripe Information
+                Payment Information
               </h2>
 
               <div className="mt-5 grid gap-4 text-sm">
-                <div>
-                  <div className="font-bold text-black">Checkout Session</div>
-                  <div className="mt-1 break-all text-black/60">
-                    {order.stripe_session_id || "Not recorded"}
-                  </div>
-                </div>
+                {order.payment_provider === "stripe" ? (
+                  <>
+                    <div>
+                      <div className="font-bold text-black">
+                        Checkout Session
+                      </div>
+                      <div className="mt-1 break-all text-black/60">
+                        {order.stripe_session_id ||
+                          "Not recorded"}
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="font-bold text-black">Payment Intent</div>
-                  <div className="mt-1 break-all text-black/60">
-                    {order.stripe_payment_intent_id || "Not recorded"}
-                  </div>
-                </div>
+                    <div>
+                      <div className="font-bold text-black">
+                        Payment Intent
+                      </div>
+                      <div className="mt-1 break-all text-black/60">
+                        {order.stripe_payment_intent_id ||
+                          "Not recorded"}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+
+                {order.payment_provider === "paypal" ? (
+                  <>
+                    <div>
+                      <div className="font-bold text-black">
+                        PayPal Order
+                      </div>
+                      <div className="mt-1 break-all text-black/60">
+                        {order.paypal_order_id ||
+                          "Not recorded"}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="font-bold text-black">
+                        PayPal Capture
+                      </div>
+                      <div className="mt-1 break-all text-black/60">
+                        {order.paypal_capture_id ||
+                          "Not recorded"}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
               </div>
+
+              {order.payment_provider === "wholesale" ? (
+                <>
+                  <hr className="my-6 border-black/10" />
+                  <WholesalePaymentForm
+                    order={order}
+                  />
+                </>
+              ) : null}
             </section>
           </aside>
         </div>

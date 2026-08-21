@@ -463,3 +463,189 @@ export async function updateFulfillmentStatus(
     combinedFormData
   );
 }
+
+const allowedWholesalePaymentMethods =
+  Object.freeze([
+    "ach",
+    "bank_transfer",
+    "check",
+    "cash",
+    "invoice",
+    "manual"
+  ]);
+
+export async function recordWholesalePayment(
+  formData
+) {
+  await requireAuthenticatedAdmin();
+
+  const orderId =
+    normalizeText(
+      formData.get("orderId"),
+      100
+    );
+
+  const paymentMethod =
+    normalizeText(
+      formData.get("paymentMethod"),
+      50
+    ).toLowerCase();
+
+  const paymentReference =
+    normalizeText(
+      formData.get("paymentReference"),
+      300
+    );
+
+  if (!orderId) {
+    throw new Error(
+      "Missing order ID."
+    );
+  }
+
+  if (
+    !allowedWholesalePaymentMethods.includes(
+      paymentMethod
+    )
+  ) {
+    throw new Error(
+      "Select a valid wholesale payment method."
+    );
+  }
+
+  const supabase =
+    createSupabaseAdmin();
+
+  const {
+    data: order,
+    error: orderError
+  } = await supabase
+    .from("orders")
+    .select(`
+      id,
+      payment_provider,
+      payment_status,
+      payment_method,
+      payment_reference,
+      paid_at
+    `)
+    .eq(
+      "id",
+      orderId
+    )
+    .maybeSingle();
+
+  if (
+    orderError ||
+    !order
+  ) {
+    throw new Error(
+      orderError?.message ||
+        "Order was not found."
+    );
+  }
+
+  /*
+   * Manual payment recording belongs only
+   * to wholesale orders. Stripe and PayPal
+   * remain controlled by their payment flows.
+   */
+  if (
+    order.payment_provider !==
+    "wholesale"
+  ) {
+    throw new Error(
+      "Manual payment recording is available only for wholesale orders."
+    );
+  }
+
+  /*
+   * Idempotency:
+   * Don't replace an already-recorded payment.
+   */
+  if (
+    order.payment_status === "paid" &&
+    order.paid_at
+  ) {
+    revalidatePath(
+      `/admin/orders/${orderId}`
+    );
+
+    return {
+      success: true,
+      alreadyPaid: true
+    };
+  }
+
+  const now =
+    new Date().toISOString();
+
+  const {
+    data: updatedOrder,
+    error: updateError
+  } = await supabase
+    .from("orders")
+    .update({
+      payment_status:
+        "paid",
+
+      payment_method:
+        paymentMethod,
+
+      payment_reference:
+        paymentReference ||
+        null,
+
+      paid_at:
+        now,
+
+      updated_at:
+        now
+    })
+    .eq(
+      "id",
+      orderId
+    )
+    .eq(
+      "payment_provider",
+      "wholesale"
+    )
+    .select(`
+      id,
+      payment_status,
+      payment_method,
+      payment_reference,
+      paid_at,
+      updated_at
+    `)
+    .single();
+
+  if (updateError) {
+    console.error(
+      "Unable to record wholesale payment:",
+      updateError
+    );
+
+    throw new Error(
+      updateError.message ||
+        "Unable to record wholesale payment."
+    );
+  }
+
+  revalidatePath(
+    "/admin"
+  );
+
+  revalidatePath(
+    "/admin/orders"
+  );
+
+  revalidatePath(
+    `/admin/orders/${orderId}`
+  );
+
+  return {
+    success: true,
+    order: updatedOrder
+  };
+}

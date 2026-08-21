@@ -2,6 +2,9 @@ import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { fulfillCheckoutSession } from "@/lib/fulfill-checkout";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import {
+  fulfillStripeSubscriptionInvoice
+} from "@/lib/subscriptions/fulfill-subscription";
 
 export const runtime = "nodejs";
 
@@ -77,6 +80,28 @@ export async function POST(request) {
         const session =
           event.data.object;
 
+        const orderType =
+          String(
+            session.metadata?.order_type ||
+              ""
+          )
+            .trim()
+            .toLowerCase();
+
+        /*
+         * Subscription Checkout Sessions must
+         * never use normal retail fulfillment.
+         */
+        if (orderType === "subscription") {
+          await completeStripeSubscriptionCheckout({
+            stripe,
+            session,
+            eventId: event.id
+          });
+
+          break;
+        }
+
         const result =
           await fulfillCheckoutSession(
             session.id
@@ -95,6 +120,70 @@ export async function POST(request) {
             sessionId: session.id,
             result
           }
+        );
+
+        break;
+      }
+
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        await syncStripeSubscription(
+          event.data.object
+        );
+
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        await cancelStripeSubscription(
+          event.data.object
+        );
+
+        break;
+      }
+
+      case "invoice.paid": {
+        const invoice =
+          event.data.object;
+
+        const hasSubscription =
+          Boolean(
+            invoice.subscription ||
+              invoice.parent
+                ?.subscription_details
+                ?.subscription
+          );
+
+        if (!hasSubscription) {
+          console.log(
+            "Ignoring non-subscription Stripe invoice:",
+            invoice.id
+          );
+
+          break;
+        }
+
+        const result =
+          await fulfillStripeSubscriptionInvoice({
+            stripe,
+            invoice
+          });
+
+        console.log(
+          "Stripe recurring invoice result:",
+          {
+            eventId: event.id,
+            invoiceId: invoice.id,
+            result
+          }
+        );
+
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        await handleStripeSubscriptionPaymentFailure(
+          event.data.object
         );
 
         break;
@@ -313,4 +402,222 @@ async function completeStripeRecovery(
       }
     );
   }
+}
+
+function stripeTimestampToIso(
+  timestamp
+) {
+  if (!timestamp) {
+    return null;
+  }
+
+  const date =
+    new Date(Number(timestamp) * 1000);
+
+  return Number.isNaN(date.getTime())
+    ? null
+    : date.toISOString();
+}
+
+async function completeStripeSubscriptionCheckout({
+  stripe,
+  session,
+  eventId
+}) {
+  const internalSubscriptionId =
+    session.metadata?.internal_subscription_id;
+
+  if (!internalSubscriptionId) {
+    throw new Error(
+      `Stripe subscription session ${session.id} is missing internal_subscription_id.`
+    );
+  }
+
+  const stripeSubscriptionId =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : session.subscription?.id;
+
+  if (!stripeSubscriptionId) {
+    throw new Error(
+      `Stripe subscription session ${session.id} has no subscription ID.`
+    );
+  }
+
+  const stripeSubscription =
+    typeof session.subscription === "object" &&
+    session.subscription
+      ? session.subscription
+      : await stripe.subscriptions.retrieve(
+          stripeSubscriptionId
+        );
+
+  const supabase =
+    createSupabaseAdmin();
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      status: "active",
+      stripe_subscription_id:
+        stripeSubscription.id,
+      stripe_customer_id:
+        typeof session.customer === "string"
+          ? session.customer
+          : session.customer?.id || null,
+      updated_at:
+        new Date().toISOString()
+    })
+    .eq("id", internalSubscriptionId);
+
+  if (error) {
+    throw new Error(
+      error.message ||
+        "Unable to complete Stripe subscription checkout."
+    );
+  }
+
+  console.log(
+    "Stripe subscription checkout completed:",
+    {
+      eventId,
+      sessionId: session.id,
+      internalSubscriptionId,
+      stripeSubscriptionId: stripeSubscription.id
+    }
+  );
+}
+
+async function syncStripeSubscription(
+  stripeSubscription
+) {
+  const internalSubscriptionId =
+    stripeSubscription.metadata
+      ?.internal_subscription_id;
+
+  if (!internalSubscriptionId) {
+    return;
+  }
+
+  const supabase =
+    createSupabaseAdmin();
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      status:
+        stripeSubscription.status ||
+        "active",
+      stripe_subscription_id:
+        stripeSubscription.id,
+      updated_at:
+        new Date().toISOString()
+    })
+    .eq("id", internalSubscriptionId);
+
+  if (error) {
+    throw new Error(
+      error.message ||
+        "Unable to sync Stripe subscription."
+    );
+  }
+
+  console.log(
+    "Stripe subscription synced:",
+    {
+      internalSubscriptionId,
+      stripeSubscriptionId:
+        stripeSubscription.id,
+      status: stripeSubscription.status
+    }
+  );
+}
+
+async function cancelStripeSubscription(
+  stripeSubscription
+) {
+  const internalSubscriptionId =
+    stripeSubscription.metadata
+      ?.internal_subscription_id;
+
+  if (!internalSubscriptionId) {
+    return;
+  }
+
+  const now =
+    new Date().toISOString();
+
+  const supabase =
+    createSupabaseAdmin();
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      status: "canceled",
+      canceled_at:
+        stripeTimestampToIso(
+          stripeSubscription.ended_at
+        ) || now,
+      updated_at: now
+    })
+    .eq("id", internalSubscriptionId);
+
+  if (error) {
+    throw new Error(
+      error.message ||
+        "Unable to cancel Stripe subscription."
+    );
+  }
+
+  console.log(
+    "Stripe subscription canceled:",
+    {
+      internalSubscriptionId,
+      stripeSubscriptionId:
+        stripeSubscription.id
+    }
+  );
+}
+
+async function handleStripeSubscriptionPaymentFailure(
+  invoice
+) {
+  const stripeSubscriptionId =
+    typeof invoice.subscription === "string"
+      ? invoice.subscription
+      : invoice.subscription?.id;
+
+  if (!stripeSubscriptionId) {
+    return;
+  }
+
+  const supabase =
+    createSupabaseAdmin();
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      status: "past_due",
+      updated_at:
+        new Date().toISOString()
+    })
+    .eq(
+      "stripe_subscription_id",
+      stripeSubscriptionId
+    );
+
+  if (error) {
+    throw new Error(
+      error.message ||
+        "Unable to mark subscription past due."
+    );
+  }
+
+  console.log(
+    "Stripe subscription payment failed:",
+    {
+      invoiceId: invoice.id,
+      stripeSubscriptionId
+    }
+  );
 }

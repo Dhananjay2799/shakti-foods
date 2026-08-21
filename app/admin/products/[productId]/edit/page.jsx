@@ -214,7 +214,9 @@ export default async function EditProductPage({
     productResult,
     inventoryResult,
     categoriesResult,
-    priceTiersResult
+    priceTiersResult,
+    subscriptionSettingsResult,
+    subscriptionFrequenciesResult
   ] = await Promise.all([
     supabase
       .from("products")
@@ -269,6 +271,37 @@ export default async function EditProductPage({
       })
       .order("min_quantity", {
         ascending: true
+      }),
+
+    supabase
+      .from(
+        "product_subscription_settings"
+      )
+      .select(`
+        product_id,
+        is_enabled,
+        discount_percent,
+        minimum_quantity
+      `)
+      .eq("product_id", productId)
+      .maybeSingle(),
+
+    supabase
+      .from(
+        "product_subscription_frequencies"
+      )
+      .select(`
+        id,
+        product_id,
+        interval_unit,
+        interval_count,
+        label,
+        sort_order,
+        is_active
+      `)
+      .eq("product_id", productId)
+      .order("sort_order", {
+        ascending: true
       })
   ]);
 
@@ -298,8 +331,45 @@ export default async function EditProductPage({
   );
 }
 
-const priceTiers =
-  priceTiersResult.data || [];
+  const priceTiers =
+    priceTiersResult.data || [];
+
+  if (subscriptionSettingsResult.error) {
+    console.error(
+      "Unable to load subscription settings:",
+      subscriptionSettingsResult.error
+    );
+  }
+
+  if (subscriptionFrequenciesResult.error) {
+    console.error(
+      "Unable to load subscription frequencies:",
+      subscriptionFrequenciesResult.error
+    );
+  }
+
+  const subscriptionSettings =
+    subscriptionSettingsResult.data || {
+      is_enabled: false,
+      discount_percent: 10,
+      minimum_quantity: 1
+    };
+
+  const subscriptionFrequencies =
+    subscriptionFrequenciesResult.data || [];
+
+  const hasSubscriptionFrequency = (
+    unit,
+    count
+  ) =>
+    subscriptionFrequencies.some(
+      (frequency) =>
+        frequency.interval_unit === unit &&
+        Number(
+          frequency.interval_count
+        ) === count &&
+        frequency.is_active !== false
+    );
 
   const product =
     productResult.data;
@@ -739,6 +809,103 @@ const priceTiers =
                   tier begins.
                 </p>
               </div>
+            </div>
+          </FormSection>
+
+          <FormSection
+            icon={BadgeDollarSign}
+            title="Subscribe & Save"
+            description="Offer recurring deliveries at a discounted price for repeat customers."
+          >
+            <div className="grid gap-5">
+              <CheckboxField
+                name="subscriptionEnabled"
+                title="Enable Subscribe & Save"
+                description="Allow customers to purchase this product as a recurring Stripe subscription."
+                defaultChecked={Boolean(
+                  subscriptionSettings.is_enabled
+                )}
+              />
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <TextInput
+                  label="Subscription discount (%)"
+                  name="subscriptionDiscountPercent"
+                  type="number"
+                  min="0"
+                  step="1"
+                  defaultValue={
+                    subscriptionSettings.discount_percent ??
+                    10
+                  }
+                  helpText="Percentage discount applied to recurring subscription purchases."
+                />
+
+                <TextInput
+                  label="Minimum subscription quantity"
+                  name="subscriptionMinimumQuantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  defaultValue={
+                    subscriptionSettings.minimum_quantity ??
+                    1
+                  }
+                  helpText="Minimum quantity required to use Subscribe & Save."
+                />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-black">
+                  Delivery frequencies
+                </h3>
+
+                <p className="mt-1 text-xs leading-5 text-black/45">
+                  Select the recurring delivery schedules customers can choose.
+                </p>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  <CheckboxField
+                    name="subscriptionFrequency2Weeks"
+                    title="Every 2 weeks"
+                    description="Recurring delivery every two weeks."
+                    defaultChecked={hasSubscriptionFrequency(
+                      "week",
+                      2
+                    )}
+                  />
+
+                  <CheckboxField
+                    name="subscriptionFrequency4Weeks"
+                    title="Every 4 weeks"
+                    description="Recurring delivery every four weeks."
+                    defaultChecked={hasSubscriptionFrequency(
+                      "week",
+                      4
+                    )}
+                  />
+
+                  <CheckboxField
+                    name="subscriptionFrequency8Weeks"
+                    title="Every 8 weeks"
+                    description="Recurring delivery every eight weeks."
+                    defaultChecked={hasSubscriptionFrequency(
+                      "week",
+                      8
+                    )}
+                  />
+                </div>
+              </div>
+
+              {subscriptionSettings.is_enabled ? (
+                <div className="rounded-2xl bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
+                  Subscribe & Save is currently enabled for this product.
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-[#faf8f4] p-4 text-sm leading-6 text-black/55">
+                  Subscribe & Save is currently disabled for this product.
+                </div>
+              )}
             </div>
           </FormSection>
 

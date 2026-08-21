@@ -20,11 +20,49 @@ export default function ProductDetailClient({
   certifications = [],
   priceTiers = [],
   relatedProducts = [],
-  reviews = []
+  reviews = [],
+  subscriptionSettings = null,
+  subscriptionFrequencies = []
 }) {
   const { addItem } = useCart();
 
   const [quantity, setQuantity] = useState(1);
+  const [purchaseOption, setPurchaseOption] =
+    useState("one_time");
+  const [subscriptionFrequency, setSubscriptionFrequency] =
+    useState(
+      subscriptionFrequencies[0]?.id || ""
+    );
+
+  const subscriptionEnabled =
+    Boolean(
+      subscriptionSettings?.is_enabled
+    ) && subscriptionFrequencies.length > 0;
+
+  const subscriptionDiscountPercent =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        Number(
+          subscriptionSettings?.discount_percent ||
+            0
+        )
+      )
+    );
+
+  const subscriptionMinimumQuantity =
+    Math.max(
+      1,
+      Number(
+        subscriptionSettings?.minimum_quantity ||
+          1
+      )
+    );
+
+  const isSubscription =
+    subscriptionEnabled &&
+    purchaseOption === "subscription";
 
   const sortedPriceTiers = useMemo(
     () =>
@@ -64,11 +102,49 @@ export default function ProductDetailClient({
       ? Number(activeTier.unit_price_cents) / 100
       : regularUnitPrice;
 
+  const subscriptionPriceFromRegular =
+    regularUnitPrice *
+    (1 - subscriptionDiscountPercent / 100);
+
+  const subscriptionUnitPrice =
+    Math.min(
+      subscriptionPriceFromRegular,
+      currentUnitPrice
+    );
+
+  const subscriptionDiscountWins =
+    subscriptionPriceFromRegular <
+    currentUnitPrice;
+
+  const volumeDiscountWins =
+    activeTier &&
+    currentUnitPrice <=
+      subscriptionPriceFromRegular;
+
+  const displayedUnitPrice =
+    isSubscription
+      ? subscriptionUnitPrice
+      : currentUnitPrice;
+
   const regularTotal =
     regularUnitPrice * quantity;
 
   const currentTotal =
     currentUnitPrice * quantity;
+
+  const subscriptionTotal =
+    subscriptionUnitPrice * quantity;
+
+  const displayedTotal =
+    isSubscription
+      ? subscriptionTotal
+      : currentTotal;
+
+  const subscriptionSavings =
+    Math.max(
+      regularTotal - subscriptionTotal,
+      0
+    );
 
   const savings =
     Math.max(
@@ -97,9 +173,17 @@ export default function ProductDetailClient({
     0
   );
 
+  const minimumAllowedQuantity =
+    isSubscription
+      ? subscriptionMinimumQuantity
+      : 1;
+
   function decreaseQuantity() {
     setQuantity((current) =>
-      Math.max(1, current - 1)
+      Math.max(
+        minimumAllowedQuantity,
+        current - 1
+      )
     );
   }
 
@@ -120,9 +204,9 @@ export default function ProductDetailClient({
 
     if (
       !Number.isInteger(nextQuantity) ||
-      nextQuantity < 1
+      nextQuantity < minimumAllowedQuantity
     ) {
-      setQuantity(1);
+      setQuantity(minimumAllowedQuantity);
       return;
     }
 
@@ -162,6 +246,21 @@ export default function ProductDetailClient({
       ]
     });
   }
+
+  useEffect(() => {
+    if (
+      isSubscription &&
+      quantity < subscriptionMinimumQuantity
+    ) {
+      setQuantity(
+        subscriptionMinimumQuantity
+      );
+    }
+  }, [
+    isSubscription,
+    quantity,
+    subscriptionMinimumQuantity
+  ]);
 
   useEffect(() => {
     trackEvent("view_item", {
@@ -379,6 +478,120 @@ export default function ProductDetailClient({
 
                 {product.canCheckout ? (
                   <>
+                    {subscriptionEnabled ? (
+                      <div className="mt-6 grid gap-3">
+                        <label className="flex items-start gap-3 rounded-2xl border border-black/10 bg-white p-4">
+                          <input
+                            type="radio"
+                            name="purchaseOption"
+                            value="one_time"
+                            checked={
+                              purchaseOption === "one_time"
+                            }
+                            onChange={(event) =>
+                              setPurchaseOption(
+                                event.target.value
+                              )
+                            }
+                            className="mt-1 h-4 w-4"
+                          />
+
+                          <div className="flex-1">
+                            <div className="font-bold">
+                              One-time purchase
+                            </div>
+
+                            <div className="mt-1 text-sm text-black/60">
+                              {formatPrice(currentUnitPrice)} per unit
+                            </div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
+                          <input
+                            type="radio"
+                            name="purchaseOption"
+                            value="subscription"
+                            checked={
+                              purchaseOption === "subscription"
+                            }
+                            onChange={(event) =>
+                              setPurchaseOption(
+                                event.target.value
+                              )
+                            }
+                            className="mt-1 h-4 w-4"
+                          />
+
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold">
+                                Subscribe & Save
+                              </span>
+                              <span className="rounded-full bg-green-700 px-2.5 py-1 text-xs font-bold text-white">
+                                {subscriptionDiscountWins
+                                  ? `Save ${subscriptionDiscountPercent}%`
+                                  : "Best price applied"}
+                              </span>
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-green-800">
+                                {formatPrice(subscriptionUnitPrice)}
+                              </span>
+                              <span className="text-sm text-black/45 line-through">
+                                {formatPrice(currentUnitPrice)}
+                              </span>
+                              <span className="text-sm text-black/60">
+                                per unit
+                              </span>
+                            </div>
+
+                            {volumeDiscountWins ? (
+                              <div className="mt-2 text-xs font-semibold text-green-800">
+                                Your quantity discount is better than the Subscribe & Save discount, so the lower volume price is used.
+                              </div>
+                            ) : null}
+                          </div>
+                        </label>
+
+                        {isSubscription ? (
+                          <div className="mt-1 rounded-2xl border border-green-200 bg-green-50 p-4">
+                            <label className="block">
+                              <span className="text-sm font-bold text-black">
+                                Delivery Frequency
+                              </span>
+
+                              <select
+                                value={subscriptionFrequency}
+                                onChange={(event) =>
+                                  setSubscriptionFrequency(
+                                    event.target.value
+                                  )
+                                }
+                                className="mt-2 w-full rounded-xl border border-black/15 bg-white px-4 py-3 font-semibold text-black outline-none focus:border-black"
+                              >
+                                {subscriptionFrequencies.map(
+                                  (frequency) => (
+                                    <option
+                                      key={frequency.id}
+                                      value={frequency.id}
+                                    >
+                                      {frequency.label}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                            </label>
+
+                            <p className="mt-3 text-xs leading-5 text-black/55">
+                              Recurring deliveries will continue at the selected frequency until canceled.
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="mt-6">
                       <div className="text-sm font-bold uppercase tracking-[.16em]">
                         Quantity
@@ -392,7 +605,8 @@ export default function ProductDetailClient({
                               decreaseQuantity
                             }
                             disabled={
-                              quantity <= 1
+                              quantity <=
+                                minimumAllowedQuantity
                             }
                             className="flex h-12 w-12 items-center justify-center text-xl font-bold transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-30"
                             aria-label="Decrease quantity"
@@ -402,7 +616,7 @@ export default function ProductDetailClient({
 
                           <input
                             type="number"
-                            min="1"
+                            min={minimumAllowedQuantity}
                             max={
                               availableStock > 0
                                 ? availableStock
@@ -446,13 +660,13 @@ export default function ProductDetailClient({
                         <span className="text-sm text-black/70">
                           {quantity} ×{" "}
                           {formatPrice(
-                            currentUnitPrice
+                            displayedUnitPrice
                           )}
                         </span>
 
                         <span className="text-xl font-bold">
                           {formatPrice(
-                            currentTotal
+                            displayedTotal
                           )}
                         </span>
                       </div>
@@ -470,22 +684,69 @@ export default function ProductDetailClient({
                           </span>
                         </div>
                       ) : null}
+
+                      {isSubscription &&
+                      subscriptionSavings > 0 ? (
+                        <div className="mt-2 flex items-center justify-between gap-4 text-sm font-bold text-green-700">
+                          <span>
+                            Total savings
+                          </span>
+
+                          <span>
+                            -
+                            {formatPrice(
+                              subscriptionSavings
+                            )}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={
-                        handleAddToCart
-                      }
-                      disabled={
-                        availableStock === 0
-                      }
-                      className="mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                    >
-                      {availableStock === 0
-                        ? "Out of Stock"
-                        : `Add ${quantity} to Cart`}
-                    </button>
+                    {isSubscription ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!subscriptionFrequency) {
+                            return;
+                          }
+
+                          const params =
+                            new URLSearchParams({
+                              productId: product.id,
+                              frequencyId:
+                                subscriptionFrequency,
+                              quantity: String(quantity)
+                            });
+
+                          window.location.href =
+                            `/subscriptions/checkout?${params.toString()}`;
+                        }}
+                        disabled={
+                          availableStock === 0 ||
+                          !subscriptionFrequency
+                        }
+                        className="mt-5 w-full rounded-full bg-green-700 px-6 py-4 font-bold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                      >
+                        {availableStock === 0
+                          ? "Out of Stock"
+                          : "Subscribe Now"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={
+                          handleAddToCart
+                        }
+                        disabled={
+                          availableStock === 0
+                        }
+                        className="mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                      >
+                        {availableStock === 0
+                          ? "Out of Stock"
+                          : `Add ${quantity} to Cart`}
+                      </button>
+                    )}
 
                     {(
                         product.category === "tableware" ||

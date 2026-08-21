@@ -76,10 +76,12 @@ export default async function ProductPage({ params }) {
   const supabase = createSupabaseAdmin();
 
   const [
-    specificationsResult, 
-    certificationsResult, 
-    priceTiersResult, 
-    reviewsResult
+    specificationsResult,
+    certificationsResult,
+    priceTiersResult,
+    reviewsResult,
+    subscriptionSettingsResult,
+    subscriptionFrequenciesResult
   ] = await Promise.all([
     supabase
       .from("product_specifications")
@@ -142,7 +144,35 @@ export default async function ProductPage({ params }) {
         .eq("status", "approved")
         .order("created_at", {
           ascending: false
-        })
+        }),
+
+    supabase
+      .from("product_subscription_settings")
+      .select(`
+        product_id,
+        is_enabled,
+        discount_percent,
+        minimum_quantity
+      `)
+      .eq("product_id", product.id)
+      .maybeSingle(),
+
+    supabase
+      .from("product_subscription_frequencies")
+      .select(`
+        id,
+        product_id,
+        interval_unit,
+        interval_count,
+        label,
+        sort_order,
+        is_active
+      `)
+      .eq("product_id", product.id)
+      .eq("is_active", true)
+      .order("sort_order", {
+        ascending: true
+      })
   ]);
 
   if (specificationsResult.error) {
@@ -159,6 +189,20 @@ export default async function ProductPage({ params }) {
 
   if (reviewsResult.error) {
   console.error("Unable to load product reviews:", reviewsResult.error);
+  }
+
+  if (subscriptionSettingsResult.error) {
+    console.error(
+      "Unable to load subscription settings:",
+      subscriptionSettingsResult.error
+    );
+  }
+
+  if (subscriptionFrequenciesResult.error) {
+    console.error(
+      "Unable to load subscription frequencies:",
+      subscriptionFrequenciesResult.error
+    );
   }
 
   // 1. Clamp available stock at zero
@@ -227,6 +271,12 @@ export default async function ProductPage({ params }) {
         }
         reviews={
           reviewsResult.data || []
+        }
+        subscriptionSettings={
+          subscriptionSettingsResult.data || null
+        }
+        subscriptionFrequencies={
+          subscriptionFrequenciesResult.data || []
         }
       />
     </>

@@ -669,6 +669,119 @@ function readPriceTiers(formData) {
   );
 }
 
+function parsePositiveInteger(
+  formData,
+  fieldName,
+  fallback = 1
+) {
+  const rawValue = String(
+    formData.get(fieldName) || ""
+  ).trim();
+
+  if (!rawValue) {
+    return fallback;
+  }
+
+  const value = Number.parseInt(
+    rawValue,
+    10
+  );
+
+  if (
+    !Number.isInteger(value) ||
+    value < 1
+  ) {
+    throw new Error(
+      `${fieldName} must be at least 1.`
+    );
+  }
+
+  return value;
+}
+
+function readSubscriptionSettings(formData) {
+  const isEnabled =
+    checkboxValue(
+      formData,
+      "subscriptionEnabled"
+    );
+
+  const discountPercent =
+    parseNonNegativeInteger(
+      formData,
+      "subscriptionDiscountPercent",
+      10
+    );
+
+  if (discountPercent > 100) {
+    throw new Error(
+      "Subscription discount must be between 0 and 100 percent."
+    );
+  }
+
+  const minimumQuantity =
+    parsePositiveInteger(
+      formData,
+      "subscriptionMinimumQuantity",
+      1
+    );
+
+  const frequencyDefinitions = [
+    {
+      field: "subscriptionFrequency2Weeks",
+      interval_unit: "week",
+      interval_count: 2,
+      label: "Every 2 weeks",
+      sort_order: 10
+    },
+    {
+      field: "subscriptionFrequency4Weeks",
+      interval_unit: "week",
+      interval_count: 4,
+      label: "Every 4 weeks",
+      sort_order: 20
+    },
+    {
+      field: "subscriptionFrequency8Weeks",
+      interval_unit: "week",
+      interval_count: 8,
+      label: "Every 8 weeks",
+      sort_order: 30
+    }
+  ];
+
+  const frequencies =
+    frequencyDefinitions
+      .filter((frequency) =>
+        checkboxValue(
+          formData,
+          frequency.field
+        )
+      )
+      .map(
+        ({
+          field,
+          ...frequency
+        }) => frequency
+      );
+
+  if (
+    isEnabled &&
+    frequencies.length === 0
+  ) {
+    throw new Error(
+      "Select at least one delivery frequency when Subscribe & Save is enabled."
+    );
+  }
+
+  return {
+    isEnabled,
+    discountPercent,
+    minimumQuantity,
+    frequencies
+  };
+}
+
 export async function createProduct(
   formData
 ) {
@@ -809,6 +922,11 @@ export async function updateProduct(
 
   const priceTiers =
     readPriceTiers(formData);
+
+  const subscriptionSettings =
+    readSubscriptionSettings(
+      formData
+    );
 
   const supabase =
     createSupabaseAdmin();
@@ -1024,6 +1142,122 @@ export async function updateProduct(
       throw new Error(
         insertPriceTiersError.message ||
           "Unable to save product quantity pricing."
+      );
+    }
+  }
+
+    /*
+  * Save Subscribe & Save configuration.
+  */
+  const {
+    error: subscriptionSettingsError
+  } = await supabase
+    .from(
+      "product_subscription_settings"
+    )
+    .upsert(
+      {
+        product_id: productId,
+
+        is_enabled:
+          subscriptionSettings.isEnabled,
+
+        discount_percent:
+          subscriptionSettings.discountPercent,
+
+        minimum_quantity:
+          subscriptionSettings.minimumQuantity,
+
+        updated_at:
+          new Date().toISOString()
+      },
+      {
+        onConflict: "product_id"
+      }
+    );
+
+  if (subscriptionSettingsError) {
+    console.error(
+      "Unable to save subscription settings:",
+      subscriptionSettingsError
+    );
+
+    throw new Error(
+      subscriptionSettingsError.message ||
+        "Unable to save Subscribe & Save settings."
+    );
+  }
+
+  /*
+  * Replace the allowed delivery frequencies
+  * with the values selected in the product editor.
+  */
+  const {
+    error: deleteFrequenciesError
+  } = await supabase
+    .from(
+      "product_subscription_frequencies"
+    )
+    .delete()
+    .eq("product_id", productId);
+
+  if (deleteFrequenciesError) {
+    console.error(
+      "Unable to remove subscription frequencies:",
+      deleteFrequenciesError
+    );
+
+    throw new Error(
+      deleteFrequenciesError.message ||
+        "Unable to update subscription delivery frequencies."
+    );
+  }
+
+  if (
+    subscriptionSettings.frequencies
+      .length > 0
+  ) {
+    const frequencyRows =
+      subscriptionSettings.frequencies.map(
+        (frequency) => ({
+          product_id: productId,
+
+          interval_unit:
+            frequency.interval_unit,
+
+          interval_count:
+            frequency.interval_count,
+
+          label:
+            frequency.label,
+
+          sort_order:
+            frequency.sort_order,
+
+          is_active: true,
+
+          updated_at:
+            new Date().toISOString()
+        })
+      );
+
+    const {
+      error: insertFrequenciesError
+    } = await supabase
+      .from(
+        "product_subscription_frequencies"
+      )
+      .insert(frequencyRows);
+
+    if (insertFrequenciesError) {
+      console.error(
+        "Unable to save subscription frequencies:",
+        insertFrequenciesError
+      );
+
+      throw new Error(
+        insertFrequenciesError.message ||
+          "Unable to save subscription delivery frequencies."
       );
     }
   }
