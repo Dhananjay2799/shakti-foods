@@ -169,22 +169,14 @@ export async function updateSampleRequest(
   }
 
   if (
-    status === "shipped" &&
-    !shippingCarrier
-  ) {
-    throw new Error(
-      "A shipping carrier is required before marking a sample as shipped."
-    );
-  }
-
-  if (
-    status === "shipped" &&
-    !trackingNumber
-  ) {
-    throw new Error(
-      "A tracking number is required before marking a sample as shipped."
-    );
-  }
+  status === "shipped" &&
+  (!shippingCarrier || !trackingNumber)
+) {
+  redirect(
+    `/admin/sample-requests/${requestId}` +
+      "?error=shipping-required"
+  );
+}
 
   const supabase =
     createSupabaseAdmin();

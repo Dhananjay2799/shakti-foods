@@ -69,9 +69,20 @@ function formatAddress(address) {
 }
 
 export default async function SampleRequestDetailPage({
-  params
+  params,
+  searchParams
 }) {
-  const resolvedParams = await Promise.resolve(params);
+  const resolvedParams =
+    await Promise.resolve(params);
+
+  const resolvedSearchParams =
+    await Promise.resolve(searchParams);
+
+  const errorMessage =
+    resolvedSearchParams?.error ===
+    "shipping-required"
+      ? "Please select carrier and add tracking number first."
+      : null;
 
   const requestId = String(
     resolvedParams?.id || ""
@@ -380,6 +391,16 @@ export default async function SampleRequestDetailPage({
                 name="requestId"
                 value={sampleRequest.id}
             />
+
+            {errorMessage ? (
+              <div
+                role="alert"
+                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700"
+              >
+                {errorMessage}
+              </div>
+            ) : null}
+
             <label className="grid gap-2">
               <span className="text-sm font-bold text-black">
                 Status
@@ -505,11 +526,6 @@ export default async function SampleRequestDetailPage({
             >
                 Save Changes
             </button>
-
-            <p className="text-center text-xs leading-5 text-black/40">
-              Workflow actions will be enabled
-              in the next step.
-            </p>
           </form>
 
           {(sampleRequest.shipping_carrier ||
