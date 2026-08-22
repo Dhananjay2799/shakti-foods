@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
+  fulfillRecurringSubscriptionPayment
+} from "@/lib/subscriptions/fulfill-subscription";
+
+import {
   createSupabaseAdmin
 } from "@/lib/supabase-admin";
 
@@ -394,6 +398,53 @@ async function syncPayPalSubscriptionResource(
       now
   };
 
+  const paypalShipping =
+    resource
+      ?.subscriber
+      ?.shipping_address;
+
+  if (
+    paypalShipping?.address
+  ) {
+    updatePayload.shipping_address = {
+      line1:
+        paypalShipping
+          .address
+          .address_line_1 ||
+        null,
+
+      line2:
+        paypalShipping
+          .address
+          .address_line_2 ||
+        null,
+
+      city:
+        paypalShipping
+          .address
+          .admin_area_2 ||
+        null,
+
+      state:
+        paypalShipping
+          .address
+          .admin_area_1 ||
+        null,
+
+      postal_code:
+        paypalShipping
+          .address
+          .postal_code ||
+        null,
+
+      country:
+        paypalShipping
+          .address
+          .country_code ||
+        null
+    };
+  }
+
   const nextBillingTime =
     resource
       ?.billing_info
@@ -516,8 +567,7 @@ async function handlePayPalSaleCompleted(
 
   const paypalSubscriptionId =
     normalizeText(
-      resource
-        ?.billing_agreement_id
+      resource?.billing_agreement_id
     );
 
   if (!saleId) {
@@ -535,14 +585,6 @@ async function handlePayPalSaleCompleted(
     return;
   }
 
-  /*
-   * For now we only synchronize payment state.
-   *
-   * Automatic recurring-order creation and
-   * inventory deduction will be connected later,
-   * just like the remaining Stripe recurring
-   * fulfillment task.
-   */
   const supabase =
     createSupabaseAdmin();
 
@@ -553,7 +595,9 @@ async function handlePayPalSaleCompleted(
     .from("subscriptions")
     .select(`
       id,
-      status
+      status,
+      payment_provider,
+      paypal_subscription_id
     `)
     .eq(
       "paypal_subscription_id",
@@ -565,18 +609,42 @@ async function handlePayPalSaleCompleted(
     subscriptionError ||
     !subscription
   ) {
-    console.warn(
-      "Unable to find PayPal subscription for completed sale:",
-      {
-        saleId,
-        paypalSubscriptionId,
-        subscriptionError
-      }
+    throw new Error(
+      subscriptionError?.message ||
+      `Unable to find internal subscription for PayPal subscription ${paypalSubscriptionId}.`
     );
-
-    return;
   }
 
+  if (
+    subscription.payment_provider !==
+    "paypal"
+  ) {
+    throw new Error(
+      "PayPal subscription provider mismatch."
+    );
+  }
+
+  /*
+   * PAYMENT.SALE.COMPLETED means PayPal
+   * successfully collected money for this
+   * subscription cycle.
+   */
+  const fulfillmentResult =
+    await fulfillRecurringSubscriptionPayment({
+      subscriptionId:
+        subscription.id,
+
+      paymentProvider:
+        "paypal",
+
+      paymentReference:
+        saleId
+    });
+
+  /*
+   * Keep local subscription active after a
+   * successful recurring charge.
+   */
   const {
     error: updateError
   } = await supabase
@@ -594,19 +662,32 @@ async function handlePayPalSaleCompleted(
     );
 
   if (updateError) {
-    throw new Error(
-      updateError.message ||
-      "Unable to update PayPal subscription after payment."
+    console.error(
+      "Unable to update PayPal subscription after successful recurring payment:",
+      {
+        subscriptionId:
+          subscription.id,
+
+        paypalSubscriptionId,
+
+        saleId,
+
+        updateError
+      }
     );
   }
 
   console.log(
-    "PayPal subscription payment completed:",
+    "PayPal recurring subscription payment fulfilled:",
     {
       saleId,
+
       paypalSubscriptionId,
+
       internalSubscriptionId:
-        subscription.id
+        subscription.id,
+
+      fulfillmentResult
     }
   );
 }
