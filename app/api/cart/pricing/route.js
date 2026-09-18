@@ -136,6 +136,38 @@ export async function POST(request) {
       );
     }
 
+    const storefront = String(
+      body?.storefront || "shakti_foods"
+    ).trim();
+
+    const allowedStorefronts =
+      new Set([
+        "shakti_foods",
+        "ecoware"
+      ]);
+
+    if (
+      !allowedStorefronts.has(
+        storefront
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Invalid storefront."
+        },
+        {
+          status: 400
+        }
+      );
+    }
+
+    console.log(
+      "Cart pricing storefront:",
+      storefront
+    );
+
     const items =
       normalizeItems(body?.items);
 
@@ -160,11 +192,16 @@ export async function POST(request) {
           currency,
           status,
           is_active,
+          storefront,
           deleted_at
         `)
         .in(
           "product_id",
           productIds
+        )
+        .eq(
+          "storefront",
+          storefront
         )
         .is(
           "deleted_at",
@@ -448,6 +485,8 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
+
+      storefront,
 
       currency:
         CHECKOUT_CURRENCY,

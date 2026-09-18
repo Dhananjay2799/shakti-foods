@@ -8,6 +8,13 @@ export async function POST(request) {
     const body = await request.json();
     const sessionId = body?.sessionId;
 
+    console.log(
+      "Stripe fulfill API received:",
+      {
+        sessionId
+      }
+    );
+
     if (!sessionId || !sessionId.startsWith("cs_")) {
       return NextResponse.json(
         { message: "Invalid Checkout Session ID." },
@@ -15,21 +22,35 @@ export async function POST(request) {
       );
     }
 
+    console.log(
+      "Starting Stripe fulfillment:",
+      sessionId
+    );
+
     const result = await fulfillCheckoutSession(sessionId);
+
+    console.log(
+      "Stripe fulfillment completed:",
+      result
+    );
 
     return NextResponse.json({
       success: true,
       ...result
     });
   } catch (error) {
-    console.error("Checkout fulfillment recovery error:", error);
+    console.error(
+      "Stripe fulfillment API error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
         message:
-          error.message ||
-          "Unable to finalize the order."
+          error instanceof Error
+            ? error.message
+            : "Unable to finalize checkout."
       },
       { status: 500 }
     );

@@ -31,7 +31,7 @@ export async function loginAdmin(formData) {
     );
   }
 
-  redirect("/admin");
+  redirect("/admin/select-store");
 }
 
 export async function logoutAdmin() {

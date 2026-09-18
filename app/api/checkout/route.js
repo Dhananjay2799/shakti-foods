@@ -88,6 +88,34 @@ export async function POST(request) {
       );
     }
 
+    const storefront =
+      String(
+        body?.storefront ||
+        "shakti_foods"
+      ).trim();
+
+    const allowedStorefronts =
+      new Set([
+        "shakti_foods",
+        "ecoware"
+      ]);
+
+    if (
+      !allowedStorefronts.has(
+        storefront
+      )
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Invalid storefront."
+        },
+        {
+          status: 400
+        }
+      );
+    }
+
     const rawCartItems = Array.isArray(body?.items)
       ? body.items
       : [];
@@ -152,7 +180,10 @@ export async function POST(request) {
     }
 
     const checkout =
-      await prepareCheckout(rawCartItems);
+      await prepareCheckout(
+        rawCartItems,
+        storefront
+      );
 
     reservationId =
       checkout.reservationId;
@@ -174,7 +205,6 @@ export async function POST(request) {
 
     supabase = createSupabaseAdmin();
 
-
     const baseUrl = getBaseUrl();
 
     const stripeSessionExpiresAt =
@@ -182,6 +212,11 @@ export async function POST(request) {
         Date.now() / 1000 +
           STRIPE_SESSION_DURATION_MINUTES * 60
       );
+
+    const businessName =
+      storefront === "ecoware"
+        ? "Simpli Ecoware"
+        : "Shakti Foods";
 
     let session;
 
@@ -254,9 +289,16 @@ export async function POST(request) {
             ],
 
             metadata: {
-              business: "Shakti Foods",
-              order_type: "online-order",
-              reservation_id: String(reservationId)
+              business:
+                businessName,
+
+              storefront,
+
+              order_type:
+                "online-order",
+
+              reservation_id:
+                String(reservationId)
             },
 
             success_url:
@@ -338,26 +380,44 @@ export async function POST(request) {
         "Checkout was created, but its inventory reservation could not be linked."
       );
     }
-        
+
     const {
       data: order,
       error: orderError
     } = await supabase
       .from("orders")
       .insert({
-        payment_provider: "stripe",
-        stripe_session_id: session.id,
-        reservation_id: reservationId,
+        storefront,
 
-        payment_status: "pending",
-        fulfillment_status: "new",
+        payment_provider:
+          "stripe",
 
-        subtotal: subtotalCents,
-        shipping_amount: shippingAmountCents,
-        tax_amount: taxAmountCents,
-        total_amount: totalAmountCents,
+        stripe_session_id:
+          session.id,
 
-        currency: CHECKOUT_CURRENCY
+        reservation_id:
+          reservationId,
+
+        payment_status:
+          "pending",
+
+        fulfillment_status:
+          "new",
+
+        subtotal:
+          subtotalCents,
+
+        shipping_amount:
+          shippingAmountCents,
+
+        tax_amount:
+          taxAmountCents,
+
+        total_amount:
+          totalAmountCents,
+
+        currency:
+          CHECKOUT_CURRENCY
       })
       .select("id")
       .single();
@@ -387,12 +447,6 @@ export async function POST(request) {
 
     createdOrderId = order.id;
 
-    /*
-    * Create a cart recovery record.
-    *
-    * Recovery failure must never block checkout,
-    * so any insert error is logged only.
-    */
     const recoverySnapshot =
       checkout.orderItems.map((item) => ({
         product_id:
@@ -473,22 +527,22 @@ export async function POST(request) {
         orderItemsError
       );
 
-    if (createdRecoveryId) {
-      const { error: recoveryDeleteError } =
-        await supabase
-          .from("cart_recovery_sessions")
-          .delete()
-          .eq("id", createdRecoveryId);
+      if (createdRecoveryId) {
+        const { error: recoveryDeleteError } =
+          await supabase
+            .from("cart_recovery_sessions")
+            .delete()
+            .eq("id", createdRecoveryId);
 
-      if (recoveryDeleteError) {
-        console.error(
-          "Unable to clean up cart recovery session:",
-          recoveryDeleteError
-        );
+        if (recoveryDeleteError) {
+          console.error(
+            "Unable to clean up cart recovery session:",
+            recoveryDeleteError
+          );
+        }
+
+        createdRecoveryId = null;
       }
-
-      createdRecoveryId = null;
-    }
 
       await expireCheckoutSession({
         stripe,
@@ -519,11 +573,6 @@ export async function POST(request) {
       reservationId
     });
   } catch (error) {
-    /*
-     * This is a final safety-net cleanup.
-     * Failure branches above normally clear these
-     * variables after performing cleanup.
-     */
     if (stripeSessionId && stripe) {
       await expireCheckoutSession({
         stripe,

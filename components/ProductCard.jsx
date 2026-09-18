@@ -105,14 +105,29 @@ export default function ProductCard({
       return;
     }
 
-    const added = addItem(product, {
-      availableStock
-    });
+    const added = addItem(
+      {
+        ...product,
+        storefront: "shakti_foods"
+      },
+      {
+        availableStock,
+        storefront: "shakti_foods"
+      }
+    );
 
-    if (!added && isOutOfStock) {
+    if (added?.reason === "storefront_mismatch") {
       alert(
-        "This product is currently out of stock."
+        "Your cart contains Simpli Ecoware products. Clear the cart before adding Shakti Foods products."
       );
+      return;
+    }
+
+    if (
+      added?.reason === "out_of_stock" ||
+      (!added?.success && isOutOfStock)
+    ) {
+      alert("This product is currently out of stock.");
     }
   }
 

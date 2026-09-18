@@ -46,6 +46,29 @@ export async function POST(request) {
       );
     }
 
+    const storefront = String(
+      body?.storefront || "shakti_foods"
+    ).trim();
+
+    const allowedStorefronts = new Set([
+      "shakti_foods",
+      "ecoware"
+    ]);
+
+    if (!allowedStorefronts.has(storefront)) {
+      return NextResponse.json(
+        {
+          message: "Invalid storefront."
+        },
+        { status: 400 }
+      );
+    }
+
+    const businessName =
+      storefront === "ecoware"
+        ? "Simpli Ecoware"
+        : "Shakti Foods";
+
     const rawCartItems = Array.isArray(
       body?.items
     )
@@ -119,7 +142,10 @@ export async function POST(request) {
      * and inventory reservation.
      */
     const checkout =
-      await prepareCheckout(rawCartItems);
+      await prepareCheckout(
+        rawCartItems,
+        storefront
+      );
 
     reservationId =
       checkout.reservationId;
@@ -136,6 +162,7 @@ export async function POST(request) {
     } = await supabase
       .from("orders")
       .insert({
+        storefront,
         payment_provider: "paypal",
         reservation_id: reservationId,
 
@@ -301,8 +328,28 @@ export async function POST(request) {
           reservationId,
 
         description:
-          `Shakti Foods order ${order.id}`
+          `${businessName} Order`,
+
+        brandName:
+          businessName
       });
+
+    console.log(
+      "PayPal order created:",
+      {
+        paypalOrderId:
+          paypalOrder?.id,
+
+        status:
+          paypalOrder?.status,
+
+        expectedOrderId:
+          order.id,
+
+        expectedReservationId:
+          reservationId
+      }
+    );
 
     if (!paypalOrder?.id) {
       throw new Error(
@@ -337,13 +384,6 @@ export async function POST(request) {
       );
     }
 
-    /*
-     * Add the PayPal order ID to the reservation
-     * only after adding a corresponding column.
-     * For now, reservation_id and orders table
-     * provide the relationship.
-     */
-
     return NextResponse.json({
       success: true,
       orderId: paypalOrderId,
@@ -360,13 +400,6 @@ export async function POST(request) {
         error
       }
     );
-
-    /*
-     * A PayPal order cannot be deleted through the
-     * Orders API in the same way a Stripe Checkout
-     * Session can be expired. It will eventually
-     * expire if the buyer does not approve it.
-     */
 
     if (createdRecoveryId) {
       const {

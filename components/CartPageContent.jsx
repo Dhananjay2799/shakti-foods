@@ -37,6 +37,23 @@ export default function CartPageContent() {
     clearCart
   } = useCart();
 
+  const cartStorefront =
+    items[0]?.storefront ||
+    "shakti_foods";
+
+  const isEcoware =
+    cartStorefront === "ecoware";
+
+  const cartBrandName =
+    isEcoware
+      ? "Simpli Ecoware"
+      : "Shakti Foods";
+
+  const continueShoppingHref =
+    isEcoware
+      ? "/ecoware/products"
+      : "/products";
+
   const [pricing, setPricing] =
     useState(null);
 
@@ -89,6 +106,8 @@ export default function CartPageContent() {
               },
 
               body: JSON.stringify({
+                storefront:
+                  cartStorefront,
                 items:
                   pricingRequestItems
               }),
@@ -146,7 +165,11 @@ export default function CartPageContent() {
     return () => {
       controller.abort();
     };
-  }, [items, pricingRequestItems]);
+  }, [
+    items,
+    cartStorefront,
+    pricingRequestItems
+  ]);
 
   /*
    * Convert the API response into a Map
@@ -201,7 +224,7 @@ export default function CartPageContent() {
         <div className="container-brand">
           <SectionHeading
             eyebrow="Cart"
-            title="Your shopping cart"
+            title={`${cartBrandName} Cart`}
             text="Review your items, adjust quantities, and proceed securely to checkout."
           />
 
@@ -212,7 +235,7 @@ export default function CartPageContent() {
               </p>
 
               <Link
-                href="/products"
+                href={continueShoppingHref}
                 className="mt-6 inline-flex rounded-full bg-black px-6 py-3 font-bold text-white"
               >
                 Shop Products
@@ -222,6 +245,11 @@ export default function CartPageContent() {
             <div className="mt-8 grid gap-6 md:mt-10 md:gap-8 lg:grid-cols-[1fr_380px]">
               <div className="grid gap-4">
                 {items.map((item) => {
+                  const productHref =
+                    item.storefront === "ecoware"
+                      ? `/ecoware/products/${item.slug || item.id}`
+                      : `/products/${item.slug || item.id}`;
+
                   const pricedItem =
                     pricedItemsById.get(
                       item.id
@@ -266,7 +294,7 @@ export default function CartPageContent() {
                       className="rounded-[1.75rem] bg-white p-4 shadow-soft md:rounded-[2rem] md:p-5"
                     >
                       <div className="grid gap-4 sm:grid-cols-[120px_1fr] lg:grid-cols-[140px_1fr_auto] lg:items-center">
-                        <div className="relative h-32 overflow-hidden rounded-[1.3rem] bg-[#faf6ee] sm:h-36">
+                        <Link href={productHref} className="relative h-32 overflow-hidden rounded-[1.3rem] bg-[#faf6ee] sm:h-36">
                           <Image
                             src={item.image}
                             alt={item.name}
@@ -274,16 +302,19 @@ export default function CartPageContent() {
                             className="object-contain p-4"
                             sizes="140px"
                           />
-                        </div>
+                        </Link>
 
                         <div>
                           <div className="text-xs font-bold uppercase tracking-[.15em] text-black">
                             {item.category}
                           </div>
 
-                          <div className="mt-1 font-display text-2xl font-bold text-black">
+                          <Link
+                            href={productHref}
+                            className="mt-1 block font-display text-2xl font-bold text-black hover:underline"
+                          >
                             {item.name}
-                          </div>
+                          </Link>
 
                           {pricedItem ? (
                             <>

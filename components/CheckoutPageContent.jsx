@@ -34,6 +34,23 @@ export default function CheckoutPageContent() {
     items
   } = useCart();
 
+  const storefront =
+    items[0]?.storefront ||
+    "shakti_foods";
+
+  const isEcoware =
+    storefront === "ecoware";
+
+  const brandName =
+    isEcoware
+      ? "Simpli Ecoware"
+      : "Shakti Foods";
+
+  const productsHref =
+    isEcoware
+      ? "/ecoware/products"
+      : "/products";
+
   const [
     customerDetails,
     setCustomerDetails
@@ -134,6 +151,8 @@ export default function CheckoutPageContent() {
 
               body:
                 JSON.stringify({
+                  storefront,
+
                   items:
                     checkoutItems
                 }),
@@ -191,7 +210,7 @@ export default function CheckoutPageContent() {
     return () => {
       controller.abort();
     };
-  }, [items, checkoutItems]);
+  }, [items, checkoutItems, storefront]);
 
   const pricedItemsById =
     useMemo(
@@ -297,35 +316,30 @@ export default function CheckoutPageContent() {
                 "application/json"
             },
 
-            /*
-             * Never send prices as authoritative
-             * checkout data.
-             *
-             * prepareCheckout() reloads them
-             * from Supabase.
-             */
             body:
-            JSON.stringify({
-              items:
-                checkoutItems,
+              JSON.stringify({
+                storefront,
 
-              customer: {
-                name:
-                  customerDetails.name
-                    .trim(),
+                items:
+                  checkoutItems,
 
-                email:
-                  normalizedEmail,
+                customer: {
+                  name:
+                    customerDetails.name
+                      .trim(),
 
-                phone:
-                  customerDetails.phone
-                    .trim() || null,
+                  email:
+                    normalizedEmail,
 
-                marketingEmailConsent:
-                  customerDetails
-                    .marketingEmailConsent
-              }
-            })
+                  phone:
+                    customerDetails.phone
+                      .trim() || null,
+
+                  marketingEmailConsent:
+                    customerDetails
+                      .marketingEmailConsent
+                }
+              })
           }
         );
 
@@ -380,6 +394,15 @@ export default function CheckoutPageContent() {
   }
 
   async function handleCreatePayPalOrder() {
+    console.log(
+      "[PayPal] handleCreatePayPalOrder entered",
+      {
+        storefront,
+        checkoutItems,
+        customerDetails
+      }
+    );
+
     if (
       paypalLoading ||
       loading ||
@@ -451,6 +474,14 @@ export default function CheckoutPageContent() {
     );
 
     try {
+      console.log(
+        "[PayPal] calling /api/paypal/create-order",
+        {
+          storefront,
+          items: checkoutItems
+        }
+      );
+
       const response =
         await fetch(
           "/api/paypal/create-order",
@@ -464,6 +495,8 @@ export default function CheckoutPageContent() {
 
             body:
               JSON.stringify({
+                storefront,
+
                 items:
                   checkoutItems,
 
@@ -487,8 +520,18 @@ export default function CheckoutPageContent() {
           }
         );
 
+      console.log(
+        "[PayPal] /api/paypal/create-order HTTP status:",
+        response.status
+      );
+
       const data =
         await response.json();
+
+      console.log(
+        "[PayPal] create-order response:",
+        data
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -671,9 +714,9 @@ export default function CheckoutPageContent() {
       <section className="section-pad py-14 md:py-20">
         <div className="container-brand">
           <SectionHeading
-            eyebrow="Checkout"
+            eyebrow={brandName}
             title="Secure Checkout"
-            text="Review your order and choose your preferred payment method."
+            text={`Review your ${brandName} order and choose your preferred payment method.`}
           />
 
           {items.length === 0 ? (
@@ -683,7 +726,7 @@ export default function CheckoutPageContent() {
               </p>
 
               <Link
-                href="/products"
+                href={productsHref}
                 className="mt-6 inline-flex rounded-full bg-black px-6 py-3 font-bold text-white"
               >
                 Shop Products
@@ -776,7 +819,7 @@ export default function CheckoutPageContent() {
                     <span className="text-sm leading-6 text-black/70">
                       Email me product updates,
                       special offers and news from
-                      Shakti Foods.
+                      {" "}{brandName}.
                     </span>
                   </label>
                 </div>
@@ -898,9 +941,35 @@ export default function CheckoutPageContent() {
                         estimate.total
                       ]}
 
-                      createOrder={
-                        handleCreatePayPalOrder
-                      }
+                      createOrder={async () => {
+                        console.log(
+                          "[PayPal] createOrder callback started",
+                          {
+                            storefront,
+                            itemCount: items.length,
+                            customerDetails
+                          }
+                        );
+
+                        try {
+                          const paypalOrderId =
+                            await handleCreatePayPalOrder();
+
+                          console.log(
+                            "[PayPal] createOrder succeeded:",
+                            paypalOrderId
+                          );
+
+                          return paypalOrderId;
+                        } catch (error) {
+                          console.error(
+                            "[PayPal] createOrder FAILED:",
+                            error
+                          );
+
+                          throw error;
+                        }
+                      }}
 
                       onApprove={
                         handleApprovePayPalOrder
@@ -1004,20 +1073,16 @@ export default function CheckoutPageContent() {
                         }
                       }}
 
-                      onError={(
-                        paypalError
-                      ) => {
+                      onError={(error) => {
                         console.error(
-                          "PayPal checkout error:",
-                          paypalError
-                        );
-
-                        setPayPalLoading(
-                          false
+                          "[PayPal] BUTTON ERROR:",
+                          error
                         );
 
                         setError(
-                          "PayPal checkout could not be completed. Please try again."
+                          error instanceof Error
+                            ? `PayPal error: ${error.message}`
+                            : `PayPal error: ${String(error)}`
                         );
                       }}
                     />

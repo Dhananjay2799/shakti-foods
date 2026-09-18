@@ -15,7 +15,7 @@ export default function AdminLoginPage({
     <main className="min-h-screen bg-[#f7f3eb] px-5 py-24 text-black">
       <div className="mx-auto max-w-md rounded-[2rem] bg-white p-6 shadow-soft md:p-8">
         <div className="text-sm font-bold uppercase tracking-[.18em]">
-          Shakti Foods Admin
+          Commerce Admin Portal
         </div>
 
         <h1 className="mt-3 font-display text-4xl font-bold">
@@ -23,7 +23,7 @@ export default function AdminLoginPage({
         </h1>
 
         <p className="mt-3 leading-7 text-black/70">
-          Sign in with the admin account you created in Supabase.
+          Sign in to manage Shakti Foods and Simpli Ecoware.
         </p>
 
         {error ? (

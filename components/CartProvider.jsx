@@ -46,22 +46,57 @@ export function CartProvider({ children }) {
   function addItem(product, options = {}) {
     const availableStock = Number(options.availableStock);
 
+    const incomingStorefront = String(
+      product.storefront || options.storefront || "shakti_foods"
+    ).trim();
+
+    if (
+      incomingStorefront !== "shakti_foods" &&
+      incomingStorefront !== "ecoware"
+    ) {
+      return {
+        success: false,
+        reason: "invalid_storefront"
+      };
+    }
+
     if (
       product.unitPrice === null ||
       product.unitPrice === undefined ||
       product.unitPrice <= 0
     ) {
-      return false;
+      return {
+        success: false,
+        reason: "invalid_price"
+      };
     }
 
-    if (
-      Number.isFinite(availableStock) &&
-      availableStock <= 0
-    ) {
-      return false;
+    if (Number.isFinite(availableStock) && availableStock <= 0) {
+      return {
+        success: false,
+        reason: "out_of_stock"
+      };
     }
+
+    let result = {
+      success: true
+    };
 
     setItems((currentItems) => {
+      const existingStorefront =
+        currentItems[0]?.storefront || "shakti_foods";
+
+      if (
+        currentItems.length > 0 &&
+        existingStorefront !== incomingStorefront
+      ) {
+        result = {
+          success: false,
+          reason: "storefront_mismatch"
+        };
+        return currentItems;
+      }
+
       const existingItem = currentItems.find(
         (item) => item.id === product.id
       );
@@ -73,18 +108,23 @@ export function CartProvider({ children }) {
         currentQuantity >= availableStock
       ) {
         alert(`Only ${availableStock} item(s) available in stock.`);
+        result = {
+          success: false,
+          reason: "stock_limit"
+        };
         return currentItems;
       }
 
       if (existingItem) {
         return currentItems.map((item) =>
           item.id === product.id
-          ? {
-              ...item,
-              quantity: item.quantity + 1,
-              availableStock
-            }
-          : item
+            ? {
+                ...item,
+                storefront: incomingStorefront,
+                quantity: item.quantity + 1,
+                availableStock
+              }
+            : item
         );
       }
 
@@ -92,13 +132,14 @@ export function CartProvider({ children }) {
         ...currentItems,
         {
           ...product,
+          storefront: incomingStorefront,
           quantity: 1,
           availableStock
         }
       ];
     });
 
-    return true;
+    return result;
   }
 
   function removeItem(id) {
@@ -157,25 +198,20 @@ export function CartProvider({ children }) {
       return false;
     }
 
-    const normalizedItems =
-      nextItems
-        .filter(
-          (item) =>
-            item &&
-            item.id &&
-            Number(item.quantity) > 0
+    const normalizedItems = nextItems
+      .filter(
+        (item) =>
+          item &&
+          item.id &&
+          Number(item.quantity) > 0
+      )
+      .map((item) => ({
+        ...item,
+        quantity: Math.max(
+          1,
+          Math.floor(Number(item.quantity))
         )
-        .map((item) => ({
-          ...item,
-
-          quantity:
-            Math.max(
-              1,
-              Math.floor(
-                Number(item.quantity)
-              )
-            )
-        }));
+      }));
 
     setItems(normalizedItems);
 

@@ -26,7 +26,8 @@ export default function Footer() {
           <h3 className="font-bold text-black">Quick Links</h3>
           <div className="mt-4 grid gap-3 text-black">
             <Link href="/">Home</Link>
-            <Link href="/products">Products</Link>
+            <Link href="/products">Shakti Products</Link>
+            <Link href="/ecoware">Simpli Ecoware</Link>
             <Link href="/sustainability">Sustainability</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>

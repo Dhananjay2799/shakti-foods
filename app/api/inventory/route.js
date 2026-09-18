@@ -4,8 +4,29 @@ import { createSupabaseAdmin } from "@/lib/supabase-admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    const storefront = String(
+      searchParams.get("storefront") || "shakti_foods"
+    ).trim();
+
+    const allowedStorefronts = new Set([
+      "shakti_foods",
+      "ecoware"
+    ]);
+
+    if (!allowedStorefronts.has(storefront)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid storefront."
+        },
+        { status: 400 }
+      );
+    }
+
     const supabase = createSupabaseAdmin();
 
     const { data, error } = await supabase
@@ -13,6 +34,7 @@ export async function GET() {
       .select(
         "product_id, product_name, stock_quantity, reserved_quantity, low_stock_threshold, is_active"
       )
+      .eq("storefront", storefront)
       .order("product_name");
 
     if (error) {
