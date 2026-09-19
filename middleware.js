@@ -33,6 +33,7 @@ export async function middleware(request) {
     "/admin",
     "/auth",
     "/_next",
+    "/images",
   ];
 
   const isSharedRoute = sharedPrefixes.some(
