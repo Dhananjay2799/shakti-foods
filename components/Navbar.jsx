@@ -19,182 +19,16 @@ const shaktiLinks = [
   { href: "/products", label: "Our Rice" },
   { href: "/about", label: "About Us" },
   {
-    href: "/sustainability",
-    label: "Sustainability"
-  },
-  {
     href: "/contact?type=wholesale",
     label: "Wholesale"
   },
   { href: "/contact", label: "Contact" }
 ];
 
-const ecowareLinks = [
-  { href: "/ecoware", label: "Home" },
-  {
-    href: "/ecoware/products",
-    label: "Products"
-  },
-  {
-    href: "/ecoware#wholesale",
-    label: "Wholesale"
-  },
-  {
-    href: "/ecoware#samples",
-    label: "Samples"
-  }
-];
-
 export default function Navbar() {
   const [open, setOpen] = useState(false);
 
-  const {
-    items = [],
-    itemCount = 0
-  } = useCart();
-
-  const cartStorefront =
-    items?.[0]?.storefront ||
-    "shakti_foods";
-
-  const isEcoware =
-    cartStorefront === "ecoware";
-
-  /* =====================================================
-     ECOWARE NAVBAR
-  ===================================================== */
-
-  if (isEcoware) {
-    return (
-      <motion.header
-        initial={{
-          y: -80,
-          opacity: 0
-        }}
-        animate={{
-          y: 0,
-          opacity: 1
-        }}
-        transition={{
-          duration: 0.7
-        }}
-        className="
-          fixed
-          left-0
-          right-0
-          top-0
-          z-50
-          mobile-safe-padding
-          px-3
-          pt-3
-          md:px-8
-          md:pt-4
-        "
-      >
-        <nav
-          className="
-            mx-auto
-            flex
-            max-w-7xl
-            items-center
-            justify-between
-            rounded-full
-            border
-            border-white/70
-            bg-white/90
-            px-3
-            py-2
-            shadow-soft
-            backdrop-blur-xl
-            md:px-4
-            md:py-3
-          "
-        >
-          <Link
-            href="/ecoware"
-            className="flex min-w-0 items-center gap-3"
-            aria-label="Simpli Ecoware home"
-          >
-            <div className="relative h-10 w-10 shrink-0 md:h-12 md:w-12">
-              <Image
-                src="/images/logo-ecoware-icon.png"
-                alt="Simpli Ecoware"
-                fill
-                priority
-                sizes="48px"
-                className="object-contain"
-              />
-            </div>
-
-            <div className="hidden min-w-0 sm:block">
-              <div className="whitespace-nowrap text-[17px] font-black leading-none tracking-[-0.03em] text-black md:text-xl">
-                SIMPLI ECOWARE
-              </div>
-
-              <div className="mt-1 whitespace-nowrap text-[10px] font-medium italic leading-none text-[#4f7f34] md:text-xs">
-                Good for Earth, Good for You
-              </div>
-            </div>
-          </Link>
-
-          <div className="hidden items-center gap-2 lg:flex">
-            {ecowareLinks.map(
-              (link) => (
-                <Link
-                  key={`${link.href}-${link.label}`}
-                  href={link.href}
-                  className="rounded-full px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand.sand"
-                >
-                  {link.label}
-                </Link>
-              )
-            )}
-
-            <Link
-              href="/"
-              className="ml-1 rounded-full border border-black px-5 py-2 text-sm font-bold text-black transition hover:bg-black hover:text-white"
-            >
-              Shakti Foods
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/cart"
-              className="relative grid h-10 w-10 place-items-center rounded-full bg-brand.sand text-black ring-1 ring-black/10"
-              aria-label="Cart"
-            >
-              <ShoppingBag size={18} />
-
-              {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-xs font-bold text-white">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
-
-            <button
-              type="button"
-              onClick={() =>
-                setOpen(
-                  (current) =>
-                    !current
-                )
-              }
-              className="grid h-10 w-10 place-items-center rounded-full bg-brand.sand text-black ring-1 ring-black/10 lg:hidden"
-              aria-label={
-                open
-                  ? "Close menu"
-                  : "Open menu"
-              }
-            >
-              <Menu size={18} />
-            </button>
-          </div>
-        </nav>
-      </motion.header>
-    );
-  }
+  const { itemCount = 0 } = useCart();
 
   /* =====================================================
      SHAKTI FOODS FLOATING NAVBAR
@@ -376,6 +210,43 @@ export default function Navbar() {
               </Link>
             )
           )}
+
+          <a
+            href="https://simpliecoware.vercel.app"
+            className="
+              ml-2
+              flex
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-[#27802f]/30
+              bg-[#f7fbf3]
+              px-3
+              py-1.5
+              text-[12px]
+              font-bold
+              text-[#1f6527]
+              transition
+              hover:border-[#27802f]
+              hover:bg-[#edf7e8]
+            "
+            aria-label="Visit Simpli Ecoware"
+          >
+            <span className="relative h-[28px] w-[28px] shrink-0">
+              <Image
+                src="/images/logo-ecoware-icon.png"
+                alt=""
+                fill
+                sizes="28px"
+                className="object-contain"
+              />
+            </span>
+
+            <span className="whitespace-nowrap">
+              Simpli Ecoware
+            </span>
+          </a>
         </div>
 
         {/* =================================================
@@ -538,6 +409,54 @@ export default function Navbar() {
                   </Link>
                 )
               )}
+
+              <a
+                href="https://simpliecoware.vercel.app"
+                onClick={() => setOpen(false)}
+                className="
+                  mt-1
+                  flex
+                  items-center
+                  gap-3
+                  rounded-xl
+                  border
+                  border-[#27802f]/20
+                  bg-[#f7fbf3]
+                  px-4
+                  py-2.5
+                  transition
+                  hover:border-[#27802f]/40
+                  hover:bg-[#edf7e8]
+                "
+                aria-label="Visit Simpli Ecoware"
+              >
+                <span className="relative h-9 w-9 shrink-0">
+                  <Image
+                    src="/images/logo-ecoware-icon.png"
+                    alt=""
+                    fill
+                    sizes="36px"
+                    className="object-contain"
+                  />
+                </span>
+
+                <span className="min-w-0">
+                  <span className="block text-sm font-black leading-tight text-[#1f6527]">
+                    Simpli Ecoware
+                  </span>
+
+                  <span className="mt-0.5 block text-[9px] font-semibold italic text-[#4f7f34]">
+                    Good for Earth, Good for You
+                  </span>
+                </span>
+
+                <span
+                  className="ml-auto text-lg text-[#27802f]"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </a>
 
               <Link
                 href="/cart"
