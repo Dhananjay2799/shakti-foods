@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import {
   ArrowRight,
   Check,
@@ -175,7 +175,7 @@ export default async function SustainabilityPage() {
 
                 <div className="mt-8 flex flex-wrap gap-3">
                   <Link
-                    href="/products?category=tableware"
+                    href="/ecoware/products"
                     className="inline-flex items-center gap-2 rounded-full bg-black px-6 py-3.5 text-sm font-bold text-white transition hover:bg-black/80"
                   >
                     Shop Simpli Ecoware
@@ -629,7 +629,7 @@ export default async function SustainabilityPage() {
               </p>
 
               <Link
-                href="/products?category=tableware"
+                href="/ecoware/products"
                 className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-black transition hover:bg-[#f2eadc]"
               >
                 Shop Simpli Ecoware

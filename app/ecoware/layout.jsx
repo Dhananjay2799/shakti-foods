@@ -137,6 +137,13 @@ export default function EcowareLayout({ children }) {
                 </Link>
 
                 <Link
+                  href="/ecoware/sustainability"
+                  className="rounded-full px-5 py-3 text-sm font-bold transition hover:bg-black/5"
+                >
+                  Sustainability
+                </Link>
+
+                <Link
                   href="/ecoware#wholesale"
                   className="rounded-full px-5 py-3 text-sm font-bold transition hover:bg-black/5"
                 >
@@ -150,12 +157,37 @@ export default function EcowareLayout({ children }) {
                   About
                 </Link>
 
-                <Link
-                  href="/"
-                  className="ml-2 rounded-full border border-black px-6 py-3 text-sm font-bold transition hover:bg-black hover:text-white"
+                <a
+                  href="https://www.shakti-foods.com"
+                  className="
+                    ml-2
+                    flex
+                    items-center
+                    gap-2
+                    rounded-full
+                    border
+                    border-black
+                    px-4
+                    py-2
+                    text-sm
+                    font-bold
+                    transition
+                    hover:bg-black
+                    hover:text-white
+                  "
                 >
-                  Shakti Foods
-                </Link>
+                  <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white">
+                    <Image
+                      src="/images/logo-shakti.png"
+                      alt=""
+                      fill
+                      sizes="28px"
+                      className="object-contain p-[2px]"
+                    />
+                  </span>
+
+                  <span>Shakti Foods</span>
+                </a>
               </nav>
 
               {/* Actions */}
@@ -221,6 +253,13 @@ export default function EcowareLayout({ children }) {
                   </Link>
 
                   <Link
+                    href="/ecoware/sustainability"
+                    className="transition hover:text-black"
+                  >
+                    Sustainability
+                  </Link>
+
+                  <Link
                     href="/ecoware#about"
                     className="transition hover:text-black"
                   >
@@ -237,15 +276,41 @@ export default function EcowareLayout({ children }) {
                   Looking for premium Basmati rice and Shakti Foods products?
                 </p>
 
-                <Link
-                  href="/"
-                  className="mt-6 inline-flex min-h-[52px] items-center justify-center rounded-full border border-black px-7 text-sm font-black transition duration-300 hover:bg-black hover:text-white"
+                <a
+                  href="https://www.shakti-foods.com"
+                  className="
+                    mt-6
+                    inline-flex
+                    min-h-[52px]
+                    items-center
+                    justify-center
+                    gap-3
+                    rounded-full
+                    border
+                    border-black
+                    px-5
+                    text-sm
+                    font-black
+                    transition
+                    duration-300
+                    hover:bg-black
+                    hover:text-white
+                  "
                 >
-                  Visit Shakti Foods
-                  <span className="ml-2" aria-hidden="true">
-                    →
+                  <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-white">
+                    <Image
+                      src="/images/logo-shakti.png"
+                      alt=""
+                      fill
+                      sizes="32px"
+                      className="object-contain p-[2px]"
+                    />
                   </span>
-                </Link>
+
+                  <span>Visit Shakti Foods</span>
+
+                  <span aria-hidden="true">→</span>
+                </a>
               </div>
             </div>
           </div>

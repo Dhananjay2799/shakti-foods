@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
@@ -20,6 +21,10 @@ const links = [
   {
     href: "/ecoware#about",
     label: "About"
+  },
+  {
+    href: "/ecoware/sustainability",
+    label: "Sustainability"
   }
 ];
 
@@ -107,22 +112,40 @@ export default function EcowareMobileMenu() {
             </div>
 
             <div className="mt-2 border-t border-black/10 pt-3">
-              <Link
-                href="/"
+              <a
+                href="https://www.shakti-foods.com"
                 onClick={closeMenu}
                 className="
-                  flex w-full items-center justify-center
+                  flex
+                  w-full
+                  items-center
+                  justify-center
+                  gap-3
                   rounded-full
-                  border border-black
-                  px-5 py-3
-                  text-sm font-black
+                  border
+                  border-black
+                  px-5
+                  py-2.5
+                  text-sm
+                  font-black
                   text-black
                   transition
-                  hover:bg-black hover:text-white
+                  hover:bg-black
+                  hover:text-white
                 "
               >
-                Visit Shakti Foods
-              </Link>
+                <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-white">
+                  <Image
+                    src="/images/logo-shakti.png"
+                    alt=""
+                    fill
+                    sizes="32px"
+                    className="object-contain p-[2px]"
+                  />
+                </span>
+
+                <span>Visit Shakti Foods</span>
+              </a>
             </div>
           </div>
         </>
