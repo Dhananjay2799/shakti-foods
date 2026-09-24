@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   acceptWholesaleQuote,
   declineWholesaleQuote
-} from "@/app/(storefront)/wholesale/quote/actions";
+} from "@/app/wholesale/quote/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +66,7 @@ export default async function WholesaleQuotePage({
       id,
       inquiry_id,
       quote_number,
+      storefront,
       response_token,
       status,
       customer_name,
@@ -117,6 +118,14 @@ export default async function WholesaleQuotePage({
     notFound();
   }
 
+  const isEcoware =
+    quote.storefront === "ecoware";
+
+  const brandName =
+    isEcoware
+      ? "Simpli Ecoware"
+      : "Shakti Foods";
+
   const isExpired =
     quote.valid_until &&
     new Date(
@@ -144,8 +153,20 @@ export default async function WholesaleQuotePage({
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 md:py-20">
       <div className="rounded-[2rem] bg-white p-6 shadow-soft md:p-10">
-        <div className="text-xs font-bold uppercase tracking-[.18em] text-black/40">
-          Shakti Foods Wholesale
+        <div className="border-b border-black/10 pb-6">
+          <div className="text-xs font-black uppercase tracking-[.22em] text-black/45">
+            {brandName}
+          </div>
+
+          <div className="mt-1 text-sm text-black/50">
+            {isEcoware
+              ? "Good for Earth, Good for You"
+              : "Power of Purity"}
+          </div>
+        </div>
+
+        <div className="mt-8 text-xs font-bold uppercase tracking-[.18em] text-black/40">
+          Wholesale Quote
         </div>
 
         <h1 className="mt-2 font-display text-4xl font-bold text-black md:text-5xl">

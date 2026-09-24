@@ -359,10 +359,6 @@ export async function createWholesaleQuote(
     );
   }
 
-  /*
-   * Convert entered dollar amounts into integer
-   * cents before storing money in PostgreSQL.
-   */
   const unitPriceCents =
     Math.round(unitPrice * 100);
 
@@ -396,11 +392,6 @@ export async function createWholesaleQuote(
   const supabase =
     createSupabaseAdmin();
 
-        /*
-    * Product identity and title are loaded
-    * from Supabase. Never trust a product
-    * name submitted by the browser.
-    */
     const {
       data: quoteProduct,
       error: quoteProductError
@@ -445,11 +436,6 @@ export async function createWholesaleQuote(
       );
     }
 
-  /*
-   * Reload the inquiry on the server.
-   * Customer identity must never be trusted
-   * from hidden browser fields.
-   */
   const {
     data: inquiry,
     error: inquiryError
@@ -460,7 +446,8 @@ export async function createWholesaleQuote(
       customer_name,
       business_name,
       email,
-      phone
+      phone,
+      storefront
     `)
     .eq("id", inquiryId)
     .maybeSingle();
@@ -483,12 +470,6 @@ export async function createWholesaleQuote(
     );
   }
 
-  /*
-   * Generate a human-readable quote number.
-   *
-   * Example:
-   * WQ-20260821-A1B2C3D4
-   */
   const quoteNumber =
     `WQ-${new Date()
       .toISOString()
@@ -506,6 +487,9 @@ export async function createWholesaleQuote(
     .insert({
       inquiry_id:
         inquiry.id,
+
+      storefront:
+        inquiry.storefront || "shakti",
 
       quote_number:
         quoteNumber,
@@ -602,10 +586,6 @@ export async function createWholesaleQuote(
       itemError
     );
 
-    /*
-     * Don't leave an empty quote behind if its
-     * first line item could not be created.
-     */
     await supabase
       .from("wholesale_quotes")
       .delete()
@@ -781,12 +761,6 @@ export async function sendWholesaleQuote(
 
   const inquiryUpdate = {
     status: "quoted",
-
-    /*
-    * Sending a new quote reopens the
-    * opportunity. It is no longer won
-    * or lost until the customer responds.
-    */
     won_at: null,
     lost_at: null
   };
@@ -846,10 +820,6 @@ export async function convertWholesaleQuoteToOrder(
   const supabase =
     createSupabaseAdmin();
 
-  /*
-   * Load the accepted quote and its historical
-   * line-item pricing.
-   */
   const {
     data: quote,
     error: quoteError
@@ -859,6 +829,7 @@ export async function convertWholesaleQuoteToOrder(
       id,
       inquiry_id,
       quote_number,
+      storefront,
       status,
       customer_name,
       business_name,
@@ -901,11 +872,6 @@ export async function convertWholesaleQuoteToOrder(
     );
   }
 
-  /*
-   * Idempotency:
-   * if this quote was already converted,
-   * never create another order.
-   */
   if (
     quote.converted_order_id
   ) {
@@ -944,9 +910,6 @@ export async function convertWholesaleQuoteToOrder(
     );
   }
 
-  /*
-   * Load inquiry delivery information.
-   */
   const {
     data: inquiry,
     error: inquiryError
@@ -971,12 +934,6 @@ export async function convertWholesaleQuoteToOrder(
     );
   }
 
-  /*
-   * Create the order using the accepted quote
-   * as the financial source of truth.
-   *
-   * Do NOT recalculate from current product prices.
-   */
   const shippingAddress =
     inquiry &&
     (
@@ -1022,6 +979,12 @@ export async function convertWholesaleQuoteToOrder(
   } = await supabase
     .from("orders")
     .insert({
+      storefront:
+        quote.storefront || "shakti",
+
+      order_type:
+        "wholesale",
+
       payment_provider:
         "wholesale",
 
@@ -1088,9 +1051,6 @@ export async function convertWholesaleQuoteToOrder(
     );
   }
 
-  /*
-   * Preserve quoted prices exactly.
-   */
   const orderItems =
     items.map((item) => ({
       order_id:
@@ -1128,9 +1088,6 @@ export async function convertWholesaleQuoteToOrder(
       itemInsertError
     );
 
-    /*
-     * Clean up the incomplete order.
-     */
     await supabase
       .from("orders")
       .delete()
@@ -1148,10 +1105,6 @@ export async function convertWholesaleQuoteToOrder(
   const now =
     new Date().toISOString();
 
-  /*
-   * Mark the quote converted only after
-   * the order and all line items exist.
-   */
   const {
     data: convertedQuote,
     error: conversionError
@@ -1189,10 +1142,6 @@ export async function convertWholesaleQuoteToOrder(
     conversionError ||
     !convertedQuote
   ) {
-    /*
-     * Another request may have converted
-     * this quote concurrently.
-     */
     const {
       data: latestQuote
     } = await supabase
@@ -1210,10 +1159,6 @@ export async function convertWholesaleQuoteToOrder(
       latestQuote
         ?.converted_order_id
     ) {
-      /*
-       * Remove our duplicate candidate order
-       * and use the already-converted order.
-       */
       await supabase
         .from("order_items")
         .delete()
@@ -1235,10 +1180,6 @@ export async function convertWholesaleQuoteToOrder(
       );
     }
 
-    /*
-     * Conversion failed for another reason.
-     * Don't leave the orphan order.
-     */
     await supabase
       .from("order_items")
       .delete()

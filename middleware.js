@@ -15,6 +15,12 @@ export async function middleware(request) {
     return updateSession(request);
   }
 
+  // Exact exception for the customer quote response page so it serves directly
+  // from app/(storefront)/wholesale/quote/page.js without being rewritten to /ecoware/wholesale/quote.
+  if (pathname === "/wholesale/quote") {
+    return NextResponse.next();
+  }
+
   const hostname = (request.headers.get("host") || "")
     .split(":")[0]
     .toLowerCase();

@@ -42,9 +42,6 @@ export default function ShippingForm({ order }) {
       Number(firstRate.amount || 0) -
       Number(secondRate.amount || 0)
   );
-
-  console.log("ShippingForm order:", order);
-  console.log("Order ID:", order.id);
   
   useEffect(() => {
     let isActive = true;

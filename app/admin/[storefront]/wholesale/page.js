@@ -113,6 +113,7 @@ export default async function WholesalePage({
       created_at,
       updated_at
     `)
+    .eq("storefront", storefront.id)
     .order("created_at", {
       ascending: false
     });
@@ -133,7 +134,8 @@ export default async function WholesalePage({
   const { data: allInquiries, error: countsError } =
     await supabase
       .from("wholesale_inquiries")
-      .select("status");
+      .select("status")
+      .eq("storefront", storefront.id);
 
   if (countsError) {
     console.error(

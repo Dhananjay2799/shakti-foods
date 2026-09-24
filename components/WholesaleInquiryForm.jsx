@@ -24,7 +24,8 @@ const initialForm = {
 
 export default function WholesaleInquiryForm({
   productId = "",
-  productName = ""
+  productName = "",
+  storefront = "shakti_foods"
 }) {
   const [form, setForm] =
     useState(initialForm);
@@ -72,6 +73,7 @@ export default function WholesaleInquiryForm({
             body:
               JSON.stringify({
                 productId,
+                storefront,
 
                 customerName:
                   form.customerName,

@@ -145,6 +145,7 @@ export async function updateWholesaleInquiry(
         lost_at
         `)
     .eq("id", inquiryId)
+    .eq("storefront", WHOLESALE_STOREFRONT)
     .maybeSingle();
 
   if (currentInquiryError) {
@@ -183,7 +184,8 @@ export async function updateWholesaleInquiry(
 
       ...timestampUpdates
     })
-    .eq("id", inquiryId);
+    .eq("id", inquiryId)
+    .eq("storefront", WHOLESALE_STOREFRONT);
 
   if (updateError) {
     console.error(
@@ -469,6 +471,7 @@ export async function createWholesaleQuote(
       phone
     `)
     .eq("id", inquiryId)
+    .eq("storefront", WHOLESALE_STOREFRONT)
     .maybeSingle();
 
   if (inquiryError) {
@@ -665,6 +668,7 @@ export async function sendWholesaleQuote(
       id,
       inquiry_id,
       quote_number,
+      storefront,
       response_token,
       status,
       customer_name,
@@ -795,6 +799,10 @@ export async function sendWholesaleQuote(
       "id",
       quote.inquiry_id
     )
+    .eq(
+      "storefront",
+      WHOLESALE_STOREFRONT
+    )
     .maybeSingle();
 
   const inquiryUpdate = {
@@ -822,6 +830,10 @@ export async function sendWholesaleQuote(
     .eq(
       "id",
       quote.inquiry_id
+    )
+    .eq(
+      "storefront",
+      WHOLESALE_STOREFRONT
     );
 
   if (inquiryUpdateError) {
@@ -983,6 +995,10 @@ export async function convertWholesaleQuoteToOrder(
     .eq(
       "id",
       quote.inquiry_id
+    )
+    .eq(
+      "storefront",
+      WHOLESALE_STOREFRONT
     )
     .maybeSingle();
 

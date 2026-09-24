@@ -37,6 +37,7 @@ async function loadActionableQuote(token) {
       id,
       inquiry_id,
       quote_number,
+      storefront,
       status,
       customer_name,
       business_name,
@@ -187,16 +188,11 @@ export async function acceptWholesaleQuote(
     .eq(
       "id",
       quote.inquiry_id
+    )
+    .eq(
+      "storefront",
+      quote.storefront
     );
-
-  console.log(
-    "Wholesale inquiry marked won:",
-    {
-      inquiryId:
-        quote.inquiry_id,
-      inquiryError
-    }
-  );
 
   if (inquiryError) {
     throw new Error(
@@ -205,16 +201,21 @@ export async function acceptWholesaleQuote(
     );
   }
 
+  const adminWholesaleBase =
+    quote.storefront === "ecoware"
+      ? "/admin/ecoware/wholesale"
+      : "/admin/wholesale";
+
   revalidatePath(
     `/wholesale/quote`
   );
 
   revalidatePath(
-    `/admin/wholesale/${quote.inquiry_id}`
+    `${adminWholesaleBase}/${quote.inquiry_id}`
   );
 
   revalidatePath(
-    "/admin/wholesale"
+    adminWholesaleBase
   );
 
   redirect(
@@ -224,24 +225,12 @@ export async function acceptWholesaleQuote(
   );
 }
 
-console.log(
-  "Accept wholesale quote action started"
-);
-
 export async function declineWholesaleQuote(
   formData
 ) {
   const token =
     cleanToken(
       formData.get("token")
-    );
-
-    console.log(
-        "Accept quote token received:",
-        {
-            tokenPresent:
-            Boolean(token)
-        }
     );
 
   if (!token) {
@@ -257,19 +246,6 @@ export async function declineWholesaleQuote(
   } =
     await loadActionableQuote(
       token
-    );
-
-    console.log(
-        "Accept quote lookup:",
-        {
-            quoteId:
-            quote?.id,
-            quoteNumber:
-            quote?.quote_number,
-            status:
-            quote?.status,
-            actionable
-        }
     );
 
   if (!actionable) {
@@ -304,14 +280,6 @@ export async function declineWholesaleQuote(
     .select("id")
     .maybeSingle();
 
-    console.log(
-    "Accept quote database result:",
-    {
-        updatedQuote,
-        quoteUpdateError
-    }
-    );
-
   if (
     quoteUpdateError ||
     !updatedQuote
@@ -336,6 +304,10 @@ export async function declineWholesaleQuote(
     .eq(
       "id",
       quote.inquiry_id
+    )
+    .eq(
+      "storefront",
+      quote.storefront
     );
 
   if (inquiryError) {
@@ -345,16 +317,21 @@ export async function declineWholesaleQuote(
     );
   }
 
+  const adminWholesaleBase =
+    quote.storefront === "ecoware"
+      ? "/admin/ecoware/wholesale"
+      : "/admin/wholesale";
+
   revalidatePath(
     `/wholesale/quote`
   );
 
   revalidatePath(
-    `/admin/wholesale/${quote.inquiry_id}`
+    `${adminWholesaleBase}/${quote.inquiry_id}`
   );
 
   revalidatePath(
-    "/admin/wholesale"
+    adminWholesaleBase
   );
 
   redirect(

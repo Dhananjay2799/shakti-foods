@@ -31,16 +31,18 @@ function normalizeText(value, maxLength = 500) {
     .slice(0, maxLength);
 }
 
-function generateTrackingUrl(
-  carrier,
-  trackingNumber
-) {
+function getAdminBasePath(storefront) {
+  return storefront === "ecoware"
+    ? "/admin/ecoware"
+    : "/admin/shakti-foods";
+}
+
+function generateTrackingUrl(carrier, trackingNumber) {
   if (!trackingNumber) {
     return null;
   }
 
-  const encodedTrackingNumber =
-    encodeURIComponent(trackingNumber);
+  const encodedTrackingNumber = encodeURIComponent(trackingNumber);
 
   switch (carrier) {
     case "ups":
@@ -74,39 +76,23 @@ function generateTrackingUrl(
   }
 }
 
-
-function getStatusTimestampUpdates(
-  previousStatus,
-  nextStatus
-) {
+function getStatusTimestampUpdates(previousStatus, nextStatus) {
   const now = new Date().toISOString();
   const updates = {};
 
-  if (
-    nextStatus === "packed" &&
-    previousStatus !== "packed"
-  ) {
+  if (nextStatus === "packed" && previousStatus !== "packed") {
     updates.packed_at = now;
   }
 
-  if (
-    nextStatus === "shipped" &&
-    previousStatus !== "shipped"
-  ) {
+  if (nextStatus === "shipped" && previousStatus !== "shipped") {
     updates.shipped_at = now;
   }
 
-  if (
-    nextStatus === "delivered" &&
-    previousStatus !== "delivered"
-  ) {
+  if (nextStatus === "delivered" && previousStatus !== "delivered") {
     updates.delivered_at = now;
   }
 
-  if (
-    nextStatus === "canceled" &&
-    previousStatus !== "canceled"
-  ) {
+  if (nextStatus === "canceled" && previousStatus !== "canceled") {
     updates.canceled_at = now;
   }
 
@@ -116,10 +102,15 @@ function getStatusTimestampUpdates(
 export async function updateOrderDetails(formData) {
   await requireAuthenticatedAdmin();
 
-  const orderId = normalizeText(
-    formData.get("orderId"),
-    100
+  const orderId = normalizeText(formData.get("orderId"), 100);
+
+  const requestedStorefront = normalizeText(
+    formData.get("storefront"),
+    50
   );
+
+  const storefront =
+    requestedStorefront === "ecoware" ? "ecoware" : "shakti_foods";
 
   const fulfillmentStatus = normalizeText(
     formData.get("fulfillmentStatus"),
@@ -150,24 +141,12 @@ export async function updateOrderDetails(formData) {
     throw new Error("Missing order ID.");
   }
 
-  if (
-    !allowedStatuses.includes(
-      fulfillmentStatus
-    )
-  ) {
-    throw new Error(
-      "Invalid fulfillment status."
-    );
+  if (!allowedStatuses.includes(fulfillmentStatus)) {
+    throw new Error("Invalid fulfillment status.");
   }
 
-  if (
-    !allowedCarriers.includes(
-      shippingCarrier
-    )
-  ) {
-    throw new Error(
-      "Invalid shipping carrier."
-    );
+  if (!allowedCarriers.includes(shippingCarrier)) {
+    throw new Error("Invalid shipping carrier.");
   }
 
   if (
@@ -182,20 +161,20 @@ export async function updateOrderDetails(formData) {
 
   const supabase = createSupabaseAdmin();
 
-  const {
-    data: existingOrder,
-    error: readError
-  } = await supabase
+  const { data: existingOrder, error: readError } = await supabase
     .from("orders")
-    .select(`
+    .select(
+      `
       id,
       fulfillment_status,
       packed_at,
       shipped_at,
       delivered_at,
       canceled_at
-    `)
+    `
+    )
     .eq("id", orderId)
+    .eq("storefront", storefront)
     .single();
 
   if (readError || !existingOrder) {
@@ -215,42 +194,28 @@ export async function updateOrderDetails(formData) {
     trackingNumber
   );
 
-  const timestampUpdates =
-    getStatusTimestampUpdates(
-      existingOrder.fulfillment_status,
-      fulfillmentStatus
-    );
+  const timestampUpdates = getStatusTimestampUpdates(
+    existingOrder.fulfillment_status,
+    fulfillmentStatus
+  );
 
   const updatePayload = {
-    fulfillment_status:
-      fulfillmentStatus,
-
-    shipping_carrier:
-      shippingCarrier || null,
-
-    tracking_number:
-      trackingNumber || null,
-
-    tracking_url:
-      trackingUrl,
-
-    internal_notes:
-      internalNotes || null,
-
-    updated_at:
-      new Date().toISOString(),
-
+    fulfillment_status: fulfillmentStatus,
+    shipping_carrier: shippingCarrier || null,
+    tracking_number: trackingNumber || null,
+    tracking_url: trackingUrl,
+    internal_notes: internalNotes || null,
+    updated_at: new Date().toISOString(),
     ...timestampUpdates
   };
 
-  const {
-    data: updatedOrder,
-    error: updateError
-  } = await supabase
+  const { data: updatedOrder, error: updateError } = await supabase
     .from("orders")
     .update(updatePayload)
     .eq("id", orderId)
-    .select(`
+    .eq("storefront", storefront)
+    .select(
+      `
       id,
       fulfillment_status,
       shipping_carrier,
@@ -261,7 +226,8 @@ export async function updateOrderDetails(formData) {
       delivered_at,
       canceled_at,
       updated_at
-    `)
+    `
+    )
     .single();
 
   if (updateError) {
@@ -271,27 +237,21 @@ export async function updateOrderDetails(formData) {
     );
 
     throw new Error(
-      updateError.message ||
-        "Unable to update order details."
+      updateError.message || "Unable to update order details."
     );
   }
 
   /*
- * Send customer email after
- * the database update succeeds.
- */
-if (
-  existingOrder.fulfillment_status !==
-  fulfillmentStatus
-) {
-  try {
-    const [
-      emailOrderResult,
-      orderItemsResult
-    ] = await Promise.all([
-      supabase
-        .from("orders")
-        .select(`
+   * Send customer email after
+   * the database update succeeds.
+   */
+  if (existingOrder.fulfillment_status !== fulfillmentStatus) {
+    try {
+      const [emailOrderResult, orderItemsResult] = await Promise.all([
+        supabase
+          .from("orders")
+          .select(
+            `
           id,
           customer_name,
           customer_email,
@@ -300,88 +260,68 @@ if (
           shipping_carrier,
           tracking_number,
           tracking_url
-        `)
-        .eq("id", orderId)
-        .single(),
+        `
+          )
+          .eq("id", orderId)
+          .eq("storefront", storefront)
+          .single(),
 
-      supabase
-        .from("order_items")
-        .select(`
+        supabase
+          .from("order_items")
+          .select(
+            `
           product_name,
           quantity,
           line_total
-        `)
-        .eq("order_id", orderId)
-    ]);
+        `
+          )
+          .eq("order_id", orderId)
+      ]);
 
-    if (emailOrderResult.error) {
-      throw new Error(
-        emailOrderResult.error.message ||
-          "Unable to load order email details."
-      );
-    }
+      if (emailOrderResult.error) {
+        throw new Error(
+          emailOrderResult.error.message ||
+            "Unable to load order email details."
+        );
+      }
 
-    if (orderItemsResult.error) {
-      throw new Error(
-        orderItemsResult.error.message ||
-          "Unable to load order items for email."
-      );
-    }
+      if (orderItemsResult.error) {
+        throw new Error(
+          orderItemsResult.error.message ||
+            "Unable to load order items for email."
+        );
+      }
 
-    const emailOrder =
-      emailOrderResult.data;
+      const emailOrder = emailOrderResult.data;
+      const orderItems = orderItemsResult.data || [];
 
-    const orderItems =
-      orderItemsResult.data || [];
-
-    if (emailOrder?.customer_email) {
-      const email =
-        buildOrderStatusEmail({
+      if (emailOrder?.customer_email) {
+        const email = buildOrderStatusEmail({
           order: emailOrder,
           items: orderItems
         });
 
-      await sendTransactionalEmail({
-        to: emailOrder.customer_email,
-        subject: email.subject,
-        html: email.html,
-        text: email.text,
-        idempotencyKey:
-          `order-status/${orderId}/${fulfillmentStatus}/${updatedOrder.updated_at}`
-      });
+        await sendTransactionalEmail({
+          to: emailOrder.customer_email,
+          subject: email.subject,
+          html: email.html,
+          text: email.text,
+          idempotencyKey: `order-status/${orderId}/${fulfillmentStatus}/${updatedOrder.updated_at}`
+        });
+      }
+    } catch (emailError) {
+      console.error(
+        "Unable to send customer email:",
+        emailError
+      );
     }
-  } catch (emailError) {
-    console.error(
-      "Unable to send customer email:",
-      emailError
-    );
   }
-}
 
-  /*
-   * Future Kafka integration point:
-   *
-   * Publish an event only after the database update succeeds.
-   *
-   * Example:
-   * await publishOrderEvent({
-   *   eventType:
-   *     `order.${fulfillmentStatus}`,
-   *   orderId,
-   *   previousStatus:
-   *     existingOrder.fulfillment_status,
-   *   newStatus:
-   *     fulfillmentStatus,
-   *   occurredAt:
-   *     updatedOrder.updated_at
-   * });
-   */
+  const adminBasePath = getAdminBasePath(storefront);
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/orders");
-  revalidatePath(
-    `/admin/orders/${orderId}`
-  );
+  revalidatePath(adminBasePath);
+  revalidatePath(`${adminBasePath}/orders`);
+  revalidatePath(`${adminBasePath}/orders/${orderId}`);
 
   return {
     success: true,
@@ -393,156 +333,124 @@ if (
  * Keep this action temporarily so existing forms continue
  * working until the order-details page is updated.
  */
-export async function updateFulfillmentStatus(
-  formData
-) {
+export async function updateFulfillmentStatus(formData) {
   await requireAuthenticatedAdmin();
-  
-  const orderId = normalizeText(
-    formData.get("orderId"),
-    100
+
+  const orderId = normalizeText(formData.get("orderId"), 100);
+
+  const requestedStorefront = normalizeText(
+    formData.get("storefront"),
+    50
   );
 
-  const fulfillmentStatus =
-    normalizeText(
-      formData.get("fulfillmentStatus"),
-      30
-    );
+  const storefront =
+    requestedStorefront === "ecoware" ? "ecoware" : "shakti_foods";
+
+  const fulfillmentStatus = normalizeText(
+    formData.get("fulfillmentStatus"),
+    30
+  );
 
   const supabase = createSupabaseAdmin();
 
-  const {
-    data: existingOrder,
-    error
-  } = await supabase
+  const { data: existingOrder, error } = await supabase
     .from("orders")
-    .select(`
+    .select(
+      `
       shipping_carrier,
       tracking_number,
       internal_notes
-    `)
+    `
+    )
     .eq("id", orderId)
+    .eq("storefront", storefront)
     .single();
 
   if (error || !existingOrder) {
-    throw new Error(
-      error?.message ||
-        "Unable to load order."
-    );
+    throw new Error(error?.message || "Unable to load order.");
   }
 
-  const combinedFormData =
-    new FormData();
-
-  combinedFormData.set(
-    "orderId",
-    orderId
-  );
-
-  combinedFormData.set(
-    "fulfillmentStatus",
-    fulfillmentStatus
-  );
-
+  const combinedFormData = new FormData();
+  combinedFormData.set("orderId", orderId);
+  combinedFormData.set("storefront", storefront);
+  combinedFormData.set("fulfillmentStatus", fulfillmentStatus);
   combinedFormData.set(
     "shippingCarrier",
     existingOrder.shipping_carrier || ""
   );
-
   combinedFormData.set(
     "trackingNumber",
     existingOrder.tracking_number || ""
   );
-
   combinedFormData.set(
     "internalNotes",
     existingOrder.internal_notes || ""
   );
 
-  return updateOrderDetails(
-    combinedFormData
-  );
+  return updateOrderDetails(combinedFormData);
 }
 
-const allowedWholesalePaymentMethods =
-  Object.freeze([
-    "ach",
-    "bank_transfer",
-    "check",
-    "cash",
-    "invoice",
-    "manual"
-  ]);
+const allowedWholesalePaymentMethods = Object.freeze([
+  "ach",
+  "bank_transfer",
+  "check",
+  "cash",
+  "invoice",
+  "manual"
+]);
 
-export async function recordWholesalePayment(
-  formData
-) {
+export async function recordWholesalePayment(formData) {
   await requireAuthenticatedAdmin();
 
-  const orderId =
-    normalizeText(
-      formData.get("orderId"),
-      100
-    );
+  const orderId = normalizeText(formData.get("orderId"), 100);
 
-  const paymentMethod =
-    normalizeText(
-      formData.get("paymentMethod"),
-      50
-    ).toLowerCase();
+  const requestedStorefront = normalizeText(
+    formData.get("storefront"),
+    50
+  );
 
-  const paymentReference =
-    normalizeText(
-      formData.get("paymentReference"),
-      300
-    );
+  const storefront =
+    requestedStorefront === "ecoware" ? "ecoware" : "shakti_foods";
+
+  const paymentMethod = normalizeText(
+    formData.get("paymentMethod"),
+    50
+  ).toLowerCase();
+
+  const paymentReference = normalizeText(
+    formData.get("paymentReference"),
+    300
+  );
 
   if (!orderId) {
-    throw new Error(
-      "Missing order ID."
-    );
+    throw new Error("Missing order ID.");
   }
 
-  if (
-    !allowedWholesalePaymentMethods.includes(
-      paymentMethod
-    )
-  ) {
-    throw new Error(
-      "Select a valid wholesale payment method."
-    );
+  if (!allowedWholesalePaymentMethods.includes(paymentMethod)) {
+    throw new Error("Select a valid wholesale payment method.");
   }
 
-  const supabase =
-    createSupabaseAdmin();
+  const supabase = createSupabaseAdmin();
 
-  const {
-    data: order,
-    error: orderError
-  } = await supabase
+  const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select(`
+    .select(
+      `
       id,
+      storefront,
       payment_provider,
       payment_status,
       payment_method,
       payment_reference,
       paid_at
-    `)
-    .eq(
-      "id",
-      orderId
+    `
     )
+    .eq("id", orderId)
+    .eq("storefront", storefront)
     .maybeSingle();
 
-  if (
-    orderError ||
-    !order
-  ) {
-    throw new Error(
-      orderError?.message ||
-        "Order was not found."
-    );
+  if (orderError || !order) {
+    throw new Error(orderError?.message || "Order was not found.");
   }
 
   /*
@@ -550,26 +458,20 @@ export async function recordWholesalePayment(
    * to wholesale orders. Stripe and PayPal
    * remain controlled by their payment flows.
    */
-  if (
-    order.payment_provider !==
-    "wholesale"
-  ) {
+  if (order.payment_provider !== "wholesale") {
     throw new Error(
       "Manual payment recording is available only for wholesale orders."
     );
   }
 
+  const adminBasePath = getAdminBasePath(storefront);
+
   /*
    * Idempotency:
    * Don't replace an already-recorded payment.
    */
-  if (
-    order.payment_status === "paid" &&
-    order.paid_at
-  ) {
-    revalidatePath(
-      `/admin/orders/${orderId}`
-    );
+  if (order.payment_status === "paid" && order.paid_at) {
+    revalidatePath(`${adminBasePath}/orders/${orderId}`);
 
     return {
       success: true,
@@ -577,72 +479,48 @@ export async function recordWholesalePayment(
     };
   }
 
-  const now =
-    new Date().toISOString();
+  const now = new Date().toISOString();
 
-  const {
-    data: updatedOrder,
-    error: updateError
-  } = await supabase
+  const { data: updatedOrder, error: updateError } = await supabase
     .from("orders")
     .update({
-      payment_status:
-        "paid",
-
-      payment_method:
-        paymentMethod,
-
-      payment_reference:
-        paymentReference ||
-        null,
-
-      paid_at:
-        now,
-
-      updated_at:
-        now
+      payment_status: "paid",
+      payment_method: paymentMethod,
+      payment_reference: paymentReference || null,
+      paid_at: now,
+      updated_at: now
     })
-    .eq(
-      "id",
-      orderId
-    )
-    .eq(
-      "payment_provider",
-      "wholesale"
-    )
-    .select(`
+    .eq("id", orderId)
+    .eq("storefront", storefront)
+    .eq("payment_provider", "wholesale")
+    .neq("payment_status", "paid")
+    .select(
+      `
       id,
       payment_status,
       payment_method,
       payment_reference,
       paid_at,
       updated_at
-    `)
-    .single();
+    `
+    )
+    .maybeSingle();
 
-  if (updateError) {
+  if (updateError || !updatedOrder) {
     console.error(
       "Unable to record wholesale payment:",
       updateError
     );
 
     throw new Error(
-      updateError.message ||
-        "Unable to record wholesale payment."
+      updateError?.message ||
+        "Wholesale payment could not be recorded."
     );
   }
 
-  revalidatePath(
-    "/admin"
-  );
-
-  revalidatePath(
-    "/admin/orders"
-  );
-
-  revalidatePath(
-    `/admin/orders/${orderId}`
-  );
+  revalidatePath(adminBasePath);
+  revalidatePath(`${adminBasePath}/orders`);
+  revalidatePath(`${adminBasePath}/orders/${orderId}`);
 
   return {
     success: true,

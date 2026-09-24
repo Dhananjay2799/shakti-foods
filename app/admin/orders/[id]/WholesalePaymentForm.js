@@ -1,35 +1,23 @@
 "use client";
 
-import {
-  useState
-} from "react";
-
-import {
-  recordWholesalePayment
-} from "@/app/admin/orders/actions";
+import { useState } from "react";
+import { recordWholesalePayment } from "@/app/admin/orders/actions";
 
 const paymentMethodLabels = {
   ach: "ACH",
-  bank_transfer:
-    "Bank Transfer / Wire",
+  bank_transfer: "Bank Transfer / Wire",
   check: "Check",
   cash: "Cash",
   invoice: "Invoice / Net Terms",
   manual: "Manual / Other"
 };
 
-export default function WholesalePaymentForm({
-  order
-}) {
-  const [paymentMethod, setPaymentMethod] =
-    useState(
-      order.payment_method ||
-        ""
-    );
+export default function WholesalePaymentForm({ order }) {
+  const [paymentMethod, setPaymentMethod] = useState(
+    order.payment_method || ""
+  );
 
-  const alreadyPaid =
-    order.payment_status ===
-    "paid";
+  const alreadyPaid = order.payment_status === "paid";
 
   if (alreadyPaid) {
     return (
@@ -39,9 +27,7 @@ export default function WholesalePaymentForm({
         </div>
 
         <div className="mt-3 text-lg font-bold text-green-900">
-          {paymentMethodLabels[
-            order.payment_method
-          ] ||
+          {paymentMethodLabels[order.payment_method] ||
             order.payment_method ||
             "Recorded payment"}
         </div>
@@ -49,11 +35,7 @@ export default function WholesalePaymentForm({
         {order.payment_reference ? (
           <div className="mt-2 text-sm text-green-800">
             Reference:{" "}
-            <span className="font-bold">
-              {
-                order.payment_reference
-              }
-            </span>
+            <span className="font-bold">{order.payment_reference}</span>
           </div>
         ) : null}
 
@@ -67,16 +49,13 @@ export default function WholesalePaymentForm({
   }
 
   return (
-    <form
-      action={
-        recordWholesalePayment
-      }
-      className="mt-6 grid gap-4"
-    >
+    <form action={recordWholesalePayment} className="mt-6 grid gap-4">
+      <input type="hidden" name="orderId" value={order.id} />
+
       <input
         type="hidden"
-        name="orderId"
-        value={order.id}
+        name="storefront"
+        value={order.storefront || "shakti_foods"}
       />
 
       <label className="grid gap-2">
@@ -87,41 +66,17 @@ export default function WholesalePaymentForm({
         <select
           name="paymentMethod"
           value={paymentMethod}
-          onChange={(event) =>
-            setPaymentMethod(
-              event.target.value
-            )
-          }
+          onChange={(event) => setPaymentMethod(event.target.value)}
           required
           className="rounded-2xl border border-black/15 bg-white px-4 py-3 font-semibold text-black outline-none focus:border-black"
         >
-          <option value="">
-            Select payment method
-          </option>
-
-          <option value="ach">
-            ACH
-          </option>
-
-          <option value="bank_transfer">
-            Bank Transfer / Wire
-          </option>
-
-          <option value="check">
-            Check
-          </option>
-
-          <option value="cash">
-            Cash
-          </option>
-
-          <option value="invoice">
-            Invoice / Net Terms
-          </option>
-
-          <option value="manual">
-            Manual / Other
-          </option>
+          <option value="">Select payment method</option>
+          <option value="ach">ACH</option>
+          <option value="bank_transfer">Bank Transfer / Wire</option>
+          <option value="check">Check</option>
+          <option value="cash">Cash</option>
+          <option value="invoice">Invoice / Net Terms</option>
+          <option value="manual">Manual / Other</option>
         </select>
       </label>
 
@@ -140,8 +95,7 @@ export default function WholesalePaymentForm({
       </label>
 
       <p className="text-xs leading-5 text-black/45">
-        Only record the payment after
-        confirming that funds were actually
+        Only record the payment after confirming that funds were actually
         received.
       </p>
 

@@ -1,72 +1,366 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import VideoBackground from "./VideoBackground";
+import {
+  ArrowRight,
+  Heart,
+  Leaf,
+  UsersRound
+} from "lucide-react";
 
-function FallingGrains() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: 24 }).map((_, i) => (
-        <span
-          key={i}
-          className="grain-dot"
-          style={{
-            left: `${(i * 17) % 100}%`,
-            top: "-30px",
-            animationDuration: `${8 + (i % 6)}s`,
-            animationDelay: `${(i % 9) * 0.65}s`,
-            ["--x"]: `${((i * 19) % 80) - 40}px`
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+const values = [
+  {
+    icon: Leaf,
+    title: "Pure & Naturally Aged"
+  },
+  {
+    icon: Heart,
+    title: "Brings Families Together"
+  },
+  {
+    icon: UsersRound,
+    title: "A Tradition You Can Trust"
+  }
+];
 
 export default function HeroV3() {
   return (
-    <section className="relative min-h-[100svh] overflow-hidden pt-24 md:pt-28">
-      <VideoBackground
-        src="/videos/rice-farm.mp4"
-        mobileSrc="/videos/rice-farm-mobile.mp4"
-        poster="/nature/rice-fields.svg"
-        overlayClassName="bg-white/68 md:bg-white/58"
-      />
-      <FallingGrains />
+    <>
+      {/* =====================================================
+          MOBILE
+      ====================================================== */}
 
-      <div className="section-pad relative z-10">
-        <div className="container-brand flex min-h-[calc(100svh-6rem)] items-center py-8 md:py-12">
+      <section
+        className="
+          relative
+          w-full
+          overflow-hidden
+          bg-[#faf7f1]
+          lg:hidden
+        "
+      >
+        <div className="relative w-full">
+          <Image
+            src="/images/shakti-hero-mobile.jpg"
+            alt="Shakti Foods Premium Basmati Rice"
+            width={940}
+            height={1672}
+            priority
+            sizes="100vw"
+            className="
+              block
+              h-auto
+              w-full
+            "
+          />
+
+          {/*
+            The buttons are already visually present
+            inside shakti-hero-mobile.jpg.
+
+            These transparent links make them real,
+            accessible, clickable website controls.
+          */}
+
+          <Link
+            href="/products"
+            aria-label="Shop Our Rice"
+            className="
+              absolute
+              left-[6.5%]
+              top-[45.5%]
+              z-20
+              h-[5.7%]
+              w-[39%]
+              rounded-md
+              focus-visible:outline
+              focus-visible:outline-2
+              focus-visible:outline-white
+            "
+          />
+
+          <Link
+            href="/about"
+            aria-label="Our Story"
+            className="
+              absolute
+              left-[6.5%]
+              top-[51.8%]
+              z-20
+              h-[5.7%]
+              w-[39%]
+              rounded-md
+              focus-visible:outline
+              focus-visible:outline-2
+              focus-visible:outline-[#b80d1b]
+            "
+          />
+        </div>
+      </section>
+
+      {/* =====================================================
+          DESKTOP
+      ====================================================== */}
+
+      <section
+        className="
+          relative
+          hidden
+          h-[720px]
+          w-full
+          overflow-hidden
+          bg-[#faf7f1]
+          lg:block
+
+          xl:h-[735px]
+
+          2xl:h-[750px]
+        "
+      >
+        {/* HERO PHOTOGRAPH */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/shakti-hero.jpg"
+            alt="Shakti Foods Premium Basmati Rice"
+            fill
+            priority
+            sizes="100vw"
+            className="
+              object-cover
+              object-[67%_center]
+            "
+          />
+        </div>
+
+        {/* ===================================================
+            LEFT IVORY GRADIENT
+
+            Kept shorter so the food photography stays rich.
+        ==================================================== */}
+
+        <div
+          className="
+            absolute
+            inset-0
+            bg-[linear-gradient(90deg,#faf7f1_0%,#faf7f1_29%,rgba(250,247,241,0.97)_33%,rgba(250,247,241,0.82)_37%,rgba(250,247,241,0.48)_41%,rgba(250,247,241,0.16)_45%,transparent_50%)]
+          "
+        />
+
+        {/* CONTENT */}
+        <div
+          className="
+            relative
+            z-10
+            mx-auto
+            flex
+            h-full
+            max-w-[1500px]
+            items-center
+            px-10
+            pt-[68px]
+
+            xl:px-14
+
+            2xl:max-w-[1600px]
+          "
+        >
           <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.75 }}
-            className="mobile-card w-full max-w-3xl rounded-[2rem] bg-white/78 p-5 text-black shadow-soft backdrop-blur-md sm:p-7 md:rounded-[2.5rem] md:p-10"
+            initial={{
+              opacity: 0,
+              y: 18
+            }}
+            animate={{
+              opacity: 1,
+              y: 0
+            }}
+            transition={{
+              duration: 0.6
+            }}
+            className="
+              w-full
+              max-w-[555px]
+            "
           >
-            <h1 className="mobile-title font-display font-bold text-black md:text-6xl xl:text-7xl">
-              Premium rice,
+            {/* EYEBROW */}
+            <div className="flex items-center gap-4">
+              <span
+                className="
+                  text-[11px]
+                  font-black
+                  uppercase
+                  tracking-[0.27em]
+                  text-[#a8661e]
+                "
+              >
+                Premium Basmati Rice
+              </span>
+
+              <span className="h-px w-10 bg-[#c88a3d]" />
+            </div>
+
+            {/* HEADLINE */}
+            <h1
+              className="
+                mt-4
+                font-display
+                text-[62px]
+                font-bold
+                leading-[0.91]
+                tracking-[-0.045em]
+                text-[#15100f]
+
+                xl:text-[66px]
+
+                2xl:text-[70px]
+              "
+            >
+              Good Food
               <br />
-              better motion,
+
+              Brings Us
               <br />
-              stronger brand feel.
+
+              <span className="text-[#bd0d1b]">
+                Together.
+              </span>
             </h1>
 
-            <p className="mt-5 max-w-2xl text-base leading-7 text-black md:mt-6 md:text-lg md:leading-8">
-              A cleaner Shakti Foods storefront with real rice bag size switching,
-              calmer product motion, a shopping cart, and a checkout flow.
+            {/* DESCRIPTION */}
+            <p
+              className="
+                mt-5
+                max-w-[480px]
+                text-[15px]
+                leading-[1.7]
+                text-[#443b37]
+
+                xl:text-base
+              "
+            >
+              Naturally aged and exceptionally
+              fragrant. Shakti Foods brings premium
+              Basmati rice to everyday meals,
+              celebrations, and the people who matter
+              most.
             </p>
 
-            <div className="mt-7 md:mt-8">
+            {/* CTA */}
+            <div className="mt-6 flex items-center gap-3">
               <Link
                 href="/products"
-                className="inline-flex w-full justify-center rounded-full bg-black px-7 py-4 text-center font-bold text-white shadow-soft transition hover:bg-[#333333] sm:w-auto"
+                className="
+                  inline-flex
+                  h-[50px]
+                  items-center
+                  justify-center
+                  gap-3
+                  rounded-md
+                  bg-[#bd0d1b]
+                  px-7
+                  text-sm
+                  font-bold
+                  text-white
+                  shadow-[0_10px_25px_rgba(189,13,27,0.18)]
+                  transition
+                  duration-200
+                  hover:-translate-y-0.5
+                  hover:bg-[#9f0b17]
+                "
               >
-                Explore Products
+                Shop Our Rice
+
+                <ArrowRight
+                  size={17}
+                  strokeWidth={1.8}
+                />
               </Link>
+
+              <Link
+                href="/about"
+                className="
+                  inline-flex
+                  h-[50px]
+                  items-center
+                  justify-center
+                  rounded-md
+                  border
+                  border-[#bd0d1b]
+                  bg-white/75
+                  px-7
+                  text-sm
+                  font-bold
+                  text-[#bd0d1b]
+                  backdrop-blur-sm
+                  transition
+                  duration-200
+                  hover:bg-white
+                "
+              >
+                Our Story
+              </Link>
+            </div>
+
+            {/* TRUST POINTS */}
+            <div
+              className="
+                mt-8
+                border-t
+                border-[#2b1c18]/10
+                pt-5
+              "
+            >
+              <div
+                className="
+                  grid
+                  max-w-[545px]
+                  grid-cols-3
+                  gap-5
+                "
+              >
+                {values.map(
+                  ({
+                    icon: Icon,
+                    title
+                  }) => (
+                    <div
+                      key={title}
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                      "
+                    >
+                      <Icon
+                        size={21}
+                        strokeWidth={1.6}
+                        className="
+                          shrink-0
+                          text-[#bd0d1b]
+                        "
+                      />
+
+                      <span
+                        className="
+                          text-[10px]
+                          font-semibold
+                          leading-[1.35]
+                          text-[#342b28]
+
+                          xl:text-[11px]
+                        "
+                      >
+                        {title}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
             </div>
           </motion.div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

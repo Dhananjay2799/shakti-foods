@@ -209,7 +209,7 @@ export default async function AdminOrdersPage({
                         </span>
                       </td>
                       <td className="px-6 py-4 font-bold text-black">
-                        ${Number(order.total_amount || 0).toFixed(2)}
+                        ${(Number(order.total_amount || 0) / 100).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link

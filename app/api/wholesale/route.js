@@ -19,6 +19,7 @@ function cleanText(value, maxLength = 500) {
 
 function inquiryText(data) {
   return [
+    `Storefront: ${data.storefront || "-"}`,
     `Name: ${data.customerName || "-"}`,
     `Email: ${data.email || "-"}`,
     `Phone: ${data.phone || "-"}`,
@@ -44,6 +45,12 @@ function inquiryText(data) {
 export async function POST(request) {
   try {
     const body = await request.json();
+
+    // 1. Derive storefront and enforce strict boundaries
+    const storefront =
+      body?.storefront === "ecoware"
+        ? "ecoware"
+        : "shakti_foods";
 
     /*
      * Support the new form fields while
@@ -195,6 +202,11 @@ export async function POST(request) {
           "product_id",
           productId
         )
+        // 2. Scope lookup by storefront
+        .eq(
+          "storefront",
+          storefront
+        )
         .is(
           "deleted_at",
           null
@@ -249,6 +261,7 @@ export async function POST(request) {
       product?.product_id || null;
 
     const inquiryData = {
+      storefront,
       productId:
         resolvedProductId,
 
@@ -280,6 +293,9 @@ export async function POST(request) {
     } = await supabase
       .from("wholesale_inquiries")
       .insert({
+        // 3. Storefront explicit insert
+        storefront,
+
         product_id:
           resolvedProductId,
 

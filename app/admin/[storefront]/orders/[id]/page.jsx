@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import FulfillmentForm from "./FulfillmentForm";
-import ShippingForm from "./ShippingForm";
-import WholesalePaymentForm from "./WholesalePaymentForm";
+import FulfillmentForm from "@/app/admin/orders/[id]/FulfillmentForm";
+import ShippingForm from "@/app/admin/orders/[id]/ShippingForm";
+import WholesalePaymentForm from "@/app/admin/orders/[id]/WholesalePaymentForm";
+import { getAdminStorefront } from "@/lib/admin-storefronts";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,17 @@ function formatAddress(address) {
 }
 
 export default async function AdminOrderDetailsPage({ params }) {
-  const orderId = params.id;
+  const resolvedParams = await Promise.resolve(params);
+
+  const storefront = getAdminStorefront(
+    resolvedParams.storefront
+  );
+
+  if (!storefront) {
+    notFound();
+  }
+
+  const orderId = resolvedParams.id;
   const supabase = createSupabaseAdmin();
 
   const [orderResult, itemsResult] = await Promise.all([
@@ -100,11 +111,13 @@ export default async function AdminOrderDetailsPage({ params }) {
           canceled_at,
           created_at,
           updated_at,
-          storefront
+          storefront,
+          order_type
         `
       )
       .eq("id", orderId)
-      .single(),
+      .eq("storefront", storefront.id)
+      .maybeSingle(),
 
     supabase
       .from("order_items")
@@ -123,7 +136,9 @@ export default async function AdminOrderDetailsPage({ params }) {
   ]);
 
   if (orderResult.error || !orderResult.data) {
-    console.error("Unable to load order:", orderResult.error);
+    if (orderResult.error) {
+      console.error("Unable to load order:", orderResult.error);
+    }
     notFound();
   }
 
@@ -133,22 +148,13 @@ export default async function AdminOrderDetailsPage({ params }) {
 
   const order = orderResult.data;
   const orderItems = itemsResult.data || [];
-
-  if (order.storefront === "ecoware") {
-    redirect(`/admin/ecoware/orders/${order.id}`);
-  }
-
-  if (order.storefront === "shakti_foods") {
-    redirect(`/admin/shakti-foods/orders/${order.id}`);
-  }
-
-  notFound();
+  const basePath = `/admin/${storefront.slug}`;
 
   return (
     <main className="min-h-screen bg-[#f8f6f1]">
       <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-12">
         <Link
-          href="/admin/orders"
+          href={`${basePath}/orders`}
           className="inline-flex rounded-full bg-white px-5 py-3 font-bold text-black shadow transition hover:bg-[#f1eadf]"
         >
           ← Back to Orders
@@ -157,7 +163,7 @@ export default async function AdminOrderDetailsPage({ params }) {
         <div className="mt-7 flex flex-wrap items-end justify-between gap-5">
           <div>
             <div className="text-sm font-bold uppercase tracking-[.18em] text-black/55">
-              Order Details
+              {storefront.name} Order Details
             </div>
 
             <h1 className="mt-2 font-display text-4xl font-bold text-black md:text-6xl">
