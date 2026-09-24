@@ -2,60 +2,43 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { ShoppingCart } from "lucide-react";
+
 import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/data";
 import { useInventory } from "@/hooks/useInventory";
 
 export default function ProductCard({
   product,
-  index = 0
+  index = 0,
 }) {
   const { addItem } = useCart();
+  const { getStock, loading } = useInventory();
 
-  const {
-    getStock,
-    loading
-  } = useInventory();
-
-  const liveInventory =
-    getStock(product.id);
+  const liveInventory = getStock(product.id);
 
   const inventoryItem =
-    liveInventory ||
-    product.inventory ||
-    null;
+    liveInventory || product.inventory || null;
 
-  const availableStock =
-    inventoryItem
-      ? Number(
-          inventoryItem.stock_quantity ||
-            0
-        ) -
-        Number(
-          inventoryItem.reserved_quantity ||
-            0
-        )
-      : null;
+  const availableStock = inventoryItem
+    ? Number(inventoryItem.stock_quantity || 0) -
+      Number(inventoryItem.reserved_quantity || 0)
+    : null;
 
-  const inventoryActive =
-    inventoryItem
-      ? inventoryItem.is_active !== false
-      : true;
+  const inventoryActive = inventoryItem
+    ? inventoryItem.is_active !== false
+    : true;
 
   const isOutOfStock =
     Boolean(inventoryItem) &&
-    (
-      !inventoryActive ||
-      availableStock <= 0
-    );
+    (!inventoryActive || availableStock <= 0);
 
   const isLowStock =
     Boolean(inventoryItem) &&
     availableStock > 0 &&
     availableStock <=
       Number(
-        inventoryItem.low_stock_threshold ||
-          0
+        inventoryItem.low_stock_threshold || 0
       );
 
   const canAddToCart =
@@ -68,30 +51,45 @@ export default function ProductCard({
   const hasDiscount =
     product.compareAtPrice &&
     product.unitPrice &&
-    product.compareAtPrice >
-      product.unitPrice;
+    product.compareAtPrice > product.unitPrice;
 
-  const discountPercentage =
-    hasDiscount
-      ? Math.round(
-          (
-            (product.compareAtPrice -
-              product.unitPrice) /
-            product.compareAtPrice
-          ) * 100
-        )
-      : 0;
+  const discountPercentage = hasDiscount
+    ? Math.round(
+        ((product.compareAtPrice -
+          product.unitPrice) /
+          product.compareAtPrice) *
+          100
+      )
+    : 0;
 
-  // Unified merchandising flags supporting various naming conventions
   const isBestSeller = Boolean(
-    product.bestSeller || product.best_seller || product.isBestSeller
+    product.bestSeller ||
+      product.best_seller ||
+      product.isBestSeller
   );
+
   const isNewArrival = Boolean(
-    product.newArrival || product.new_arrival || product.isNewArrival
+    product.newArrival ||
+      product.new_arrival ||
+      product.isNewArrival
   );
+
   const isFeatured = Boolean(
-    product.featured || product.isFeatured || product.is_featured
+    product.featured ||
+      product.isFeatured ||
+      product.is_featured
   );
+
+  const normalizedPack = String(
+    product.packSize ||
+      product.pack_size ||
+      product.badge ||
+      ""
+  ).toLowerCase();
+
+  const isWholesalePack =
+    normalizedPack.includes("50") ||
+    normalizedPack.includes("wholesale");
 
   const wholesaleHref =
     `/contact?product=${encodeURIComponent(
@@ -101,18 +99,16 @@ export default function ProductCard({
     )}&type=wholesale`;
 
   function handleAddToCart() {
-    if (!canAddToCart) {
-      return;
-    }
+    if (!canAddToCart) return;
 
     const added = addItem(
       {
         ...product,
-        storefront: "shakti_foods"
+        storefront: "shakti_foods",
       },
       {
         availableStock,
-        storefront: "shakti_foods"
+        storefront: "shakti_foods",
       }
     );
 
@@ -123,11 +119,10 @@ export default function ProductCard({
       return;
     }
 
-    if (
-      added?.reason === "out_of_stock" ||
-      (!added?.success && isOutOfStock)
-    ) {
-      alert("This product is currently out of stock.");
+    if (!added && isOutOfStock) {
+      alert(
+        "This product is currently out of stock."
+      );
     }
   }
 
@@ -135,49 +130,52 @@ export default function ProductCard({
     <motion.article
       initial={{
         opacity: 0,
-        y: 28
+        y: 18,
       }}
       whileInView={{
         opacity: 1,
-        y: 0
+        y: 0,
       }}
       transition={{
-        delay: index * 0.06,
-        duration: 0.45
+        delay: index * 0.05,
+        duration: 0.4,
       }}
       viewport={{ once: true }}
       whileHover={{
-        y: -5
+        y: -4,
       }}
-      className="group flex h-full flex-col rounded-[1.75rem] bg-white p-4 text-black shadow-soft ring-1 ring-black/5 transition-all duration-300 ease-out hover:shadow-2xl md:rounded-[2rem] md:p-5"
+      className="
+        group
+        flex
+        h-full
+        flex-col
+        rounded-[20px]
+        border
+        border-[#eadfd2]
+        bg-white
+        p-3
+        shadow-[0_10px_28px_rgba(71,46,22,0.06)]
+        transition-shadow
+        duration-300
+        hover:shadow-[0_16px_40px_rgba(71,46,22,0.11)]
+
+        sm:p-4
+      "
     >
+      {/* PRODUCT IMAGE */}
       <Link
         href={`/products/${product.slug}`}
         className="block"
       >
-        <div className="relative h-56 overflow-hidden rounded-[1.4rem] bg-[#faf6ee] sm:h-64 md:h-72 md:rounded-[1.7rem]">
-          {/* Top-Left Merchandising Badges (Best Seller / New) */}
-          <div className="absolute left-3 top-3 z-20 flex max-w-[72%] flex-wrap gap-1.5">
-            {isBestSeller ? (
-              <span className="inline-flex h-7 items-center rounded-full bg-[#b42318] px-3 text-[10px] font-black uppercase tracking-[0.08em] text-white shadow-sm">
-                Best Seller
-              </span>
-            ) : null}
-
-            {isNewArrival ? (
-              <span className="inline-flex h-7 items-center rounded-full bg-[#16803c] px-3 text-[10px] font-black uppercase tracking-[0.08em] text-white shadow-sm">
-                New
-              </span>
-            ) : null}
-          </div>
-
-          {/* Top-Right Discount Percentage Badge */}
-          {hasDiscount ? (
-            <span className="absolute right-3 top-3 z-20 inline-flex h-7 items-center rounded-full bg-black px-3 text-[10px] font-black uppercase tracking-[0.08em] text-white shadow-sm">
-              {discountPercentage}% Off
-            </span>
-          ) : null}
-
+        <div
+          className="
+            relative
+            aspect-[1/0.94]
+            overflow-hidden
+            rounded-[16px]
+            bg-[#fbf7f0]
+          "
+        >
           <img
             src={
               product.image ||
@@ -185,81 +183,277 @@ export default function ProductCard({
             }
             alt={product.name}
             loading="lazy"
-            className="h-full w-full object-contain p-4 transition-transform duration-300 ease-out group-hover:scale-105 md:p-6"
+            className="
+              h-full
+              w-full
+              object-contain
+              p-4
+              transition-transform
+              duration-500
+              group-hover:scale-[1.025]
+
+              sm:p-5
+            "
           />
+
+          {/* TOP MERCHANDISING BADGE */}
+          {isBestSeller ? (
+            <span
+              className="
+                absolute
+                left-3
+                top-3
+                rounded-full
+                bg-[#c90019]
+                px-3
+                py-[6px]
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.12em]
+                text-white
+                shadow-sm
+              "
+            >
+              Best Seller
+            </span>
+          ) : isWholesalePack ? (
+            <span
+              className="
+                absolute
+                left-3
+                top-3
+                rounded-full
+                bg-[#b56a00]
+                px-3
+                py-[6px]
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.12em]
+                text-white
+                shadow-sm
+              "
+            >
+              Wholesale Pack
+            </span>
+          ) : isNewArrival ? (
+            <span
+              className="
+                absolute
+                left-3
+                top-3
+                rounded-full
+                bg-[#c90019]
+                px-3
+                py-[6px]
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.12em]
+                text-white
+              "
+            >
+              New Arrival
+            </span>
+          ) : null}
+
+          {hasDiscount && !isBestSeller ? (
+            <span
+              className="
+                absolute
+                right-3
+                top-3
+                rounded-full
+                bg-[#17120f]
+                px-3
+                py-[6px]
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.08em]
+                text-white
+              "
+            >
+              {discountPercentage}% Off
+            </span>
+          ) : null}
         </div>
       </Link>
 
-      {/* Sub-image Chips & Featured Signal */}
-      <div className="mt-4 flex flex-wrap items-center gap-2 md:mt-5">
-        {isFeatured ? (
-          <span className="inline-flex h-7 items-center rounded-full border border-[#c9a84c] bg-[#fff8df] px-3 text-[10px] font-black uppercase tracking-[0.08em] text-[#725a12]">
-            Featured
-          </span>
-        ) : null}
-
-        <span className="inline-flex h-7 items-center rounded-full bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-black ring-1 ring-black/15">
-          {product.badge || product.packSize || "Product"}
+      {/* TAGS */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span
+          className="
+            inline-flex
+            rounded-full
+            border
+            border-[#ddd3c6]
+            bg-white
+            px-3
+            py-[5px]
+            text-[9px]
+            font-black
+            uppercase
+            tracking-[0.08em]
+            text-[#17120f]
+          "
+        >
+          {product.packSize ||
+            product.pack_size ||
+            product.badge ||
+            "Basmati"}
         </span>
 
-        {product.category ? (
-          <span className="inline-flex h-7 items-center rounded-full bg-[#f1eadf] px-3 text-[11px] font-bold text-black">
-            {product.category}
-          </span>
-        ) : null}
+        <span
+          className="
+            inline-flex
+            rounded-full
+            bg-[#f3eadc]
+            px-3
+            py-[5px]
+            text-[9px]
+            font-bold
+            text-[#17120f]
+          "
+        >
+          Rice
+        </span>
       </div>
 
-      <Link href={`/products/${product.slug}`}>
-        <h3 className="mt-3 font-display text-2xl font-bold leading-tight text-black md:text-3xl">
+      {/* NAME */}
+      <Link
+        href={`/products/${product.slug}`}
+        className="block"
+      >
+        <h3
+          className="
+            mt-3
+            font-display
+            text-[24px]
+            font-bold
+            leading-[0.98]
+            tracking-[-0.025em]
+            text-[#17120f]
+            transition-colors
+            group-hover:text-[#c90019]
+
+            lg:text-[25px]
+          "
+        >
           {product.name}
         </h3>
       </Link>
 
-      <p className="mt-2 line-clamp-3 text-sm leading-6 text-black/70">
+      {/* DESCRIPTION */}
+      <p
+        className="
+          mt-3
+          line-clamp-3
+          min-h-[54px]
+          text-[12px]
+          leading-[1.5]
+          text-[#655d56]
+        "
+      >
         {product.subtitle}
       </p>
 
-      {/* Price Display */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-2xl font-bold text-black">
+      {/* PRICE */}
+      <div className="mt-3 flex items-end gap-2">
+        <span
+          className="
+            text-[22px]
+            font-black
+            leading-none
+            text-[#d1081b]
+          "
+        >
           {formatPrice(product.unitPrice)}
         </span>
 
         {hasDiscount ? (
-          <span className="text-sm font-medium text-black/40 line-through">
-            {formatPrice(product.compareAtPrice)}
+          <span
+            className="
+              pb-[1px]
+              text-[11px]
+              text-[#8d857d]
+              line-through
+            "
+          >
+            {formatPrice(
+              product.compareAtPrice
+            )}
           </span>
         ) : null}
       </div>
 
-      {/* Unified Single Stock Message */}
-      <div className="mt-3 min-h-7">
+      {/* STOCK */}
+      <div className="mt-2 min-h-[20px]">
         {loading ? (
-          <span className="inline-flex rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-black/55">
+          <span className="text-[10px] font-semibold text-[#837a71]">
             Checking stock...
           </span>
         ) : isOutOfStock ? (
-          <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
-            Out of Stock
+          <span className="text-[10px] font-bold text-[#c90019]">
+            Out of stock
           </span>
         ) : isLowStock ? (
-          <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
-            Only {availableStock} Left
+          <span className="text-[10px] font-bold text-[#b56a00]">
+            Only {availableStock} left
           </span>
         ) : (
-          <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+          <span
+            className="
+              inline-flex
+              rounded-full
+              bg-[#dcf8e6]
+              px-2
+              py-1
+              text-[9px]
+              font-bold
+              text-[#087a3e]
+            "
+          >
             Ready to Ship
           </span>
         )}
       </div>
 
-      <div className="mt-auto grid gap-3 pt-5">
+      {/* ACTIONS */}
+      <div className="mt-auto grid gap-2 pt-3">
         <button
           type="button"
           onClick={handleAddToCart}
           disabled={!canAddToCart}
-          className="w-full rounded-full bg-black px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:bg-black/30"
+          className="
+            flex
+            min-h-[43px]
+            w-full
+            items-center
+            justify-center
+            gap-2
+            rounded-[7px]
+            bg-[#d1081b]
+            px-4
+            text-[12px]
+            font-extrabold
+            text-white
+            shadow-[0_7px_18px_rgba(209,8,27,0.18)]
+            transition
+            hover:bg-[#b90719]
+            active:scale-[0.99]
+
+            disabled:cursor-not-allowed
+            disabled:bg-[#d8b5b9]
+            disabled:shadow-none
+          "
         >
+          <ShoppingCart
+            size={15}
+            strokeWidth={2}
+          />
+
           {loading
             ? "Checking Stock..."
             : isOutOfStock
@@ -271,16 +465,47 @@ export default function ProductCard({
 
         <Link
           href={wholesaleHref}
-          className="w-full rounded-full bg-[#eee3d2] px-5 py-3 text-center text-sm font-bold text-black transition hover:bg-[#ded1bf]"
+          className="
+            flex
+            min-h-[40px]
+            w-full
+            items-center
+            justify-center
+            rounded-[7px]
+            bg-[#f4e8d6]
+            px-4
+            text-center
+            text-[11px]
+            font-extrabold
+            text-[#2a211a]
+            transition
+            hover:bg-[#ead8bd]
+          "
         >
           Request Wholesale Price
         </Link>
 
         <Link
           href={`/products/${product.slug}`}
-          className="w-full text-center text-sm font-bold text-black underline-offset-4 hover:underline"
+          className="
+            flex
+            min-h-[34px]
+            items-center
+            justify-center
+            text-[11px]
+            font-extrabold
+            text-[#17120f]
+            transition
+            hover:text-[#c90019]
+          "
         >
           View Details
+          <span
+            aria-hidden="true"
+            className="ml-1 text-[#c66c24]"
+          >
+            →
+          </span>
         </Link>
       </div>
     </motion.article>

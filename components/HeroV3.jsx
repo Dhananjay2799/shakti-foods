@@ -64,16 +64,17 @@ export default function HeroV3() {
             accessible, clickable website controls.
           */}
 
+          {/* SHOP OUR RICE — MOBILE CLICK AREA */}
           <Link
             href="/products"
             aria-label="Shop Our Rice"
             className="
               absolute
               left-[6.5%]
-              top-[45.5%]
-              z-20
-              h-[5.7%]
-              w-[39%]
+              top-[40.6%]
+              z-30
+              h-[4.8%]
+              w-[41%]
               rounded-md
               focus-visible:outline
               focus-visible:outline-2
@@ -81,16 +82,17 @@ export default function HeroV3() {
             "
           />
 
+          {/* OUR STORY — MOBILE CLICK AREA */}
           <Link
             href="/about"
             aria-label="Our Story"
             className="
               absolute
               left-[6.5%]
-              top-[51.8%]
-              z-20
-              h-[5.7%]
-              w-[39%]
+              top-[46.0%]
+              z-30
+              h-[4.8%]
+              w-[41%]
               rounded-md
               focus-visible:outline
               focus-visible:outline-2

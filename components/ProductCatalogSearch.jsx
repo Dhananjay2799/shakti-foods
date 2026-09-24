@@ -1,6 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  ChevronDown,
+  Search,
+  SlidersHorizontal
+} from "lucide-react";
+
 import ProductGrid from "@/components/ProductGrid";
 
 function normalize(value) {
@@ -30,6 +36,8 @@ function getPackSize(product) {
 
 function getProductPrice(product) {
   const possiblePrices = [
+    product.unitPrice,
+    product.unit_price,
     product.price,
     product.salePrice,
     product.sale_price,
@@ -213,22 +221,59 @@ function FilterCheckbox({
   count
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl px-3 py-2 transition hover:bg-black/5">
-      <span className="flex items-center gap-3">
+    <label
+      className="
+        group
+        flex
+        cursor-pointer
+        items-center
+        justify-between
+        gap-4
+        rounded-xl
+        px-2
+        py-2
+        transition
+        hover:bg-[#fff8ed]
+      "
+    >
+      <span className="flex min-w-0 items-center gap-3">
         <input
           type="checkbox"
           checked={checked}
           onChange={onChange}
-          className="h-4 w-4 rounded border-black/30 accent-black"
+          className="
+            h-[17px]
+            w-[17px]
+            shrink-0
+            rounded
+            border-[#bcb1a4]
+            accent-[#d1081b]
+          "
         />
 
-        <span className="text-sm font-semibold text-black">
+        <span
+          className="
+            text-[13px]
+            font-semibold
+            text-[#332c27]
+          "
+        >
           {label}
         </span>
       </span>
 
       {typeof count === "number" ? (
-        <span className="rounded-full bg-black/5 px-2 py-1 text-xs font-bold text-black/60">
+        <span
+          className="
+            rounded-full
+            bg-[#f5eee4]
+            px-2
+            py-1
+            text-[10px]
+            font-bold
+            text-[#766d64]
+          "
+        >
           {count}
         </span>
       ) : null}
@@ -240,8 +285,7 @@ export default function ProductCatalogSearch({
   products = []
 }) {
   const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] =
-    useState("featured");
+  const [sortBy, setSortBy] = useState("featured");
 
   const [
     selectedCategories,
@@ -258,14 +302,9 @@ export default function ProductCatalogSearch({
     setSelectedAvailability
   ] = useState([]);
 
-  const [wholesaleOnly, setWholesaleOnly] =
-    useState(false);
-
-  const [bestSellerOnly, setBestSellerOnly] =
-    useState(false);
-
-  const [newArrivalOnly, setNewArrivalOnly] =
-    useState(false);
+  const [wholesaleOnly, setWholesaleOnly] = useState(false);
+  const [bestSellerOnly, setBestSellerOnly] = useState(false);
+  const [newArrivalOnly, setNewArrivalOnly] = useState(false);
 
   const [
     mobileFiltersOpen,
@@ -304,8 +343,7 @@ export default function ProductCatalogSearch({
     return products.filter((product) => {
       const category = getCategory(product);
       const packSize = getPackSize(product);
-      const availability =
-        getAvailability(product);
+      const availability = getAvailability(product);
 
       const searchableContent = [
         product.name,
@@ -342,9 +380,7 @@ export default function ProductCatalogSearch({
 
       const matchesAvailability =
         selectedAvailability.length === 0 ||
-        selectedAvailability.includes(
-          availability
-        );
+        selectedAvailability.includes(availability);
 
       const matchesWholesale =
         !wholesaleOnly ||
@@ -453,9 +489,7 @@ export default function ProductCatalogSearch({
             return bestSellerDifference;
           }
 
-          return getProductName(
-            a
-          ).localeCompare(
+          return getProductName(a).localeCompare(
             getProductName(b)
           );
         });
@@ -486,24 +520,20 @@ export default function ProductCatalogSearch({
     );
   }, [packSizes, products]);
 
-  const availabilityCounts =
-    useMemo(() => {
-      return products.reduce(
-        (counts, product) => {
-          const status =
-            getAvailability(product);
-
-          counts[status] += 1;
-
-          return counts;
-        },
-        {
-          "in-stock": 0,
-          "low-stock": 0,
-          "out-of-stock": 0
-        }
-      );
-    }, [products]);
+  const availabilityCounts = useMemo(() => {
+    return products.reduce(
+      (counts, product) => {
+        const status = getAvailability(product);
+        counts[status] += 1;
+        return counts;
+      },
+      {
+        "in-stock": 0,
+        "low-stock": 0,
+        "out-of-stock": 0
+      }
+    );
+  }, [products]);
 
   const activeFilterCount =
     selectedCategories.length +
@@ -513,15 +543,10 @@ export default function ProductCatalogSearch({
     Number(bestSellerOnly) +
     Number(newArrivalOnly);
 
-  function toggleArrayValue(
-    value,
-    setter
-  ) {
+  function toggleArrayValue(value, setter) {
     setter((currentValues) =>
       currentValues.includes(value)
-        ? currentValues.filter(
-            (item) => item !== value
-          )
+        ? currentValues.filter((item) => item !== value)
         : [...currentValues, value]
     );
   }
@@ -554,9 +579,7 @@ export default function ProductCatalogSearch({
               <FilterCheckbox
                 key={category}
                 label={category}
-                count={
-                  categoryCounts[category]
-                }
+                count={categoryCounts[category]}
                 checked={selectedCategories.includes(
                   category
                 )}
@@ -580,11 +603,7 @@ export default function ProductCatalogSearch({
         <div className="space-y-1">
           <FilterCheckbox
             label="In stock"
-            count={
-              availabilityCounts[
-                "in-stock"
-              ]
-            }
+            count={availabilityCounts["in-stock"]}
             checked={selectedAvailability.includes(
               "in-stock"
             )}
@@ -598,11 +617,7 @@ export default function ProductCatalogSearch({
 
           <FilterCheckbox
             label="Low stock"
-            count={
-              availabilityCounts[
-                "low-stock"
-              ]
-            }
+            count={availabilityCounts["low-stock"]}
             checked={selectedAvailability.includes(
               "low-stock"
             )}
@@ -616,11 +631,7 @@ export default function ProductCatalogSearch({
 
           <FilterCheckbox
             label="Out of stock"
-            count={
-              availabilityCounts[
-                "out-of-stock"
-              ]
-            }
+            count={availabilityCounts["out-of-stock"]}
             checked={selectedAvailability.includes(
               "out-of-stock"
             )}
@@ -645,9 +656,7 @@ export default function ProductCatalogSearch({
               <FilterCheckbox
                 key={packSize}
                 label={packSize}
-                count={
-                  packSizeCounts[packSize]
-                }
+                count={packSizeCounts[packSize]}
                 checked={selectedPackSizes.includes(
                   packSize
                 )}
@@ -673,9 +682,7 @@ export default function ProductCatalogSearch({
             label="Wholesale available"
             checked={wholesaleOnly}
             onChange={() =>
-              setWholesaleOnly(
-                (current) => !current
-              )
+              setWholesaleOnly((current) => !current)
             }
           />
 
@@ -683,9 +690,7 @@ export default function ProductCatalogSearch({
             label="Best sellers"
             checked={bestSellerOnly}
             onChange={() =>
-              setBestSellerOnly(
-                (current) => !current
-              )
+              setBestSellerOnly((current) => !current)
             }
           />
 
@@ -693,9 +698,7 @@ export default function ProductCatalogSearch({
             label="New arrivals"
             checked={newArrivalOnly}
             onChange={() =>
-              setNewArrivalOnly(
-                (current) => !current
-              )
+              setNewArrivalOnly((current) => !current)
             }
           />
         </div>
@@ -714,141 +717,552 @@ export default function ProductCatalogSearch({
   );
 
   return (
-    <section className="pb-16 md:pb-24">
+    <section
+      className="
+        relative
+        bg-[#fffaf2]
+        pb-6
+        pt-4
+        md:pb-8
+        lg:pt-5
+      "
+    >
       <div className="container-brand">
-        <div className="rounded-[2rem] bg-white p-4 shadow-soft md:p-6">
-          <div className="relative">
-            <label
-              htmlFor="product-search"
-              className="sr-only"
+        {/* =================================================
+            SEARCH + SORT TOOLBAR
+        ================================================== */}
+
+        <div className="mb-5">
+          {/* DESKTOP: EXACT SINGLE ROW */}
+          <div className="hidden items-center gap-3 lg:flex">
+            {/* SEARCH */}
+            <div className="relative min-w-0 flex-1">
+              <label htmlFor="product-search" className="sr-only">
+                Search rice
+              </label>
+
+              <Search
+                aria-hidden="true"
+                size={18}
+                strokeWidth={1.9}
+                className="
+                  pointer-events-none
+                  absolute
+                  left-[18px]
+                  top-1/2
+                  -translate-y-1/2
+                  text-[#d1081b]
+                "
+              />
+
+              <input
+                id="product-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search Basmati rice, plates, bowls, trays..."
+                autoComplete="off"
+                className="
+                  h-[50px]
+                  w-full
+                  rounded-[18px]
+                  border
+                  border-[#eadfd2]
+                  bg-[#fbf7f1]
+                  pl-[48px]
+                  pr-16
+                  text-[13px]
+                  text-[#17120f]
+                  outline-none
+                  transition
+                  placeholder:text-[#8f857c]
+                  focus:border-[#d8a548]
+                  focus:ring-2
+                  focus:ring-[#d8a548]/10
+                "
+              />
+
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="
+                    absolute
+                    right-3
+                    top-1/2
+                    -translate-y-1/2
+                    rounded-full
+                    px-3
+                    py-1.5
+                    text-[11px]
+                    font-bold
+                    text-[#d1081b]
+                    transition
+                    hover:bg-[#d1081b]/5
+                  "
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+
+            {/* SORT LABEL */}
+            <div
+              className="
+                flex
+                h-[50px]
+                shrink-0
+                items-center
+                justify-center
+                rounded-[18px]
+                bg-[#fffaf4]
+                px-[18px]
+                text-[12px]
+                font-extrabold
+                text-[#332c27]
+              "
             >
-              Search products
-            </label>
+              Sort by
+            </div>
 
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-lg"
-            >
-              🔍
-            </span>
-
-            <input
-              id="product-search"
-              type="search"
-              value={query}
-              onChange={(event) =>
-                setQuery(event.target.value)
-              }
-              placeholder="Search Basmati rice, plates, bowls, trays..."
-              autoComplete="off"
-              className="h-14 w-full rounded-2xl border border-black/15 bg-[#f8f4ed] pl-12 pr-24 text-base text-black shadow-sm outline-none transition placeholder:text-black/50 focus:border-black focus:ring-2 focus:ring-black/10"
-            />
-
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-4 py-2 text-sm font-bold transition hover:bg-black/10"
-              >
-                Clear
-              </button>
-            ) : null}
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-            <p
-              className="text-sm text-black/70"
-              aria-live="polite"
-            >
-              Showing{" "}
-              <strong className="text-black">
-                {sortedProducts.length}
-              </strong>{" "}
-              of{" "}
-              <strong className="text-black">
-                {products.length}
-              </strong>{" "}
-              products
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <label
-                htmlFor="product-sort"
-                className="text-sm font-bold text-black"
-              >
-                Sort by
+            {/* SORT SELECT */}
+            <div className="relative shrink-0">
+              <label htmlFor="product-sort" className="sr-only">
+                Sort products
               </label>
 
               <select
                 id="product-sort"
                 value={sortBy}
-                onChange={(event) =>
-                  setSortBy(event.target.value)
-                }
-                className="min-w-[190px] rounded-full border border-black/15 bg-[#f8f4ed] px-5 py-3 text-sm font-bold text-black outline-none transition focus:border-black focus:ring-2 focus:ring-black/10"
+                onChange={(event) => setSortBy(event.target.value)}
+                className="
+                  h-[50px]
+                  min-w-[160px]
+                  appearance-none
+                  rounded-[18px]
+                  border
+                  border-[#eadfd2]
+                  bg-[#f6ede2]
+                  pl-5
+                  pr-11
+                  text-[12px]
+                  font-semibold
+                  text-[#332c27]
+                  outline-none
+                  transition
+                  focus:border-[#d8a548]
+                  focus:ring-2
+                  focus:ring-[#d8a548]/10
+                "
               >
-                <option value="featured">
-                  Featured
-                </option>
-
-                <option value="best-selling">
-                  Best Selling
-                </option>
-
+                <option value="featured">Featured</option>
+                <option value="best-selling">Best Selling</option>
                 <option value="price-low-high">
                   Price: Low to High
                 </option>
-
                 <option value="price-high-low">
                   Price: High to Low
                 </option>
-
-                <option value="name-a-z">
-                  Name: A to Z
-                </option>
-
-                <option value="name-z-a">
-                  Name: Z to A
-                </option>
-
-                <option value="newest">
-                  Newest
-                </option>
+                <option value="name-a-z">Name: A to Z</option>
+                <option value="name-z-a">Name: Z to A</option>
+                <option value="newest">Newest</option>
               </select>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setMobileFiltersOpen(
-                    (current) => !current
-                  )
-                }
-                className="rounded-full bg-black px-5 py-3 text-sm font-bold text-white lg:hidden"
-              >
-                Filters
-                {activeFilterCount > 0
-                  ? ` (${activeFilterCount})`
-                  : ""}
-              </button>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="
+                  pointer-events-none
+                  absolute
+                  right-4
+                  top-1/2
+                  -translate-y-1/2
+                  text-[#9c7427]
+                "
+              />
             </div>
           </div>
 
+          {/* =====================================================
+              MOBILE SEARCH + FILTER + SORT
+          ====================================================== */}
+          <div className="lg:hidden">
+            {/* SEARCH */}
+            <div
+              className="
+                rounded-[22px]
+                border
+                border-[#eee5da]
+                bg-white
+                p-[7px]
+                shadow-[0_5px_18px_rgba(68,43,20,0.035)]
+              "
+            >
+              <div className="relative">
+                <label
+                  htmlFor="product-search-mobile"
+                  className="sr-only"
+                >
+                  Search products
+                </label>
+
+                <Search
+                  aria-hidden="true"
+                  size={19}
+                  strokeWidth={2}
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-[15px]
+                    top-1/2
+                    z-10
+                    -translate-y-1/2
+                    text-[#7f1d1d]
+                  "
+                />
+
+                <input
+                  id="product-search-mobile"
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search Basmati rice, plates, bowls, trays..."
+                  autoComplete="off"
+                  className="
+                    h-[48px]
+                    w-full
+                    rounded-[17px]
+                    border
+                    border-[#eee5da]
+                    bg-[#fbf8f3]
+                    pl-[46px]
+                    pr-14
+                    text-[13px]
+                    font-medium
+                    text-[#17120f]
+                    outline-none
+                    transition
+                    placeholder:font-normal
+                    placeholder:text-[#8b8179]
+                    focus:border-[#d7b77e]
+                    focus:ring-2
+                    focus:ring-[#d8a548]/10
+                  "
+                />
+
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="
+                      absolute
+                      right-3
+                      top-1/2
+                      -translate-y-1/2
+                      rounded-full
+                      px-2
+                      py-1
+                      text-[10px]
+                      font-extrabold
+                      text-[#d1081b]
+                    "
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* FILTER + SORT ROW */}
+            <div
+              className="
+                mt-3
+                grid
+                grid-cols-[0.95fr_1.05fr]
+                gap-2
+              "
+            >
+              {/* FILTER BUTTON */}
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileFiltersOpen((current) => !current)
+                }
+                className="
+                  relative
+                  flex
+                  h-[54px]
+                  items-center
+                  justify-center
+                  gap-3
+                  rounded-[22px]
+                  border
+                  border-[#eee5da]
+                  bg-white
+                  px-3
+                  text-[#17120f]
+                  shadow-[0_4px_14px_rgba(68,43,20,0.025)]
+                  transition
+                  active:scale-[0.98]
+                "
+              >
+                <SlidersHorizontal
+                  size={18}
+                  strokeWidth={2}
+                  className="text-[#7f1d1d]"
+                />
+
+                <span
+                  className="
+                    text-[13px]
+                    font-extrabold
+                  "
+                >
+                  Filters
+                </span>
+
+                {activeFilterCount > 0 ? (
+                  <span
+                    className="
+                      absolute
+                      right-2
+                      top-2
+                      flex
+                      h-[18px]
+                      min-w-[18px]
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-[#d1081b]
+                      px-1
+                      text-[9px]
+                      font-black
+                      text-white
+                    "
+                  >
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </button>
+
+              {/* SORT */}
+              <div
+                className="
+                  relative
+                  h-[54px]
+                  overflow-hidden
+                  rounded-[22px]
+                  border
+                  border-[#eadfd2]
+                  bg-[#f5ede3]
+                "
+              >
+                <label
+                  htmlFor="product-sort-mobile"
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-[17px]
+                    top-[8px]
+                    z-10
+                    text-[10px]
+                    font-medium
+                    leading-none
+                    text-[#7c736c]
+                  "
+                >
+                  Sort by
+                </label>
+
+                <select
+                  id="product-sort-mobile"
+                  aria-label="Sort products"
+                  value={sortBy}
+                  onChange={(event) =>
+                    setSortBy(event.target.value)
+                  }
+                  className="
+                    absolute
+                    inset-0
+                    h-full
+                    w-full
+                    appearance-none
+                    bg-transparent
+                    pb-[7px]
+                    pl-[17px]
+                    pr-10
+                    pt-[21px]
+                    text-[12px]
+                    font-extrabold
+                    text-[#17120f]
+                    outline-none
+                  "
+                >
+                  <option value="featured">Featured</option>
+
+                  <option value="best-selling">
+                    Best Selling
+                  </option>
+
+                  <option value="price-low-high">
+                    Price: Low to High
+                  </option>
+
+                  <option value="price-high-low">
+                    Price: High to Low
+                  </option>
+
+                  <option value="name-a-z">
+                    Name: A to Z
+                  </option>
+
+                  <option value="name-z-a">
+                    Name: Z to A
+                  </option>
+
+                  <option value="newest">
+                    Newest
+                  </option>
+                </select>
+
+                <ChevronDown
+                  size={16}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  className="
+                    pointer-events-none
+                    absolute
+                    right-[15px]
+                    top-1/2
+                    -translate-y-1/2
+                    text-[#17120f]
+                  "
+                />
+              </div>
+            </div>
+
+            {/* PRODUCT COUNT */}
+            <p
+              className="
+                mt-[10px]
+                px-[2px]
+                text-left
+                text-[11px]
+                leading-none
+                text-[#766d64]
+              "
+              aria-live="polite"
+            >
+              Showing{" "}
+              <strong className="font-extrabold text-[#17120f]">
+                {sortedProducts.length}
+              </strong>{" "}
+              of{" "}
+              <strong className="font-extrabold text-[#17120f]">
+                {products.length}
+              </strong>{" "}
+              products
+            </p>
+          </div>
+
+          {/* MOBILE FILTER PANEL */}
           {mobileFiltersOpen ? (
-            <div className="mt-6 border-t border-black/10 pt-6 lg:hidden">
+            <div
+              className="
+                mt-5
+                border-t
+                border-[#eee4d7]
+                pt-5
+                lg:hidden
+              "
+            >
               {filters}
             </div>
           ) : null}
         </div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
-          <aside className="hidden self-start rounded-[2rem] bg-white p-6 shadow-soft lg:sticky lg:top-28 lg:block">
-            <div className="mb-6 flex items-center justify-between gap-3">
-              <h2 className="font-display text-2xl font-bold">
-                Filters
-              </h2>
+        {/* =================================================
+            PRODUCTS + DESKTOP FILTERS
+        ================================================== */}
+
+        <div
+          className="
+            mt-4
+            grid
+            gap-8
+            lg:mt-7
+            lg:grid-cols-[235px_minmax(0,1fr)]
+            xl:grid-cols-[250px_minmax(0,1fr)]
+          "
+        >
+          {/* DESKTOP FILTER SIDEBAR */}
+          <aside
+            className="
+              hidden
+              self-start
+              rounded-[26px]
+              border
+              border-[#eee4d7]
+              bg-white
+              p-5
+              shadow-[0_12px_36px_rgba(73,48,24,0.06)]
+
+              lg:sticky
+              lg:top-[112px]
+              lg:block
+            "
+          >
+            <div
+              className="
+                mb-5
+                flex
+                items-center
+                justify-between
+                gap-3
+              "
+            >
+              <div>
+                <span
+                  className="
+                    text-[9px]
+                    font-black
+                    uppercase
+                    tracking-[0.2em]
+                    text-[#d1081b]
+                  "
+                >
+                  Refine
+                </span>
+
+                <h2
+                  className="
+                    mt-1
+                    font-display
+                    text-[27px]
+                    font-bold
+                    text-[#17120f]
+                  "
+                >
+                  Filters
+                </h2>
+              </div>
 
               {activeFilterCount > 0 ? (
-                <span className="rounded-full bg-black px-3 py-1 text-xs font-bold text-white">
+                <span
+                  className="
+                    flex
+                    h-7
+                    min-w-7
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#d1081b]
+                    px-2
+                    text-[11px]
+                    font-bold
+                    text-white
+                  "
+                >
                   {activeFilterCount}
                 </span>
               ) : null}
@@ -857,32 +1271,73 @@ export default function ProductCatalogSearch({
             {filters}
           </aside>
 
+          {/* PRODUCT GRID */}
           <div className="min-w-0">
             {sortedProducts.length > 0 ? (
               <ProductGrid
                 products={sortedProducts}
               />
             ) : (
-              <div className="rounded-[2rem] bg-white px-6 py-16 text-center shadow-soft">
-                <div className="text-4xl">
-                  📦
-                </div>
+              <div
+                className="
+                  rounded-[28px]
+                  border
+                  border-[#eee4d7]
+                  bg-white
+                  px-6
+                  py-16
+                  text-center
+                  shadow-[0_12px_36px_rgba(73,48,24,0.06)]
+                "
+              >
+                <Search
+                  size={36}
+                  strokeWidth={1.5}
+                  className="mx-auto text-[#d1081b]"
+                />
 
-                <h2 className="mt-4 font-display text-3xl font-bold">
-                  No products found
+                <h2
+                  className="
+                    mt-5
+                    font-display
+                    text-3xl
+                    font-bold
+                    text-[#17120f]
+                  "
+                >
+                  No rice products found
                 </h2>
 
-                <p className="mx-auto mt-3 max-w-xl leading-7 text-black/70">
-                  No products match your current
-                  search and filters. Try another
-                  keyword or remove one of the
-                  selected filters.
+                <p
+                  className="
+                    mx-auto
+                    mt-3
+                    max-w-xl
+                    text-[13px]
+                    leading-7
+                    text-[#766d64]
+                  "
+                >
+                  No products match your current search and
+                  filters. Try another keyword or remove one
+                  of the selected filters.
                 </p>
 
                 <button
                   type="button"
                   onClick={clearEverything}
-                  className="mt-6 rounded-full bg-black px-6 py-3 font-bold text-white transition hover:bg-[#333333]"
+                  className="
+                    mt-6
+                    rounded-full
+                    bg-[#d1081b]
+                    px-7
+                    py-3
+                    text-sm
+                    font-bold
+                    text-white
+                    transition
+                    hover:bg-[#b80718]
+                  "
                 >
                   Clear Search and Filters
                 </button>
