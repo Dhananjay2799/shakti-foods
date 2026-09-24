@@ -8,7 +8,9 @@ import {
   Sparkles,
   UsersRound,
   Wheat,
-  ShoppingCart
+  ShoppingCart,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 import { useCart } from "@/components/CartProvider";
@@ -76,19 +78,16 @@ function RiceProductCard({
   index,
   onAddToCart
 }) {
-  const { getStock, loading } =
-    useInventory();
+  const { getStock, loading } = useInventory();
 
-  const liveInventory =
-    getStock(product.id);
+  const liveInventory = getStock(product.id);
 
   const inventoryItem =
     liveInventory ||
     product.inventory ||
     null;
 
-  const availableStock =
-    getAvailableStock(inventoryItem);
+  const availableStock = getAvailableStock(inventoryItem);
 
   const inventoryActive =
     inventoryItem
@@ -97,8 +96,7 @@ function RiceProductCard({
 
   const isOutOfStock =
     Boolean(inventoryItem) &&
-    (!inventoryActive ||
-      availableStock <= 0);
+    (!inventoryActive || availableStock <= 0);
 
   const canAddToCart =
     !loading &&
@@ -178,9 +176,7 @@ function RiceProductCard({
           pt-3
         "
       >
-        <Link
-          href={`/products/${product.slug}`}
-        >
+        <Link href={`/products/${product.slug}`}>
           <h3
             className="
               font-sans
@@ -194,9 +190,6 @@ function RiceProductCard({
             {product.name}
           </h3>
         </Link>
-
-        {/* No separate weight here.
-            Product name already contains 10 lb / 20 lb / 50 lb. */}
 
         <p
           className="
@@ -222,9 +215,7 @@ function RiceProductCard({
               text-[#c90019]
             "
           >
-            {formatPrice(
-              product.unitPrice
-            )}
+            {formatPrice(product.unitPrice)}
           </div>
 
           <button
@@ -284,19 +275,16 @@ function MobileProductCard({
   product,
   onAddToCart
 }) {
-  const { getStock, loading } =
-    useInventory();
+  const { getStock, loading } = useInventory();
 
-  const liveInventory =
-    getStock(product.id);
+  const liveInventory = getStock(product.id);
 
   const inventoryItem =
     liveInventory ||
     product.inventory ||
     null;
 
-  const availableStock =
-    getAvailableStock(inventoryItem);
+  const availableStock = getAvailableStock(inventoryItem);
 
   const inventoryActive =
     inventoryItem
@@ -305,8 +293,7 @@ function MobileProductCard({
 
   const isOutOfStock =
     Boolean(inventoryItem) &&
-    (!inventoryActive ||
-      availableStock <= 0);
+    (!inventoryActive || availableStock <= 0);
 
   const canAddToCart =
     !loading &&
@@ -372,11 +359,9 @@ function MobileProductCard({
         />
       </Link>
 
-      {/* SAME PRODUCT DATA AS DESKTOP */}
+      {/* PRODUCT DATA */}
       <div className="px-1 pt-2">
-        <Link
-          href={`/products/${product.slug}`}
-        >
+        <Link href={`/products/${product.slug}`}>
           <h3
             className="
               mx-auto
@@ -392,9 +377,6 @@ function MobileProductCard({
             {product.name}
           </h3>
         </Link>
-
-        {/* No separate weight.
-            Product name already contains the weight. */}
 
         <p
           className="
@@ -421,9 +403,7 @@ function MobileProductCard({
             text-[#c90019]
           "
         >
-          {formatPrice(
-            product.unitPrice
-          )}
+          {formatPrice(product.unitPrice)}
         </div>
       </div>
 
@@ -504,31 +484,47 @@ export default function RiceSizeShowcaseV3({
               999
           );
 
-          return (
-            firstOrder -
-            secondOrder
-          );
+          return firstOrder - secondOrder;
         }),
     [products]
   );
 
-  const [
-    activeIndex,
-    setActiveIndex
-  ] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   if (riceProducts.length === 0) {
     return null;
   }
 
-  const safeActiveIndex =
-    Math.min(
-      activeIndex,
-      riceProducts.length - 1
-    );
+  const safeActiveIndex = Math.min(
+    activeIndex,
+    riceProducts.length - 1
+  );
 
-  const activeProduct =
-    riceProducts[safeActiveIndex];
+  const activeProduct = riceProducts[safeActiveIndex];
+
+  function showPreviousProduct() {
+    setActiveIndex((current) => {
+      if (riceProducts.length <= 1) {
+        return 0;
+      }
+
+      return current <= 0
+        ? riceProducts.length - 1
+        : current - 1;
+    });
+  }
+
+  function showNextProduct() {
+    setActiveIndex((current) => {
+      if (riceProducts.length <= 1) {
+        return 0;
+      }
+
+      return current >= riceProducts.length - 1
+        ? 0
+        : current + 1;
+    });
+  }
 
   function handleAddToCart(
     product,
@@ -551,20 +547,15 @@ export default function RiceSizeShowcaseV3({
     );
 
     if (
-      added?.reason ===
-      "storefront_mismatch"
+      added?.reason === "storefront_mismatch"
     ) {
       alert(
         "Your cart contains Simpli Ecoware products. Clear the cart before adding Shakti Foods products."
       );
-
       return;
     }
 
-    if (
-      added?.reason ===
-      "out_of_stock"
-    ) {
+    if (added?.reason === "out_of_stock") {
       alert(
         "This product is currently out of stock."
       );
@@ -618,20 +609,91 @@ export default function RiceSizeShowcaseV3({
               text-[#151515]
             "
           >
-            Premium Basmati Rice
-            Collection
+            Premium Basmati Rice Collection
           </h2>
         </div>
 
-        {/* MOBILE PRODUCT */}
-        <div className="px-8">
+        {/* MOBILE PRODUCT + CAROUSEL ARROWS */}
+        <div className="relative px-8">
           <MobileProductCard
             key={activeProduct.id}
             product={activeProduct}
-            onAddToCart={
-              handleAddToCart
-            }
+            onAddToCart={handleAddToCart}
           />
+
+          {riceProducts.length > 1 && (
+            <>
+              {/* Previous */}
+              <button
+                type="button"
+                onClick={showPreviousProduct}
+                aria-label="Previous rice product"
+                className="
+                  absolute
+                  left-[10px]
+                  top-[42%]
+                  z-20
+                  flex
+                  h-[42px]
+                  w-[42px]
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-[#c90019]
+                  text-white
+                  shadow-[0_7px_20px_rgba(201,0,25,0.28)]
+                  ring-4
+                  ring-white/80
+                  transition
+                  duration-200
+                  hover:scale-105
+                  hover:bg-[#ae0016]
+                  active:scale-95
+                "
+              >
+                <ChevronLeft
+                  size={24}
+                  strokeWidth={2.4}
+                />
+              </button>
+
+              {/* Next */}
+              <button
+                type="button"
+                onClick={showNextProduct}
+                aria-label="Next rice product"
+                className="
+                  absolute
+                  right-[10px]
+                  top-[42%]
+                  z-20
+                  flex
+                  h-[42px]
+                  w-[42px]
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-[#c90019]
+                  text-white
+                  shadow-[0_7px_20px_rgba(201,0,25,0.28)]
+                  ring-4
+                  ring-white/80
+                  transition
+                  duration-200
+                  hover:scale-105
+                  hover:bg-[#ae0016]
+                  active:scale-95
+                "
+              >
+                <ChevronRight
+                  size={24}
+                  strokeWidth={2.4}
+                />
+              </button>
+            </>
+          )}
         </div>
 
         {/* CAROUSEL DOTS */}
@@ -646,27 +708,20 @@ export default function RiceSizeShowcaseV3({
               pt-3
             "
           >
-            {riceProducts.map(
-              (product, index) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  aria-label={`Show ${product.name}`}
-                  onClick={() =>
-                    setActiveIndex(
-                      index
-                    )
-                  }
-                  className={[
-                    "h-[7px] w-[7px] rounded-full transition-all",
-                    index ===
-                    safeActiveIndex
-                      ? "scale-110 bg-[#c90019]"
-                      : "bg-black/15"
-                  ].join(" ")}
-                />
-              )
-            )}
+            {riceProducts.map((product, index) => (
+              <button
+                key={product.id}
+                type="button"
+                aria-label={`Show ${product.name}`}
+                onClick={() => setActiveIndex(index)}
+                className={[
+                  "h-[7px] w-[7px] rounded-full transition-all",
+                  index === safeActiveIndex
+                    ? "scale-110 bg-[#c90019]"
+                    : "bg-black/15"
+                ].join(" ")}
+              />
+            ))}
           </div>
         ) : (
           <div className="h-4" />
@@ -693,10 +748,7 @@ export default function RiceSizeShowcaseV3({
             "
           >
             {desktopBenefits.map(
-              ({
-                icon: Icon,
-                title
-              }, index) => (
+              ({ icon: Icon, title }, index) => (
                 <div
                   key={title}
                   className={`
@@ -710,8 +762,7 @@ export default function RiceSizeShowcaseV3({
                     text-center
 
                     ${
-                      index !==
-                      desktopBenefits.length - 1
+                      index !== desktopBenefits.length - 1
                         ? "after:absolute after:right-0 after:top-1/2 after:h-[34px] after:w-px after:-translate-y-1/2 after:bg-black/[0.12]"
                         : ""
                     }
@@ -720,9 +771,7 @@ export default function RiceSizeShowcaseV3({
                   <Icon
                     size={25}
                     strokeWidth={1.8}
-                    className="
-                      text-[#c90019]
-                    "
+                    className="text-[#c90019]"
                   />
 
                   <div
@@ -759,12 +808,7 @@ export default function RiceSizeShowcaseV3({
           xl:py-16
         "
       >
-        <div
-          className="
-            mx-auto
-            max-w-[1440px]
-          "
-        >
+        <div className="mx-auto max-w-[1440px]">
           {/* DESKTOP HEADING */}
           <div className="text-center">
             <div
@@ -791,20 +835,11 @@ export default function RiceSizeShowcaseV3({
                 xl:text-[42px]
               "
             >
-              Premium Basmati Rice
-              Collection
+              Premium Basmati Rice Collection
             </h2>
 
-            <p
-              className="
-                mt-2
-                text-[13px]
-                text-black/55
-              "
-            >
-              Exceptional quality.
-              Unforgettable meals. For the
-              people who matter most.
+            <p className="mt-2 text-[13px] text-black/55">
+              Exceptional quality. Unforgettable meals. For the people who matter most.
             </p>
           </div>
 
@@ -830,21 +865,14 @@ export default function RiceSizeShowcaseV3({
             >
               {riceProducts
                 .slice(0, 3)
-                .map(
-                  (
-                    product,
-                    index
-                  ) => (
-                    <RiceProductCard
-                      key={product.id}
-                      product={product}
-                      index={index}
-                      onAddToCart={
-                        handleAddToCart
-                      }
-                    />
-                  )
-                )}
+                .map((product, index) => (
+                  <RiceProductCard
+                    key={product.id}
+                    product={product}
+                    index={index}
+                    onAddToCart={handleAddToCart}
+                  />
+                ))}
             </div>
 
             {/* DESKTOP BENEFITS */}
@@ -858,18 +886,10 @@ export default function RiceSizeShowcaseV3({
               "
             >
               {desktopBenefits.map(
-                ({
-                  icon: Icon,
-                  title,
-                  text
-                }) => (
+                ({ icon: Icon, title, text }) => (
                   <div
                     key={title}
-                    className="
-                      flex
-                      items-center
-                      gap-4
-                    "
+                    className="flex items-center gap-4"
                   >
                     <div
                       className="
@@ -888,9 +908,7 @@ export default function RiceSizeShowcaseV3({
                       <Icon
                         size={30}
                         strokeWidth={1.6}
-                        className="
-                          text-[#c47b20]
-                        "
+                        className="text-[#c47b20]"
                       />
                     </div>
 
@@ -925,12 +943,7 @@ export default function RiceSizeShowcaseV3({
           </div>
 
           {/* VIEW ALL */}
-          <div
-            className="
-              mt-7
-              text-center
-            "
-          >
+          <div className="mt-7 text-center">
             <Link
               href="/products"
               className="

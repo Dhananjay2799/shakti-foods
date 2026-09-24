@@ -1,7 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { Clock } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+} from "lucide-react";
 import { useState } from "react";
 
 const recipes = [
@@ -98,6 +102,22 @@ function RecipeCard({ recipe }) {
 
 export default function RecipeInspiration() {
   const [activeIndex, setActiveIndex] = useState(0);
+
+  function showPreviousRecipe() {
+    setActiveIndex((current) =>
+      current <= 0
+        ? recipes.length - 1
+        : current - 1
+    );
+  }
+
+  function showNextRecipe() {
+    setActiveIndex((current) =>
+      current >= recipes.length - 1
+        ? 0
+        : current + 1
+    );
+  }
 
   return (
     <section
@@ -304,9 +324,92 @@ export default function RecipeInspiration() {
           </p>
         </div>
 
-        {/* CURRENT CARD */}
-        <div className="mx-auto mt-7 max-w-[390px]">
-          <RecipeCard recipe={recipes[activeIndex]} />
+        {/* =================================================
+            MOBILE RECIPE CAROUSEL
+        ================================================== */}
+
+        <div
+          className="
+            relative
+            mx-auto
+            mt-7
+            max-w-[390px]
+          "
+        >
+          <RecipeCard
+            key={recipes[activeIndex].title}
+            recipe={recipes[activeIndex]}
+          />
+
+          {/* PREVIOUS */}
+          <button
+            type="button"
+            onClick={showPreviousRecipe}
+            aria-label="Previous recipe inspiration"
+            className="
+              absolute
+              -left-[14px]
+              top-[40%]
+              z-20
+              flex
+              h-[42px]
+              w-[42px]
+              -translate-y-1/2
+              items-center
+              justify-center
+              rounded-full
+              bg-[#d1081b]
+              text-white
+              shadow-[0_8px_22px_rgba(209,8,27,0.30)]
+              ring-4
+              ring-[#fffaf2]
+              transition
+              duration-200
+              hover:scale-105
+              hover:bg-[#b90719]
+              active:scale-95
+            "
+          >
+            <ChevronLeft
+              size={24}
+              strokeWidth={2.4}
+            />
+          </button>
+
+          {/* NEXT */}
+          <button
+            type="button"
+            onClick={showNextRecipe}
+            aria-label="Next recipe inspiration"
+            className="
+              absolute
+              -right-[14px]
+              top-[40%]
+              z-20
+              flex
+              h-[42px]
+              w-[42px]
+              -translate-y-1/2
+              items-center
+              justify-center
+              rounded-full
+              bg-[#d1081b]
+              text-white
+              shadow-[0_8px_22px_rgba(209,8,27,0.30)]
+              ring-4
+              ring-[#fffaf2]
+              transition
+              duration-200
+              hover:scale-105
+              hover:bg-[#b90719]
+              active:scale-95
+            "
+          >
+            <ChevronRight
+              size={24}
+              strokeWidth={2.4}
+            />
+          </button>
         </div>
 
         {/* DOT NAVIGATION */}
