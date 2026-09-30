@@ -44,6 +44,11 @@ export default function CartPageContent() {
       ? "/ecoware/products"
       : "/products";
 
+  const checkoutHref =
+    isEcoware
+      ? "/ecoware/checkout"
+      : "/checkout";
+
   const [pricing, setPricing] = useState(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState("");
@@ -65,7 +70,7 @@ export default function CartPageContent() {
       return;
     }
 
-    const controller = new AbortController();
+    let cancelled = false;
 
     async function loadPricing() {
       try {
@@ -82,9 +87,7 @@ export default function CartPageContent() {
           body: JSON.stringify({
             storefront: cartStorefront,
             items: pricingRequestItems
-          }),
-
-          signal: controller.signal
+          })
         });
 
         const result = await response.json();
@@ -96,9 +99,11 @@ export default function CartPageContent() {
           );
         }
 
-        setPricing(result);
+        if (!cancelled) {
+          setPricing(result);
+        }
       } catch (error) {
-        if (error?.name === "AbortError") {
+        if (cancelled) {
           return;
         }
 
@@ -115,7 +120,7 @@ export default function CartPageContent() {
             : "Unable to calculate cart pricing."
         );
       } finally {
-        if (!controller.signal.aborted) {
+        if (!cancelled) {
           setPricingLoading(false);
         }
       }
@@ -124,7 +129,7 @@ export default function CartPageContent() {
     loadPricing();
 
     return () => {
-      controller.abort();
+      cancelled = true;
     };
   }, [
     items,
@@ -223,7 +228,13 @@ export default function CartPageContent() {
       {/* PAGE HEADER */}
 
       <section className="border-b border-black/10">
-        <div className="mx-auto max-w-7xl px-5 py-9 sm:px-8 md:py-12 lg:px-12">
+        <div
+          className={`mx-auto max-w-7xl px-5 pb-9 sm:px-8 md:pb-12 lg:px-12 ${
+            isEcoware
+              ? "pt-32 sm:pt-36 lg:pt-40"
+              : "pt-9 md:pt-12"
+          }`}
+        >
           <Link
             href={continueShoppingHref}
             className="inline-flex items-center gap-2 text-sm font-bold text-black/55 transition hover:text-black"
@@ -231,6 +242,8 @@ export default function CartPageContent() {
             <ArrowLeft size={16} />
             Continue Shopping
           </Link>
+
+          
 
           <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -597,7 +610,7 @@ export default function CartPageContent() {
 
               {pricingReady ? (
                 <Link
-                  href="/checkout"
+                  href={checkoutHref}
                   className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-black px-6 py-4 text-sm font-black text-white transition hover:bg-black/80"
                 >
                   Proceed to Checkout

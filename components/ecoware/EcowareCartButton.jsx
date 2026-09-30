@@ -14,7 +14,7 @@ export default function EcowareCartButton() {
 
   return (
     <Link
-      href="/cart"
+      href="/ecoware/cart"
       aria-label="Cart"
       className="relative grid h-10 w-10 place-items-center rounded-full border border-black/15 bg-white text-black transition hover:bg-black hover:text-white"
     >

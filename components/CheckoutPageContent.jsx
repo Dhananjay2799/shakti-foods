@@ -131,8 +131,7 @@ export default function CheckoutPageContent() {
       return;
     }
 
-    const controller =
-      new AbortController();
+    let cancelled = false;
 
     async function loadPricing() {
       try {
@@ -155,10 +154,7 @@ export default function CheckoutPageContent() {
 
                   items:
                     checkoutItems
-                }),
-
-              signal:
-                controller.signal
+                })
             }
           );
 
@@ -175,12 +171,11 @@ export default function CheckoutPageContent() {
           );
         }
 
-        setPricing(result);
+        if (!cancelled) {
+          setPricing(result);
+        }
       } catch (err) {
-        if (
-          err?.name ===
-          "AbortError"
-        ) {
+        if (cancelled) {
           return;
         }
 
@@ -197,9 +192,7 @@ export default function CheckoutPageContent() {
             : "Unable to calculate checkout pricing."
         );
       } finally {
-        if (
-          !controller.signal.aborted
-        ) {
+        if (!cancelled) {
           setPricingLoading(false);
         }
       }
@@ -208,7 +201,7 @@ export default function CheckoutPageContent() {
     loadPricing();
 
     return () => {
-      controller.abort();
+      cancelled = true;
     };
   }, [items, checkoutItems, storefront]);
 
@@ -710,7 +703,13 @@ export default function CheckoutPageContent() {
   }
 
   return (
-    <main className="bg-brand-radial pt-24 text-black md:pt-28">
+    <main
+      className={`bg-brand-radial text-black ${
+        isEcoware
+          ? "pt-36 sm:pt-40 lg:pt-44"
+          : "pt-24 md:pt-28"
+      }`}
+    >
       <section className="section-pad py-14 md:py-20">
         <div className="container-brand">
           <SectionHeading
