@@ -42,7 +42,7 @@ export default function Testimonials() {
         relative
         isolate
         overflow-hidden
-        bg-[#fff8ec]
+        bg-white
         text-[#18120f]
       "
     >

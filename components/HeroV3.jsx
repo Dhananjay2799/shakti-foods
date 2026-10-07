@@ -37,7 +37,7 @@ export default function HeroV3() {
           relative
           w-full
           overflow-hidden
-          bg-[#faf7f1]
+          bg-white
           lg:hidden
         "
       >
@@ -113,7 +113,7 @@ export default function HeroV3() {
           h-[720px]
           w-full
           overflow-hidden
-          bg-[#faf7f1]
+          bg-white
           lg:block
 
           xl:h-[735px]

@@ -42,7 +42,7 @@ export default function FeaturedProducts({
   }
 
   return (
-    <section className="section-pad bg-[#f8f4ed] py-16 text-black md:py-24">
+    <section className="section-pad bg-white py-16 text-black md:py-24">
       <div className="container-brand">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <SectionHeading

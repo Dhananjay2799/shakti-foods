@@ -27,7 +27,7 @@ const buyers = [
 
 export default function CTASection() {
   return (
-    <section className="relative overflow-hidden bg-[#fff8ed] text-[#17120f]">
+    <section className="relative overflow-hidden bg-white text-[#17120f]">
       {/* =====================================================
           DESKTOP
       ====================================================== */}

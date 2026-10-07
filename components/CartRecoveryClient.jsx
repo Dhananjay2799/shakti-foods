@@ -221,7 +221,7 @@ export default function CartRecoveryClient() {
     state === "error";
 
   return (
-    <main className="min-h-[100svh] bg-brand-radial pt-24 text-black md:pt-28">
+    <main className="min-h-[100svh] bg-white pt-24 text-black md:pt-28">
       <section className="section-pad py-14 md:py-24">
         <div className="container-brand">
           <div className="mx-auto max-w-2xl rounded-[2rem] bg-white p-7 text-center shadow-soft md:p-10">

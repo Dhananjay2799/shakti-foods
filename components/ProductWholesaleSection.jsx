@@ -4,7 +4,7 @@ export default function ProductWholesaleSection() {
       className="
         relative
         overflow-hidden
-        bg-[#fffaf2]
+        bg-white
       "
     >
       {/* =====================================================

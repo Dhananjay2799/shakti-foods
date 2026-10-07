@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function ContactPage() {
   return (
-    <main className="bg-brand-radial pt-24 text-black md:pt-28">
+    <main className="bg-white pt-24 text-black md:pt-28">
       <section className="section-pad py-14 md:py-20">
         <div className="container-brand">
           <SectionHeading eyebrow="Contact" title="Contact Shakti Foods" text="For retail questions, wholesale pricing, restaurant supply, and catering orders, use the details below or submit the wholesale inquiry form." />

@@ -720,7 +720,7 @@ export default function ProductCatalogSearch({
     <section
       className="
         relative
-        bg-[#fffaf2]
+        bg-white
         pb-6
         pt-4
         md:pb-8

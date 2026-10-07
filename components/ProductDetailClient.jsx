@@ -271,7 +271,7 @@ export default function ProductDetailClient({
   }, [product]);
 
   return (
-    <main className="bg-brand-radial pt-24 text-black md:pt-28">
+    <main className="bg-white pt-24 text-black md:pt-28">
       
       {/* Product Hero Section */}
       <section className="section-pad py-14 md:py-20">

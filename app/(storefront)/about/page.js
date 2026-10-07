@@ -63,7 +63,7 @@ const storyValues = [
 
 export default function AboutPage() {
   return (
-    <main className="overflow-hidden bg-[#fffaf2] text-[#17120f]">
+    <main className="overflow-hidden bg-white text-[#17120f]">
 
       {/* =====================================================
           01. ABOUT HERO
@@ -260,7 +260,7 @@ export default function AboutPage() {
 
       <section
         id="our-story"
-        className="bg-[#fffaf2] md:hidden"
+        className="bg-white md:hidden"
       >
         {/* IMAGE BANNER */}
         <div className="relative h-[205px] w-full overflow-hidden">
@@ -412,7 +412,7 @@ export default function AboutPage() {
           relative
           hidden
           overflow-hidden
-          bg-[#fffaf2]
+          bg-white
           md:block
         "
       >
@@ -571,7 +571,7 @@ export default function AboutPage() {
           IMAGE ALREADY CONTAINS TYPOGRAPHY
       ====================================================== */}
 
-      <section className="relative overflow-hidden bg-[#fffaf2]">
+      <section className="relative overflow-hidden bg-white">
         {/* MOBILE */}
         <div className="relative w-full md:hidden">
           <Image
@@ -604,7 +604,7 @@ export default function AboutPage() {
 
       <section
         className="
-          bg-[#fffaf2]
+          bg-white
           px-4
           pb-8
           pt-7
@@ -741,7 +741,7 @@ export default function AboutPage() {
       <section
         className="
           hidden
-          bg-[#fffaf2]
+          bg-white
           px-7
           py-20
           md:block

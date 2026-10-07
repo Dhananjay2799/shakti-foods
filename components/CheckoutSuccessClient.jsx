@@ -275,7 +275,7 @@ export default function CheckoutSuccessClient() {
     );
 
   return (
-    <main className="min-h-[100svh] bg-brand-radial pt-24 text-black md:pt-28">
+    <main className="min-h-[100svh] bg-white pt-24 text-black md:pt-28">
       <section className="section-pad py-14 md:py-24">
         <div className="container-brand">
           <div className="max-w-3xl rounded-[2rem] bg-white p-6 shadow-lift md:p-10">

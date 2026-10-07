@@ -180,7 +180,7 @@ export default function CartPageContent() {
 
   if (items.length === 0) {
     return (
-      <main className="min-h-[70vh] bg-[#fbfaf6] text-black">
+      <main className="min-h-[70vh] bg-white text-black">
         <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 md:py-20 lg:px-12">
           <div className="mx-auto max-w-xl rounded-[2rem] border border-black/10 bg-white px-6 py-14 text-center sm:px-10">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f1eee5]">
@@ -224,7 +224,7 @@ export default function CartPageContent() {
   ===================================================== */
 
   return (
-    <main className="min-h-screen bg-[#f8f6ef] text-black">
+    <main className="min-h-screen bg-white text-black">
       {/* PAGE HEADER */}
 
       <section className="border-b border-black/10">

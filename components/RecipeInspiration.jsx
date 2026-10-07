@@ -124,7 +124,7 @@ export default function RecipeInspiration() {
       className="
         relative
         overflow-hidden
-        bg-[#fffaf2]
+        bg-white
         text-[#17120f]
       "
     >

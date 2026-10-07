@@ -283,7 +283,7 @@ export default async function CollectionPage({
   };
 
   return (
-    <main className="min-h-screen bg-brand-radial pt-24 text-black md:pt-28">
+    <main className="min-h-screen bg-white pt-24 text-black md:pt-28">
 
       <script
         type="application/ld+json"

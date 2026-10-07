@@ -704,10 +704,10 @@ export default function CheckoutPageContent() {
 
   return (
     <main
-      className={`bg-brand-radial text-black ${
+      className={`text-black ${
         isEcoware
-          ? "pt-36 sm:pt-40 lg:pt-44"
-          : "pt-24 md:pt-28"
+          ? "bg-brand-radial pt-36 sm:pt-40 lg:pt-44"
+          : "bg-white pt-24 md:pt-28"
       }`}
     >
       <section className="section-pad py-14 md:py-20">

@@ -131,7 +131,7 @@ export default function SubscriptionCheckoutClient({
     Boolean(loadingProvider);
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1] px-4 pb-16 pt-28 md:pt-32">
+    <main className="min-h-screen bg-white px-4 pb-16 pt-28 md:pt-32">
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_380px]">
 
         {/* Customer */}

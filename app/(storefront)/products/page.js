@@ -68,7 +68,7 @@ export default async function ProductsPage() {
   );
 
   return (
-    <main className="overflow-hidden bg-[#fffaf2] text-[#17120f]">
+    <main className="overflow-hidden bg-white text-[#17120f]">
       {/* =====================================================
           PRODUCTS HERO
       ====================================================== */}
@@ -77,7 +77,7 @@ export default async function ProductsPage() {
         className="
           relative
           overflow-hidden
-          bg-[#fffaf2]
+          bg-white
           pb-0
           pt-[112px]
 
@@ -408,7 +408,7 @@ export default async function ProductsPage() {
           relative
           border-y
           border-[#eee1cf]
-          bg-[#fff8ee]
+          bg-white
         "
       >
         <div className="container-brand">

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function SubscriptionSuccessPage() {
   return (
-    <main className="min-h-screen bg-[#f8f6f1] px-5 py-24">
+    <main className="min-h-screen bg-white px-5 py-24">
       <div className="mx-auto max-w-2xl rounded-[2rem] bg-white p-8 text-center shadow-soft md:p-12">
         <div className="text-xs font-bold uppercase tracking-[.18em] text-black/40">
           Shakti Foods
