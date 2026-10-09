@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 import ProductCatalogSearch from "@/components/ProductCatalogSearch";
-import ProductWholesaleSection from "@/components/ProductWholesaleSection";
+import CTASection from "@/components/CTASection";
 import {
   getStorefrontProducts,
   PUBLIC_STOREFRONTS,
@@ -94,10 +94,13 @@ export default async function ProductsPage() {
             src="/images/shakti-hero.jpg"
             alt="Shakti Foods Premium Basmati Rice"
             className="
+              relative
+              -left-[05px]
               h-full
-              w-full
+              w-[calc(100%+40px)]
+              max-w-none
               object-cover
-              object-[67%_0%]
+              object-[100%_36%]
             "
           />
 
@@ -106,7 +109,7 @@ export default async function ProductsPage() {
             className="
               absolute
               inset-0
-              bg-[linear-gradient(90deg,#fffaf2_0%,#fffaf2_27%,rgba(255,250,242,0.98)_34%,rgba(255,250,242,0.90)_40%,rgba(255,250,242,0.62)_47%,rgba(255,250,242,0.18)_55%,transparent_64%)]
+              bg-[linear-gradient(90deg,#ffffff_0%,#ffffff_27%,rgba(255,255,255,0.98)_34%,rgba(255,255,255,0.90)_40%,rgba(255,255,255,0.62)_47%,rgba(255,255,255,0.18)_55%,transparent_64%)]
             "
           />
         </div>
@@ -134,7 +137,7 @@ export default async function ProductsPage() {
               inset-x-0
               top-0
               h-[385px]
-              bg-[linear-gradient(180deg,rgba(255,250,242,0.97)_0%,rgba(255,250,242,0.91)_30%,rgba(255,250,242,0.67)_61%,rgba(255,250,242,0.20)_84%,rgba(255,250,242,0)_100%)]
+              bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(255,255,255,0.91)_30%,rgba(255,255,255,0.67)_61%,rgba(255,255,255,0.20)_84%,rgba(255,255,255,0)_100%)]
 
               md:hidden
             "
@@ -182,6 +185,7 @@ export default async function ProductsPage() {
               {/* EYEBROW */}
               <p
                 className="
+                  w-full
                   text-center
                   text-[9px]
                   font-black
@@ -192,6 +196,7 @@ export default async function ProductsPage() {
                   sm:text-[10px]
 
                   md:mb-2
+                  md:text-left
                 "
               >
                 Our Products
@@ -303,7 +308,7 @@ export default async function ProductsPage() {
                           rounded-full
                           border
                           border-[#e3bd78]
-                          bg-[#fffaf2]/95
+                          bg-white/95
                           text-[#d1081b]
                           shadow-[0_7px_18px_rgba(69,42,17,0.06)]
 
@@ -506,7 +511,7 @@ export default async function ProductsPage() {
         </div>
       </section>
 
-      <ProductWholesaleSection />
+      <CTASection />
     </main>
   );
 }

@@ -760,7 +760,7 @@ export default function ProductCatalogSearch({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search Basmati rice, plates, bowls, trays..."
+                placeholder="Search Basmati rice..."
                 autoComplete="off"
                 className="
                   h-[50px]
@@ -926,7 +926,7 @@ export default function ProductCatalogSearch({
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search Basmati rice, plates, bowls, trays..."
+                  placeholder="Search Basmati rice..."
                   autoComplete="off"
                   className="
                     h-[48px]

@@ -71,7 +71,7 @@ export default function Navbar() {
           flex
           h-[64px]
           w-full
-          max-w-[1320px]
+          max-w-[920px]
           items-center
           justify-between
           rounded-[24px]
@@ -85,9 +85,9 @@ export default function Navbar() {
           sm:h-[66px]
           sm:px-5
 
-          lg:h-[60px]
+          lg:h-[54px]
           lg:rounded-[22px]
-          lg:px-6
+          lg:px-4
         "
       >
         {/* =================================================
@@ -210,43 +210,6 @@ export default function Navbar() {
               </Link>
             )
           )}
-
-          <a
-            href="https://simpliecoware.vercel.app"
-            className="
-              ml-2
-              flex
-              items-center
-              gap-2
-              rounded-full
-              border
-              border-[#27802f]/30
-              bg-[#f7fbf3]
-              px-3
-              py-1.5
-              text-[12px]
-              font-bold
-              text-[#1f6527]
-              transition
-              hover:border-[#27802f]
-              hover:bg-[#edf7e8]
-            "
-            aria-label="Visit Simpli Ecoware"
-          >
-            <span className="relative h-[28px] w-[28px] shrink-0">
-              <Image
-                src="/images/logo-ecoware-icon.png"
-                alt=""
-                fill
-                sizes="28px"
-                className="object-contain"
-              />
-            </span>
-
-            <span className="whitespace-nowrap">
-              Simpli Ecoware
-            </span>
-          </a>
         </div>
 
         {/* =================================================
@@ -409,54 +372,6 @@ export default function Navbar() {
                   </Link>
                 )
               )}
-
-              <a
-                href="https://simpliecoware.vercel.app"
-                onClick={() => setOpen(false)}
-                className="
-                  mt-1
-                  flex
-                  items-center
-                  gap-3
-                  rounded-xl
-                  border
-                  border-[#27802f]/20
-                  bg-[#f7fbf3]
-                  px-4
-                  py-2.5
-                  transition
-                  hover:border-[#27802f]/40
-                  hover:bg-[#edf7e8]
-                "
-                aria-label="Visit Simpli Ecoware"
-              >
-                <span className="relative h-9 w-9 shrink-0">
-                  <Image
-                    src="/images/logo-ecoware-icon.png"
-                    alt=""
-                    fill
-                    sizes="36px"
-                    className="object-contain"
-                  />
-                </span>
-
-                <span className="min-w-0">
-                  <span className="block text-sm font-black leading-tight text-[#1f6527]">
-                    Simpli Ecoware
-                  </span>
-
-                  <span className="mt-0.5 block text-[9px] font-semibold italic text-[#4f7f34]">
-                    Good for Earth, Good for You
-                  </span>
-                </span>
-
-                <span
-                  className="ml-auto text-lg text-[#27802f]"
-                  aria-hidden="true"
-                >
-                  →
-                </span>
-              </a>
 
               <Link
                 href="/cart"

@@ -1,17 +1,18 @@
+
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/components/CartProvider";
 
-export default function StorefrontLayout({
-  children
-}) {
+export default function StorefrontLayout({ children }) {
   return (
     <CartProvider>
-      <Navbar />
+      <div className="shakti-storefront min-h-screen bg-white">
+        <Navbar />
 
-      {children}
-      <Footer />
+        {children}
 
+        <Footer />
+      </div>
     </CartProvider>
   );
 }

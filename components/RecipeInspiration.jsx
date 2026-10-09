@@ -4,24 +4,20 @@ import Image from "next/image";
 import {
   ChevronLeft,
   ChevronRight,
-  Clock,
 } from "lucide-react";
 import { useState } from "react";
 
 const recipes = [
   {
-    title: "Chicken Biryani",
-    time: "45 min",
-    image: "/images/recipe-chicken-biryani.jpg",
-  },
-  {
     title: "Mediterranean Rice Bowl",
-    time: "30 min",
     image: "/images/recipe-mediterranean-rice-bowl.jpg",
   },
   {
+    title: "Veg Biryani",
+    image: "/images/recipe-veg-biryani.jpg",
+  },
+  {
     title: "Mexican Rice Bowl",
-    time: "25 min",
     image: "/images/recipe-mexican-rice-bowl.jpg",
   },
 ];
@@ -56,7 +52,7 @@ function RecipeCard({ recipe }) {
             (max-width: 1200px) 33vw,
             390px
           "
-          className="object-cover"
+          className="object-cover object-[center_25%]"
         />
       </div>
 
@@ -87,11 +83,6 @@ function RecipeCard({ recipe }) {
             text-[#5e5750]
           "
         >
-          <Clock
-            size={18}
-            strokeWidth={2}
-            className="text-[#d1081b]"
-          />
 
           <span>{recipe.time}</span>
         </div>

@@ -28,77 +28,125 @@ const values = [
 export default function HeroV3() {
   return (
     <>
+      
+    
       {/* =====================================================
-          MOBILE
+          MOBILE HERO — TEXT OVER PHOTOGRAPH
       ====================================================== */}
 
-      <section
-        className="
-          relative
-          w-full
-          overflow-hidden
-          bg-white
-          lg:hidden
-        "
-      >
-        <div className="relative w-full">
-          <Image
-            src="/images/shakti-hero-mobile.jpg"
-            alt="Shakti Foods Premium Basmati Rice"
-            width={940}
-            height={1672}
-            priority
-            sizes="100vw"
+      <section className="relative w-full overflow-hidden bg-white lg:hidden">
+        {/* BACKGROUND PHOTOGRAPH */}
+        <Image
+          src="/images/shakti-hero-mobile.jpg"
+          alt="Shakti Foods 10 lb Premium Basmati Rice with white rice in a traditional copper bowl"
+          width={1024}
+          height={1536}
+          priority
+          sizes="100vw"
+          className="block h-auto w-full"
+        />
+
+        {/* CONTENT OVER IMAGE */}
+        <div
+          className="
+            absolute inset-x-0 top-0 z-10
+            px-5 pt-[126px]
+            sm:px-8 sm:pt-[138px]
+          "
+        >
+          {/* EYEBROW */}
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black uppercase tracking-[0.19em] text-[#a8661e]">
+              Premium Basmati Rice
+            </span>
+
+            <span className="h-px w-7 bg-[#c88a3d]" />
+          </div>
+
+          {/* HEADLINE */}
+          <h1
             className="
-              block
-              h-auto
-              w-full
+              mt-3
+              font-display
+              text-[clamp(34px,8.8vw,47px)]
+              font-bold
+              leading-[0.96]
+              tracking-[-0.045em]
+              text-[#15100f]
             "
-          />
+          >
+            Our Rice
+            <br />
+            change to
+            <br />
+            <span className="text-[#E42027]">
+              Our 
+              <br />
+              Products.
+            </span>
+          </h1>
 
-          {/*
-            The buttons are already visually present
-            inside shakti-hero-mobile.jpg.
 
-            These transparent links make them real,
-            accessible, clickable website controls.
-          */}
-
-          {/* SHOP OUR RICE — MOBILE CLICK AREA */}
-          <Link
-            href="/products"
-            aria-label="Shop Our Rice"
+          {/* BUTTONS */}
+          
+          {/* MOBILE BUTTONS — POSITIONED NEAR RICE BOWL */}
+          <div
             className="
               absolute
-              left-[6.5%]
-              top-[40.6%]
-              z-30
-              h-[4.8%]
-              w-[41%]
-              rounded-md
-              focus-visible:outline
-              focus-visible:outline-2
-              focus-visible:outline-white
+              left-5
+              top-[117vw]
+              z-20
+              flex
+              items-center
+              gap-2
+              sm:left-8
             "
-          />
+          >
+            <Link
+              href="/products"
+              className="
+                inline-flex
+                h-[40px]
+                items-center
+                justify-center
+                gap-2
+                rounded-md
+                bg-[#bd0d1b]
+                px-4
+                text-[12px]
+                font-bold
+                text-white
+                shadow-lg
+                transition
+                hover:bg-[#9f0b17]
+              "
+            >
+              Shop Our Rice
+              <ArrowRight size={15} strokeWidth={1.8} />
+            </Link>
 
-          {/* OUR STORY — MOBILE CLICK AREA */}
-          <Link
-            href="/about"
-            aria-label="Our Story"
-            className="
-              absolute
-              left-[6.5%]
-              top-[46.0%]
-              z-30
-              h-[4.8%]
-              w-[41%]
-              rounded-md
-              focus-visible:outline
-              focus-visible:outline-2
-              focus-visible:outline-[#b80d1b]
-            "
-          />
+            <Link
+              href="/about"
+              className="
+                inline-flex
+                h-[40px]
+                items-center
+                justify-center
+                rounded-md
+                border
+                border-[#bd0d1b]
+                bg-white/95
+                px-4
+                text-[12px]
+                font-bold
+                text-[#bd0d1b]
+                transition
+                hover:bg-white
+              "
+            >
+              Our Story
+            </Link>
+          </div>
         </div>
       </section>
 

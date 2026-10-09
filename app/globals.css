@@ -107,3 +107,25 @@ body::-webkit-scrollbar-track { background: #efe7d8; }
     transition-duration: .001ms !important;
   }
 }
+
+
+/* Shakti Foods storefront theme */
+.shakti-storefront {
+  --shakti-red: #E42027;
+  font-family: var(--font-montserrat), sans-serif;
+}
+
+.shakti-storefront h1,
+.shakti-storefront h2,
+.shakti-storefront h3,
+.shakti-storefront h4,
+.shakti-storefront h5,
+.shakti-storefront h6 {
+  font-family: var(--font-montserrat), sans-serif;
+}
+
+.shakti-storefront .font-display,
+.shakti-storefront .font-sans {
+  font-family: var(--font-montserrat), sans-serif;
+}
+

@@ -1,4 +1,4 @@
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, Playfair_Display, Montserrat } from "next/font/google";
 import "./globals.css";
 import Analytics from "@/components/Analytics";
 import CheckoutReturnWatcher from "@/components/CheckoutReturnWatcher";
@@ -13,6 +13,12 @@ const inter = Inter({
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-display"
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
 });
 
 export const metadata = {
@@ -55,7 +61,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${playfair.variable}`}
+        className={`${inter.variable} ${playfair.variable} ${montserrat.variable}`}
       >
         <CartProvider>
           <Analytics />
