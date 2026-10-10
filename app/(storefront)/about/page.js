@@ -149,10 +149,9 @@ export default function AboutPage() {
                 text-[#453c36]
               "
             >
-              For generations, Shakti Foods has been bringing
-              premium Basmati rice to tables around the world.
-              Carefully sourced, naturally aged, and chosen for
-              the moments that matter most.
+              Born from a passion for authentic quality, Shakti Foods
+              brings the world's finest Basmati rice straight to your kitchen.
+              Hand-selected, patience-aged, and trusted for the moments that matter most.
             </p>
           </div>
         </div>
@@ -244,10 +243,9 @@ export default function AboutPage() {
                 text-[#453c36]
               "
             >
-              For generations, Shakti Foods has been bringing
-              premium Basmati rice to tables around the world.
-              Carefully sourced, naturally aged, and chosen for the
-              moments that matter most.
+              Born from a passion for authentic quality, Shakti Foods
+              brings the world's finest Basmati rice straight to your kitchen.
+              Hand-selected, patience-aged, and trusted for the moments that matter most.
             </p>
           </div>
         </div>
@@ -262,16 +260,6 @@ export default function AboutPage() {
         id="our-story"
         className="bg-white md:hidden"
       >
-        {/* IMAGE BANNER */}
-        <div className="relative h-[205px] w-full overflow-hidden">
-          <Image
-            src="/images/about-story-mobile.jpg"
-            alt="Premium Shakti Foods Basmati rice served at the table"
-            fill
-            sizes="100vw"
-            className="object-cover object-center"
-          />
-        </div>
 
         {/* CONTENT */}
         <div className="px-5 pb-7 pt-6">
@@ -571,6 +559,7 @@ export default function AboutPage() {
           IMAGE ALREADY CONTAINS TYPOGRAPHY
       ====================================================== */}
 
+      {false && (
       <section className="relative overflow-hidden bg-white">
         {/* MOBILE */}
         <div className="relative w-full md:hidden">
@@ -596,6 +585,7 @@ export default function AboutPage() {
           />
         </div>
       </section>
+      )}
 
       {/* =====================================================
           04. FROM GRAIN TO TABLE

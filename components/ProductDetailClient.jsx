@@ -1,5 +1,4 @@
 "use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +12,6 @@ import ProductImageGallery from "@/components/ProductImageGallery";
 import RelatedProducts from "@/components/RelatedProducts";
 import SampleRequestForm from "@/components/SampleRequestForm";
 import ProductReviews from "@/components/ProductReviews";
-
 export default function ProductDetailClient({ 
   product, 
   specifications, 
@@ -25,7 +23,6 @@ export default function ProductDetailClient({
   subscriptionFrequencies = []
 }) {
   const { addItem } = useCart();
-
   const [quantity, setQuantity] = useState(1);
   const [purchaseOption, setPurchaseOption] =
     useState("one_time");
@@ -33,12 +30,10 @@ export default function ProductDetailClient({
     useState(
       subscriptionFrequencies[0]?.id || ""
     );
-
   const subscriptionEnabled =
     Boolean(
       subscriptionSettings?.is_enabled
     ) && subscriptionFrequencies.length > 0;
-
   const subscriptionDiscountPercent =
     Math.max(
       0,
@@ -50,7 +45,6 @@ export default function ProductDetailClient({
         )
       )
     );
-
   const subscriptionMinimumQuantity =
     Math.max(
       1,
@@ -59,11 +53,9 @@ export default function ProductDetailClient({
           1
       )
     );
-
   const isSubscription =
     subscriptionEnabled &&
     purchaseOption === "subscription";
-
   const sortedPriceTiers = useMemo(
     () =>
       [...priceTiers].sort(
@@ -73,18 +65,15 @@ export default function ProductDetailClient({
       ),
     [priceTiers]
   );
-
   const activeTier = useMemo(() => {
     return (
       sortedPriceTiers.find((tier) => {
         const minQuantity =
           Number(tier.min_quantity);
-
         const maxQuantity =
           tier.max_quantity === null
             ? null
             : Number(tier.max_quantity);
-
         return (
           quantity >= minQuantity &&
           (maxQuantity === null ||
@@ -93,65 +82,51 @@ export default function ProductDetailClient({
       }) || null
     );
   }, [quantity, sortedPriceTiers]);
-
   const regularUnitPrice =
     Number(product.unitPrice || 0);
-
   const currentUnitPrice =
     activeTier
       ? Number(activeTier.unit_price_cents) / 100
       : regularUnitPrice;
-
   const subscriptionPriceFromRegular =
     regularUnitPrice *
     (1 - subscriptionDiscountPercent / 100);
-
   const subscriptionUnitPrice =
     Math.min(
       subscriptionPriceFromRegular,
       currentUnitPrice
     );
-
   const subscriptionDiscountWins =
     subscriptionPriceFromRegular <
     currentUnitPrice;
-
   const volumeDiscountWins =
     activeTier &&
     currentUnitPrice <=
       subscriptionPriceFromRegular;
-
   const displayedUnitPrice =
     isSubscription
       ? subscriptionUnitPrice
       : currentUnitPrice;
-
   const regularTotal =
     regularUnitPrice * quantity;
-
   const currentTotal =
     currentUnitPrice * quantity;
-
   const subscriptionTotal =
     subscriptionUnitPrice * quantity;
-
   const displayedTotal =
     isSubscription
       ? subscriptionTotal
       : currentTotal;
-
   const subscriptionSavings =
     Math.max(
       regularTotal - subscriptionTotal,
       0
     );
-
   const savings =
     Math.max(
       regularTotal - currentTotal,
       0
     );
-
   const savingsPercent =
     regularUnitPrice > 0 &&
     currentUnitPrice < regularUnitPrice
@@ -162,7 +137,6 @@ export default function ProductDetailClient({
             100
         )
       : 0;
-
   const availableStock = Math.max(
     Number(
       product.inventory?.stock_quantity || 0
@@ -172,12 +146,10 @@ export default function ProductDetailClient({
       ),
     0
   );
-
   const minimumAllowedQuantity =
     isSubscription
       ? subscriptionMinimumQuantity
       : 1;
-
   function decreaseQuantity() {
     setQuantity((current) =>
       Math.max(
@@ -186,7 +158,6 @@ export default function ProductDetailClient({
       )
     );
   }
-
   function increaseQuantity() {
     setQuantity((current) =>
       availableStock > 0
@@ -197,11 +168,9 @@ export default function ProductDetailClient({
         : current + 1
     );
   }
-
   function handleQuantityChange(event) {
     const nextQuantity =
       Number(event.target.value);
-
     if (
       !Number.isInteger(nextQuantity) ||
       nextQuantity < minimumAllowedQuantity
@@ -209,7 +178,6 @@ export default function ProductDetailClient({
       setQuantity(minimumAllowedQuantity);
       return;
     }
-
     if (availableStock > 0) {
       setQuantity(
         Math.min(
@@ -219,10 +187,8 @@ export default function ProductDetailClient({
       );
       return;
     }
-
     setQuantity(nextQuantity);
   }
-
   function handleAddToCart() {
     for (
       let index = 0;
@@ -231,7 +197,6 @@ export default function ProductDetailClient({
     ) {
       addItem(product);
     }
-
     trackEvent("add_to_cart", {
       currency: "USD",
       value: currentTotal,
@@ -246,7 +211,6 @@ export default function ProductDetailClient({
       ]
     });
   }
-
   useEffect(() => {
     if (
       isSubscription &&
@@ -261,7 +225,6 @@ export default function ProductDetailClient({
     quantity,
     subscriptionMinimumQuantity
   ]);
-
   useEffect(() => {
     trackEvent("view_item", {
       currency: "USD",
@@ -269,20 +232,17 @@ export default function ProductDetailClient({
       items: [productToGaItem(product)]
     });
   }, [product]);
-
   return (
-    <main className="bg-white pt-24 text-black md:pt-28">
-      
+    <main className="bg-white pt-24 text-black md:pt-[75px]">
       {/* Product Hero Section */}
-      <section className="section-pad py-14 md:py-20">
+      <section className="section-pad py-14 md:pb-4 md:pt-2">
         <div className="container-brand">
           <Link href="/products" className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-black shadow-soft">
             ← Back to Products
           </Link>
-
           <div className="mt-8 grid gap-8 lg:grid-cols-[.95fr_1.05fr] lg:items-start">
-            
-            {/* Image Gallery Container */}
+            {/* Image Gallery and Best For — rice products only */}
+            <div className="min-w-0">
             <div className="rounded-[2rem] bg-white p-5 shadow-lift md:p-8">
               <ProductImageGallery 
                 images={product.images?.length ? product.images : [
@@ -296,7 +256,13 @@ export default function ProductDetailClient({
                 productName={product.name} 
               />
             </div>
-
+            {product.categoryId === "rice" ? (
+              <section className="mt-4 rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
+                <h2 className="font-display text-2xl font-bold text-black md:text-3xl">Best For</h2>
+                <p className="mt-3 leading-7 text-black">{product.bestFor}</p>
+              </section>
+            ) : null}
+            </div>
             <div>
               <div className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-[.16em] text-black ring-1 ring-black/15">
                 {product.badge}
@@ -307,29 +273,137 @@ export default function ProductDetailClient({
               <p className="mt-5 text-lg leading-8 text-black">
                 {product.shortDescription}
               </p>
+                              {product.categoryId === "rice" ? (
+                  <div className="mt-6 rounded-[2rem] border border-black/5 bg-white p-4 shadow-soft sm:p-5">
+                    {/* Compact Shakti Foods rice purchasing panel */}
+                    <div className="grid grid-cols-[1fr_0.85fr_1.25fr] items-start gap-x-2 sm:gap-x-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-black/55 sm:text-xs">Pack Size</p>
+                        <p className="mt-1 text-[11px] font-semibold leading-snug sm:text-sm">{product.packSize}</p>
+                      </div>
+                      <div className="min-w-0 text-center">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-black/55 sm:text-xs">Price</p>
+                        <p className="mt-1 text-lg font-extrabold leading-none text-[#E42027] sm:text-2xl">{formatPrice(currentUnitPrice)}</p>
+                        <p className="mt-1 text-[10px] text-black/50 sm:text-xs">per unit</p>
+                        {activeTier && savingsPercent > 0 ? (
+                          <p className="mt-1 text-[10px] font-bold text-green-700">Save {savingsPercent}%</p>
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 justify-self-end">
+                        {sortedPriceTiers.length > 0 ? (
+                          <details className="group min-w-0">
+                            <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                              <span className="flex items-start justify-between gap-1">
+                                <span className="text-[10px] font-extrabold leading-tight sm:text-xs">Buy More, Save More</span>
+                                <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-black/20 bg-white text-black/75 shadow-sm transition group-open:rotate-180">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m6 9 6 6 6-6" /></svg>
+                                </span>
+                              </span>
+                              <span className="mt-1 block text-[10px] text-black/55 sm:text-xs">Volume discounts</span>
+                              {sortedPriceTiers[0] ? (
+                                <span className="mt-1 block text-[10px] font-medium leading-snug text-black/75 sm:text-xs">
+                                  {sortedPriceTiers[0].min_quantity}+ units: {formatPrice(Number(sortedPriceTiers[0].unit_price_cents) / 100)} each
+                                  {regularUnitPrice > 0 ? ` (${Math.max(0, Math.round((1 - (Number(sortedPriceTiers[0].unit_price_cents) / 100) / regularUnitPrice) * 100))}% off)` : ""}
+                                </span>
+                              ) : null}
+                            </summary>
+                            <div className="mt-3 space-y-2 border-t border-black/10 pt-2 text-[11px] sm:text-xs">
+                              {sortedPriceTiers[0]?.min_quantity > 1 ? (
+                                <div className="flex justify-between gap-2"><span>1–{sortedPriceTiers[0].min_quantity - 1} units</span><strong>{formatPrice(regularUnitPrice)}</strong></div>
+                              ) : null}
+                              {sortedPriceTiers.map((tier) => (
+                                <div key={tier.id} className="flex justify-between gap-2">
+                                  <span>{tier.min_quantity}{tier.max_quantity == null ? "+" : `–${tier.max_quantity}`} units</span>
+                                  <strong>{formatPrice(Number(tier.unit_price_cents) / 100)}</strong>
+                                </div>
+                              ))}
+                              <p className="text-black/55">Volume prices apply automatically at checkout.</p>
+                            </div>
+                          </details>
+                        ) : (
+                          <p className="text-xs font-medium text-black/50">Standard pricing</p>
+                        )}
+                      </div>
+                    </div>
 
-              <div className="mt-6 rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
+                    {product.canCheckout ? (
+                      <>
+                        <div className="mt-5 border-t border-black/10 pt-4">
+                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.1em]">Quantity</p>
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <div className="inline-flex shrink-0 items-center overflow-hidden rounded-xl border border-black/15 bg-white">
+                              <button type="button" onClick={decreaseQuantity} disabled={quantity <= minimumAllowedQuantity} aria-label="Decrease quantity" className="grid h-10 w-8 place-items-center text-lg font-semibold disabled:opacity-30 sm:w-9">−</button>
+                              <input type="number" min={minimumAllowedQuantity} max={availableStock > 0 ? availableStock : undefined} value={quantity} onChange={handleQuantityChange} aria-label="Quantity" className="h-10 w-9 border-x border-black/10 bg-white text-center text-sm font-bold outline-none sm:w-10" />
+                              <button type="button" onClick={increaseQuantity} disabled={availableStock > 0 && quantity >= availableStock} aria-label="Increase quantity" className="grid h-10 w-8 place-items-center text-lg font-semibold disabled:opacity-30 sm:w-9">+</button>
+                            </div>
+                            <button type="button" onClick={handleAddToCart} disabled={availableStock === 0} className="shrink-0 rounded-xl bg-[#E42027] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#c81920] disabled:cursor-not-allowed disabled:opacity-50 sm:px-5 sm:text-sm">
+                              {availableStock === 0 ? "Out of Stock" : "Add to Cart"}
+                            </button>
+                            <span className="ml-auto whitespace-nowrap text-sm font-bold text-black">Total: {formatPrice(currentTotal)}</span>
+                          </div>
+                          <p className="mt-2 text-xs text-black/60">{availableStock > 0 ? `${availableStock} available` : "Currently unavailable"}</p>
+                          {savings > 0 ? <p className="mt-1 text-right text-xs font-semibold text-green-700">Volume savings: {formatPrice(savings)}</p> : null}
+                        </div>
+                        {subscriptionEnabled ? (
+                          <div className="mt-4 border-t border-black/10 pt-3">
+                            <label className="flex cursor-pointer items-center justify-between gap-3">
+                              <span className="flex items-center gap-2">
+                                <input type="checkbox" checked={isSubscription} onChange={(event) => setPurchaseOption(event.target.checked ? "subscription" : "one_time")} className="h-4 w-4 accent-[#E42027]" />
+                                <span>
+                                  <span className="block text-sm font-bold">Subscribe &amp; Save</span>
+                                  <span className="block text-xs text-black/60">Recurring deliveries · {formatPrice(subscriptionUnitPrice)} per unit</span>
+                                </span>
+                              </span>
+                              <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700">
+                                {subscriptionDiscountWins ? `Save ${subscriptionDiscountPercent}%` : "Best price applied"}
+                              </span>
+                            </label>
+                            {isSubscription ? (
+                              <div className="mt-3 rounded-xl bg-green-50 p-3">
+                                <label className="block text-xs font-bold">
+                                  Delivery Frequency
+                                  <select value={subscriptionFrequency} onChange={(event) => setSubscriptionFrequency(event.target.value)} className="mt-2 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm">
+                                    {subscriptionFrequencies.map((frequency) => <option key={frequency.id} value={frequency.id}>{frequency.label}</option>)}
+                                  </select>
+                                </label>
+                                {volumeDiscountWins ? <p className="mt-2 text-xs text-green-800">Your volume discount is better, so the lower price applies.</p> : null}
+                                <p className="mt-2 text-xs text-black/65">Subscription total: <strong>{formatPrice(subscriptionTotal)}</strong>{subscriptionSavings > 0 ? ` · Save ${formatPrice(subscriptionSavings)}` : ""}</p>
+                                <p className="mt-1 text-xs text-black/55">Recurring deliveries continue at your chosen frequency until canceled.</p>
+                                <button type="button" onClick={() => {
+                                  if (!subscriptionFrequency) return;
+                                  const params = new URLSearchParams({ productId: product.id, frequencyId: subscriptionFrequency, quantity: String(quantity) });
+                                  window.location.href = `/subscriptions/checkout?${params.toString()}`;
+                                }} disabled={availableStock === 0 || !subscriptionFrequency} className="mt-3 w-full rounded-xl bg-green-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
+                                  {availableStock === 0 ? "Out of Stock" : "Subscribe Now"}
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <a href="#wholesale" className="mt-4 inline-flex rounded-xl bg-[#E42027] px-5 py-3 text-sm font-bold text-white">Request Wholesale Price</a>
+                    )}
+                  </div>
+                ) : (
+<div className="mt-6 rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
                 <div className="grid gap-4 text-black sm:grid-cols-2">
                   <div>
                     <div className="text-sm font-bold uppercase tracking-[.16em]">
                       Pack Size
                     </div>
-
                     <div className="mt-1">
                       {product.packSize}
                     </div>
                   </div>
-
                   <div>
                     <div className="text-sm font-bold uppercase tracking-[.16em]">
                       Price
                     </div>
-
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <span className="text-xl font-bold">
                         {formatPrice(currentUnitPrice)}
                       </span>
-
                       {activeTier ? (
                         <>
                           <span className="text-sm text-black/50 line-through">
@@ -337,7 +411,6 @@ export default function ProductDetailClient({
                               regularUnitPrice
                             )}
                           </span>
-
                           {savingsPercent > 0 ? (
                             <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-bold text-green-800">
                               Save {savingsPercent}%
@@ -346,13 +419,11 @@ export default function ProductDetailClient({
                         </>
                       ) : null}
                     </div>
-
                     <div className="mt-1 text-xs text-black/60">
                       per unit
                     </div>
                   </div>
                 </div>
-
                 {sortedPriceTiers.length > 0 ? (
                   <div className="mt-6 rounded-[1.5rem] border border-black/10 bg-[#faf7f1] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -360,13 +431,11 @@ export default function ProductDetailClient({
                         <div className="text-sm font-bold uppercase tracking-[.16em]">
                           Buy More, Save More
                         </div>
-
                         <p className="mt-1 text-sm text-black/60">
                           Volume pricing is applied
                           automatically.
                         </p>
                       </div>
-
                       {activeTier ? (
                         <span className="rounded-full bg-black px-3 py-1.5 text-xs font-bold text-white">
                           {activeTier.tier_name ||
@@ -374,14 +443,12 @@ export default function ProductDetailClient({
                         </span>
                       ) : null}
                     </div>
-
                     <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white">
                       <div className="grid grid-cols-[1fr_1fr_auto] gap-3 border-b border-black/10 bg-black px-4 py-3 text-xs font-bold uppercase tracking-[.12em] text-white">
                         <span>Quantity</span>
                         <span>Price / Unit</span>
                         <span>Savings</span>
                       </div>
-
                       <div className="grid grid-cols-[1fr_1fr_auto] gap-3 border-b border-black/10 px-4 py-3 text-sm">
                         <span>
                           {sortedPriceTiers[0]
@@ -392,23 +459,19 @@ export default function ProductDetailClient({
                               }`
                             : "Regular"}
                         </span>
-
                         <span className="font-bold">
                           {formatPrice(
                             regularUnitPrice
                           )}
                         </span>
-
                         <span>—</span>
                       </div>
-
                       {sortedPriceTiers.map(
                         (tier) => {
                           const tierPrice =
                             Number(
                               tier.unit_price_cents
                             ) / 100;
-
                           const tierSavings =
                             regularUnitPrice > 0
                               ? Math.max(
@@ -421,17 +484,14 @@ export default function ProductDetailClient({
                                   0
                                 )
                               : 0;
-
                           const isActive =
                             activeTier?.id ===
                             tier.id;
-
                           const quantityLabel =
                             tier.max_quantity ===
                             null
                               ? `${tier.min_quantity}+`
                               : `${tier.min_quantity}–${tier.max_quantity}`;
-
                           return (
                             <div
                               key={tier.id}
@@ -450,13 +510,11 @@ export default function ProductDetailClient({
                               >
                                 {quantityLabel}
                               </span>
-
                               <span className="font-bold">
                                 {formatPrice(
                                   tierPrice
                                 )}
                               </span>
-
                               <span
                                 className={
                                   tierSavings > 0
@@ -475,7 +533,6 @@ export default function ProductDetailClient({
                     </div>
                   </div>
                 ) : null}
-
                 {product.canCheckout ? (
                   <>
                     {subscriptionEnabled ? (
@@ -495,18 +552,15 @@ export default function ProductDetailClient({
                             }
                             className="mt-1 h-4 w-4"
                           />
-
                           <div className="flex-1">
                             <div className="font-bold">
                               One-time purchase
                             </div>
-
                             <div className="mt-1 text-sm text-black/60">
                               {formatPrice(currentUnitPrice)} per unit
                             </div>
                           </div>
                         </label>
-
                         <label className="flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
                           <input
                             type="radio"
@@ -522,7 +576,6 @@ export default function ProductDetailClient({
                             }
                             className="mt-1 h-4 w-4"
                           />
-
                           <div className="flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-bold">
@@ -534,7 +587,6 @@ export default function ProductDetailClient({
                                   : "Best price applied"}
                               </span>
                             </div>
-
                             <div className="mt-1 flex flex-wrap items-center gap-2">
                               <span className="font-bold text-green-800">
                                 {formatPrice(subscriptionUnitPrice)}
@@ -546,7 +598,6 @@ export default function ProductDetailClient({
                                 per unit
                               </span>
                             </div>
-
                             {volumeDiscountWins ? (
                               <div className="mt-2 text-xs font-semibold text-green-800">
                                 Your quantity discount is better than the Subscribe & Save discount, so the lower volume price is used.
@@ -554,14 +605,12 @@ export default function ProductDetailClient({
                             ) : null}
                           </div>
                         </label>
-
                         {isSubscription ? (
                           <div className="mt-1 rounded-2xl border border-green-200 bg-green-50 p-4">
                             <label className="block">
                               <span className="text-sm font-bold text-black">
                                 Delivery Frequency
                               </span>
-
                               <select
                                 value={subscriptionFrequency}
                                 onChange={(event) =>
@@ -583,7 +632,6 @@ export default function ProductDetailClient({
                                 )}
                               </select>
                             </label>
-
                             <p className="mt-3 text-xs leading-5 text-black/55">
                               Recurring deliveries will continue at the selected frequency until canceled.
                             </p>
@@ -591,12 +639,10 @@ export default function ProductDetailClient({
                         ) : null}
                       </div>
                     ) : null}
-
                     <div className="mt-6">
                       <div className="text-sm font-bold uppercase tracking-[.16em]">
                         Quantity
                       </div>
-
                       <div className="mt-3 flex flex-wrap items-center gap-3">
                         <div className="inline-flex items-center overflow-hidden rounded-full border border-black/15 bg-white">
                           <button
@@ -613,7 +659,6 @@ export default function ProductDetailClient({
                           >
                             −
                           </button>
-
                           <input
                             type="number"
                             min={minimumAllowedQuantity}
@@ -629,7 +674,6 @@ export default function ProductDetailClient({
                             className="h-12 w-16 border-x border-black/10 text-center font-bold outline-none"
                             aria-label="Quantity"
                           />
-
                           <button
                             type="button"
                             onClick={
@@ -646,7 +690,6 @@ export default function ProductDetailClient({
                             +
                           </button>
                         </div>
-
                         {availableStock > 0 ? (
                           <span className="text-sm text-black/60">
                             {availableStock} available
@@ -654,7 +697,6 @@ export default function ProductDetailClient({
                         ) : null}
                       </div>
                     </div>
-
                     <div className="mt-5 rounded-2xl bg-[#f8f4ed] p-4">
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-sm text-black/70">
@@ -663,20 +705,17 @@ export default function ProductDetailClient({
                             displayedUnitPrice
                           )}
                         </span>
-
                         <span className="text-xl font-bold">
                           {formatPrice(
                             displayedTotal
                           )}
                         </span>
                       </div>
-
                       {savings > 0 ? (
                         <div className="mt-2 flex items-center justify-between gap-4 text-sm font-bold text-green-700">
                           <span>
                             Volume savings
                           </span>
-
                           <span>
                             {formatPrice(
                               savings
@@ -684,14 +723,12 @@ export default function ProductDetailClient({
                           </span>
                         </div>
                       ) : null}
-
                       {isSubscription &&
                       subscriptionSavings > 0 ? (
                         <div className="mt-2 flex items-center justify-between gap-4 text-sm font-bold text-green-700">
                           <span>
                             Total savings
                           </span>
-
                           <span>
                             -
                             {formatPrice(
@@ -701,7 +738,6 @@ export default function ProductDetailClient({
                         </div>
                       ) : null}
                     </div>
-
                     {isSubscription ? (
                       <button
                         type="button"
@@ -709,7 +745,6 @@ export default function ProductDetailClient({
                           if (!subscriptionFrequency) {
                             return;
                           }
-
                           const params =
                             new URLSearchParams({
                               productId: product.id,
@@ -717,7 +752,6 @@ export default function ProductDetailClient({
                                 subscriptionFrequency,
                               quantity: String(quantity)
                             });
-
                           window.location.href =
                             `/subscriptions/checkout?${params.toString()}`;
                         }}
@@ -747,7 +781,6 @@ export default function ProductDetailClient({
                           : `Add ${quantity} to Cart`}
                       </button>
                     )}
-
                     {(
                         product.category === "tableware" ||
                         product.categoryId === "tableware"
@@ -771,19 +804,35 @@ export default function ProductDetailClient({
                   </div>
                 )}
               </div>
+                )}
             </div>
           </div>
         </div>
       </section>
-
       {/* Recommended complete content order (Step 6) */}
       <div className="container-brand section-pad grid gap-6 pb-14 md:pb-20">
-        
-        {/* Specifications */}
-        {specifications ? (
+      {/* Specifications — hidden for Shakti Foods rice products */}
+        {product.categoryId !== "rice" && specifications ? (
           <ProductSpecificationsPanel specifications={specifications} />
         ) : null}
-
+        {product.categoryId === "rice" ? (
+          <div className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">
+            <section className="rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
+              <h2 className="font-display text-2xl font-bold text-black md:text-3xl">Key Features</h2>
+              <ul className="mt-4 grid gap-3">
+                {product.features?.map((feature, idx) => (
+                  <li key={idx} className="rounded-2xl bg-[#f8f4ed] p-4 leading-7 text-black">
+                    {typeof feature === "string" ? feature : (
+                      <><strong className="font-bold">{feature.title}</strong>: {feature.description}</>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <ProductCertificationsPanel certifications={certifications} />
+          </div>
+        ) : (
+          <>
         {/* Existing Key Features */}
         <section className="rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
           <h2 className="font-display text-3xl font-bold text-black">Key Features</h2>
@@ -797,18 +846,17 @@ export default function ProductDetailClient({
             ))}
           </ul>
         </section>
-
         {/* Existing Best For */}
         <section className="rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
           <h2 className="font-display text-3xl font-bold text-black">
             Best For
           </h2>
-
           <p className="mt-3 leading-8 text-black">
             {product.bestFor}
           </p>
         </section>
-
+          </>
+        )}
         {/* Free Sample Request — Simpli Ecoware only */}
         {(
           product.category === "tableware" ||
@@ -819,17 +867,14 @@ export default function ProductDetailClient({
             productName={product.name}
           />
         ) : null}
-
         {/* Related Products */}
         <RelatedProducts products={relatedProducts} />
-
         {/* Customer Reviews */}
         <ProductReviews
           productId={product.id}
           productName={product.name}
           reviews={reviews}
         />
-
         {/* Wholesale + Certifications */}
         <div id="wholesale" className="grid items-stretch gap-6 scroll-mt-28 lg:grid-cols-2">
           {product.wholesale ? (
@@ -837,13 +882,13 @@ export default function ProductDetailClient({
               productId={product.id}
               productName={product.name}
             />
-          ) : (
+          ) : product.categoryId !== "rice" ? (
             <div></div>
-          )}
-          
-          <ProductCertificationsPanel certifications={certifications} />
+          ) : null}
+          {product.categoryId !== "rice" ? (
+            <ProductCertificationsPanel certifications={certifications} />
+          ) : null}
         </div>
-
       </div>
     </main>
   );

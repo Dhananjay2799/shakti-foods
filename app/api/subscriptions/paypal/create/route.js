@@ -50,8 +50,17 @@ function findApprovalUrl(
 
 
 export async function POST(request) {
-  let createdSubscriptionId =
-    null;
+  if (process.env.SUBSCRIPTIONS_LIVE_ENABLED !== "true") {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Subscribe & Save payments are coming soon."
+      },
+      { status: 503 }
+    );
+  }
+
+  let createdSubscriptionId = null;
 
   try {
     let body;
@@ -462,6 +471,9 @@ export async function POST(request) {
 
         quantity:
           prepared.quantity,
+
+        shippingAmountCents:
+          prepared.shippingCents,
 
         customerName,
 

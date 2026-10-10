@@ -672,6 +672,7 @@ export default function ProductCatalogSearch({
         </div>
       ) : null}
 
+      {/* TEMPORARILY DISABLED: SHOPPING OPTIONS
       <div className="border-t border-black/10 pt-6">
         <h3 className="mb-2 text-sm font-black uppercase tracking-[0.16em] text-black/50">
           Shopping options
@@ -703,6 +704,7 @@ export default function ProductCatalogSearch({
           />
         </div>
       </div>
+      END SHOPPING OPTIONS */}
 
       {activeFilterCount > 0 ? (
         <button

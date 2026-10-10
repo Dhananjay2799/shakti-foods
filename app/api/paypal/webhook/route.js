@@ -8,6 +8,8 @@ import {
   createSupabaseAdmin
 } from "@/lib/supabase-admin";
 
+import { recordSubscriptionPaymentRecovery } from "@/lib/subscriptions/payment-recovery";
+
 export const runtime = "nodejs";
 
 
@@ -624,6 +626,39 @@ async function handlePayPalSaleCompleted(
     );
   }
 
+  // Compare the verified PayPal sale to the server-authoritative
+  // subscription total before creating the paid recurring order.
+  const { data: expectedPayment, error: expectedPaymentError } = await supabase
+    .from("subscriptions")
+    .select("id, currency, subtotal_cents, shipping_cents, tax_cents, total_cents")
+    .eq("id", subscription.id)
+    .single();
+  if (expectedPaymentError || !expectedPayment) {
+    throw new Error("Unable to verify PayPal subscription amount.");
+  }
+  const money = resource?.amount;
+  const amountText = String(money?.total ?? money?.value ?? "");
+  const amountMatch = /^(\d+)(?:\.(\d{1,2}))?$/.exec(amountText);
+  if (!amountMatch) {
+    throw new Error("PayPal subscription sale amount is unavailable or invalid.");
+  }
+  const paidCents = Number(amountMatch[1]) * 100 +
+    Number((amountMatch[2] || "").padEnd(2, "0"));
+  const expectedTotal = Number(expectedPayment.total_cents);
+  const expectedSubtotal = Number(expectedPayment.subtotal_cents);
+  const expectedShipping = Number(expectedPayment.shipping_cents);
+  const expectedTax = Number(expectedPayment.tax_cents);
+  const paidCurrency = String(money?.currency ?? money?.currency_code ?? "").toUpperCase();
+  if (
+    ![paidCents, expectedTotal, expectedSubtotal, expectedShipping, expectedTax].every(Number.isSafeInteger) ||
+    paidCents <= 0 || expectedTotal <= 0 ||
+    expectedSubtotal + expectedShipping + expectedTax !== expectedTotal ||
+    paidCents !== expectedTotal ||
+    paidCurrency !== String(expectedPayment.currency || "").toUpperCase()
+  ) {
+    throw new Error(`PayPal subscription sale ${saleId} payment validation failed; manual reconciliation required.`);
+  }
+
   /*
    * PAYMENT.SALE.COMPLETED means PayPal
    * successfully collected money for this
@@ -769,9 +804,40 @@ export async function POST(request) {
 
 
       case "PAYMENT.SALE.COMPLETED": {
-        await handlePayPalSaleCompleted(
-          resource
-        );
+        try {
+          await handlePayPalSaleCompleted(resource);
+        } catch (fulfillmentError) {
+          const agreementId = normalizeText(resource?.billing_agreement_id);
+          const saleId = normalizeText(resource?.id);
+          if (agreementId && saleId) {
+            const supabase = createSupabaseAdmin();
+            const { data: mapped, error: lookupError } = await supabase
+              .from("subscriptions")
+              .select("id")
+              .eq("paypal_subscription_id", agreementId)
+              .eq("payment_provider", "paypal")
+              .maybeSingle();
+            if (lookupError) throw lookupError;
+            if (mapped) {
+              const raw = String(resource?.amount?.total ?? resource?.amount?.value ?? "");
+              const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(raw);
+              // Do not assert a paid amount if the signed event lacks a usable one.
+              if (match) {
+                const amountCents = Number(match[1]) * 100 + Number((match[2] || "").padEnd(2, "0"));
+                await recordSubscriptionPaymentRecovery({
+                  subscriptionId: mapped.id,
+                  paymentProvider: "paypal",
+                  paymentReference: saleId,
+                  amountCents,
+                  currency: String(resource?.amount?.currency ?? resource?.amount?.currency_code ?? "").toUpperCase(),
+                  providerEventId: webhookEvent?.id || null,
+                  error: fulfillmentError
+                });
+              }
+            }
+          }
+          throw fulfillmentError; // Ask PayPal to retry; don't silently acknowledge failure.
+        }
 
         break;
       }

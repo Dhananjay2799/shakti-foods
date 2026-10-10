@@ -130,6 +130,34 @@ export default function SubscriptionCheckoutClient({
   const isLoading =
     Boolean(loadingProvider);
 
+    if (process.env.NEXT_PUBLIC_SUBSCRIPTIONS_LIVE_ENABLED !== "true") {
+    return (
+      <main className="min-h-screen bg-white px-5 pb-20 pt-36">
+        <section className="mx-auto max-w-xl rounded-3xl border border-black/10 bg-white p-8 text-center shadow-lg">
+          <p className="text-sm font-bold uppercase tracking-widest text-[#E42027]">
+            Shakti Foods
+          </p>
+
+          <h1 className="mt-4 text-3xl font-bold text-black">
+            Subscribe & Save — Coming Soon
+          </h1>
+
+          <p className="mt-4 text-black/60">
+            We're preparing recurring deliveries.
+            One-time purchases are available now.
+          </p>
+
+          <a
+            href="/products"
+            className="mt-7 inline-block rounded-full bg-[#E42027] px-7 py-3 font-bold text-white"
+          >
+            Shop Our Rice
+          </a>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-white px-4 pb-16 pt-28 md:pt-32">
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_380px]">

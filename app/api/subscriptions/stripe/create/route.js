@@ -20,6 +20,16 @@ function getBaseUrl() {
 }
 
 export async function POST(request) {
+  if (process.env.SUBSCRIPTIONS_LIVE_ENABLED !== "true") {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Subscribe & Save payments are coming soon."
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const stripeSecretKey =
       process.env.STRIPE_SECRET_KEY;
@@ -279,6 +289,51 @@ export async function POST(request) {
               }
             ],
 
+	    line_items: [
+  {
+    quantity: prepared.quantity,
+    price_data: {
+      currency: prepared.currency.toLowerCase(),
+      unit_amount: prepared.subscriptionUnitPriceCents,
+      recurring: {
+        interval: prepared.frequency.intervalUnit,
+        interval_count: prepared.frequency.intervalCount
+      },
+      product_data: {
+        name: prepared.product.name,
+        description: prepared.product.description,
+        metadata: {
+          product_id: prepared.product.productId,
+          internal_subscription_id: subscription.id,
+          line_item_type: "rice"
+        }
+      }
+    }
+  },
+
+  ...(prepared.shippingCents > 0
+    ? [{
+        quantity: 1,
+        price_data: {
+          currency: prepared.currency.toLowerCase(),
+          unit_amount: prepared.shippingCents,
+          recurring: {
+            interval: prepared.frequency.intervalUnit,
+            interval_count: prepared.frequency.intervalCount
+          },
+          product_data: {
+            name: "Standard Shipping",
+            description: "Recurring subscription delivery shipping",
+            metadata: {
+              internal_subscription_id: subscription.id,
+              line_item_type: "shipping"
+            }
+          }
+        }
+      }]
+    : [])
+],
+
             metadata: {
               internal_subscription_id:
                 subscription.id,
@@ -314,6 +369,13 @@ export async function POST(request) {
               allowed_countries: [
                 "US"
               ]
+            },
+
+
+            // Match retail Stripe Checkout behavior. The invoicing
+            // fulfillment must reconcile tax from each paid invoice.
+            automatic_tax: {
+              enabled: process.env.STRIPE_AUTOMATIC_TAX === "true"
             },
 
             success_url:

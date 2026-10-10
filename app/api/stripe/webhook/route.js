@@ -13,6 +13,8 @@ import {
   fulfillStripeSubscriptionInvoice
 } from "@/lib/subscriptions/fulfill-subscription";
 
+import { recordSubscriptionPaymentRecovery } from "@/lib/subscriptions/payment-recovery";
+
 export const runtime = "nodejs";
 
 
@@ -167,6 +169,7 @@ export async function POST(request) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         await syncStripeSubscription(
+	  stripe,
           event.data.object
         );
 
@@ -211,11 +214,31 @@ export async function POST(request) {
           break;
         }
 
-        const result =
-          await fulfillStripeSubscriptionInvoice({
-            stripe,
-            invoice
-          });
+        let result;
+        try {
+          result = await fulfillStripeSubscriptionInvoice({ stripe, invoice });
+        } catch (fulfillmentError) {
+          // Only invoices confirmed paid by Stripe belong in recovery.
+          // An unresolved subscription mapping must still return 500 for retry.
+          if (invoice.status === "paid" || invoice.paid === true) {
+            const providerSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            const internalId = providerSubscription?.metadata?.internal_subscription_id;
+            if (internalId) {
+              const amount = Number(invoice.amount_paid);
+              const currency = String(invoice.currency || "").toUpperCase();
+              await recordSubscriptionPaymentRecovery({
+                subscriptionId: internalId,
+                paymentProvider: "stripe",
+                paymentReference: String(invoice.id || ""),
+                amountCents: amount,
+                currency,
+                providerEventId: event.id,
+                error: fulfillmentError
+              });
+            }
+          }
+          throw fulfillmentError; // Stripe retries; no false success acknowledgement.
+        }
 
         console.log(
           "Stripe recurring invoice result:",
@@ -655,8 +678,13 @@ async function completeStripeSubscriptionCheckout({
  */
 
 async function syncStripeSubscription(
-  stripeSubscription
+  stripe,
+  eventSubscription
 ) {
+  const stripeSubscription =
+    await stripe.subscriptions.retrieve(
+      eventSubscription.id
+    );
   const internalSubscriptionId =
     String(
       stripeSubscription
