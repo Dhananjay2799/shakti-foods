@@ -73,9 +73,13 @@ Customer emails are sent with [Resend](https://resend.com). See `.env.example`.
 
 - `RESEND_API_KEY` is **required**; without it checkout still succeeds but no
   confirmation is sent.
-- `ORDER_EMAIL_FROM` must use a domain verified in Resend. Ecoware mail uses the
+- `ORDER_EMAIL_FROM` must use a domain verified in Resend:
+  `Shakti Foods <orders@shaktifoodsus.com>` (the default). Ecoware mail uses the
   same address with the "Simpli Ecoware" name unless `ECOWARE_ORDER_EMAIL_FROM`
   is set.
+- Admins can open **/admin/email-check** to see the live email setup (sender,
+  Resend domain status, tracking migration, recent failures) and send themselves
+  a test confirmation for either store, without placing an order.
 - Run `supabase/migrations/20261015120000_order_confirmation_email_tracking.sql`
   in the Supabase SQL editor to record each confirmation's status. Failed sends
   are then retried once a day by the existing `/api/cron/cart-recovery` job (up
