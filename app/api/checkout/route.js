@@ -6,19 +6,12 @@ import {
   releaseCheckoutReservation,
   deleteIncompleteOrder
 } from "@/lib/checkout/prepare-checkout";
+import { getStorefrontPageUrl } from "@/lib/storefront-config";
 
 export const runtime = "nodejs";
 
 const STRIPE_SESSION_DURATION_MINUTES = 30;
 const CHECKOUT_CURRENCY = "USD";
-
-function getBaseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
-}
 
 async function expireCheckoutSession({
   stripe,
@@ -205,8 +198,6 @@ export async function POST(request) {
 
     supabase = createSupabaseAdmin();
 
-    const baseUrl = getBaseUrl();
-
     const stripeSessionExpiresAt =
       Math.floor(
         Date.now() / 1000 +
@@ -301,12 +292,19 @@ export async function POST(request) {
                 String(reservationId)
             },
 
+            // Return the customer to the website they shopped on.
             success_url:
-              `${baseUrl}/checkout/success` +
+              getStorefrontPageUrl(
+                storefront,
+                "/checkout/success"
+              ) +
               "?session_id={CHECKOUT_SESSION_ID}",
 
             cancel_url:
-              `${baseUrl}/checkout/cancel` +
+              getStorefrontPageUrl(
+                storefront,
+                "/checkout/cancel"
+              ) +
               `?reservation_id=${encodeURIComponent(
                 reservationId
               )}`

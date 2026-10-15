@@ -251,45 +251,6 @@ export async function POST(request) {
               customerEmail,
 
             line_items: [
-              {
-                quantity:
-                  prepared.quantity,
-
-                price_data: {
-                  currency:
-                    prepared.currency.toLowerCase(),
-
-                  unit_amount:
-                    prepared.subscriptionUnitPriceCents,
-
-                  recurring: {
-                    interval:
-                      prepared.frequency.intervalUnit,
-
-                    interval_count:
-                      prepared.frequency.intervalCount
-                  },
-
-                  product_data: {
-                    name:
-                      prepared.product.name,
-
-                    description:
-                      prepared.product.description,
-
-                    metadata: {
-                      product_id:
-                        prepared.product.productId,
-
-                      internal_subscription_id:
-                        subscription.id
-                    }
-                  }
-                }
-              }
-            ],
-
-	    line_items: [
   {
     quantity: prepared.quantity,
     price_data: {

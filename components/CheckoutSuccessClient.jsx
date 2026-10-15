@@ -14,7 +14,17 @@ import {
   useCart
 } from "@/components/CartProvider";
 
-export default function CheckoutSuccessClient() {
+import {
+  getStorefrontPath
+} from "@/lib/storefront-config";
+
+/*
+ * `storefront` keeps "Continue Shopping" / "Go Home" on the website the
+ * customer bought from (Shakti Foods or Simpli Ecoware).
+ */
+export default function CheckoutSuccessClient({
+  storefront = "shakti_foods"
+} = {}) {
   const searchParams =
     useSearchParams();
 
@@ -319,14 +329,20 @@ export default function CheckoutSuccessClient() {
             {isComplete ? (
               <div className="mt-8 grid gap-3 sm:flex">
                 <Link
-                  href="/products"
+                  href={getStorefrontPath(
+                    storefront,
+                    "/products"
+                  )}
                   className="rounded-full bg-black px-7 py-4 text-center font-bold text-white"
                 >
                   Continue Shopping
                 </Link>
 
                 <Link
-                  href="/"
+                  href={getStorefrontPath(
+                    storefront,
+                    "/"
+                  )}
                   className="rounded-full bg-brand-sand px-7 py-4 text-center font-bold text-black"
                 >
                   Go Home
