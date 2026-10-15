@@ -678,8 +678,11 @@ export default function CheckoutPageContent() {
         }
       );
 
+      // Ecoware orders confirm on the Ecoware-branded success page.
       window.location.assign(
-        `/checkout/success?orderId=${encodeURIComponent(
+        `${
+          isEcoware ? "/ecoware" : ""
+        }/checkout/success?orderId=${encodeURIComponent(
           result.orderId
         )}&payment=paypal`
       );

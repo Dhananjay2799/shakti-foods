@@ -11,6 +11,32 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+async function getRecoveryStorefront(
+  supabase,
+  orderId
+) {
+  if (!orderId) {
+    return "shakti_foods";
+  }
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("storefront")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      error.message ||
+        "Unable to load the cart's storefront."
+    );
+  }
+
+  return data?.storefront === "ecoware"
+    ? "ecoware"
+    : "shakti_foods";
+}
+
 export async function POST(request) {
   try {
     let body;
@@ -65,6 +91,7 @@ export async function POST(request) {
       .from("cart_recovery_sessions")
       .select(`
         id,
+        order_id,
         recovery_token,
         cart_snapshot,
         status,
@@ -102,6 +129,17 @@ export async function POST(request) {
       );
     }
 
+    /*
+     * Shakti Foods and Simpli Ecoware are separate
+     * websites: restore the cart with products from
+     * the storefront of the original order.
+     */
+    const storefront =
+      await getRecoveryStorefront(
+        supabase,
+        recovery.order_id
+      );
+
     if (
       recovery.status !==
       "abandoned"
@@ -109,6 +147,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
+          storefront,
           message:
             recovery.status ===
             "completed"
@@ -132,6 +171,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
+          storefront,
           message:
             "There are no products available to restore."
         },
@@ -148,7 +188,9 @@ export async function POST(request) {
      * snapshot prices, images or inventory.
      */
     const storefrontProducts =
-      await getStorefrontProducts();
+      await getStorefrontProducts(
+        storefront
+      );
 
     const productsById =
       new Map(
@@ -253,6 +295,8 @@ export async function POST(request) {
       restoredItems.push({
         ...product,
 
+        storefront,
+
         quantity,
 
         availableStock
@@ -286,6 +330,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
+          storefront,
           message:
             "The products from this cart are no longer available.",
           unavailableItems
@@ -347,6 +392,8 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
+
+      storefront,
 
       recoveryId:
         recovery.id,

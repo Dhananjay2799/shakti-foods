@@ -6,6 +6,10 @@ import {
   processCartRecoveryEmails
 } from "@/lib/cart-recovery-processor";
 
+import {
+  retryFailedOrderConfirmationEmails
+} from "@/lib/order-confirmation-email";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -52,14 +56,68 @@ export async function GET(request) {
       );
     }
 
-    const summary =
-      await processCartRecoveryEmails({
-        limit: 25
-      });
+    /*
+     * Same daily job (Vercel Hobby allows one run per
+     * day): re-send order confirmations whose last
+     * attempt failed. Runs even if cart recovery
+     * fails, and never affects it.
+     */
+    let orderConfirmationRetries;
+
+    try {
+      orderConfirmationRetries =
+        await retryFailedOrderConfirmationEmails({
+          limit: 25
+        });
+    } catch (retryError) {
+      console.error(
+        "Order confirmation email retry failed:",
+        retryError
+      );
+
+      orderConfirmationRetries = {
+        success: false,
+        message:
+          retryError instanceof Error
+            ? retryError.message
+            : "Unable to retry order confirmation emails."
+      };
+    }
+
+    let summary;
+
+    try {
+      summary =
+        await processCartRecoveryEmails({
+          limit: 25
+        });
+    } catch (recoveryError) {
+      console.error(
+        "Scheduled cart recovery failed:",
+        recoveryError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+
+          message:
+            recoveryError instanceof Error
+              ? recoveryError.message
+              : "Unable to process scheduled recovery emails.",
+
+          orderConfirmationRetries
+        },
+        {
+          status: 500
+        }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      ...summary
+      ...summary,
+      orderConfirmationRetries
     });
   } catch (error) {
     console.error(

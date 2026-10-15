@@ -495,6 +495,7 @@ export async function buyShippingLabel({
           .from("orders")
           .select(`
             id,
+            storefront,
             customer_name,
             customer_email,
             fulfillment_status,
@@ -545,6 +546,8 @@ export async function buyShippingLabel({
           });
 
         await sendTransactionalEmail({
+          from: email.from,
+          replyTo: email.replyTo,
           to: emailOrder.customer_email,
           subject: email.subject,
           html: email.html,

@@ -22,9 +22,25 @@ import {
   useCart
 } from "@/components/CartProvider";
 
-export default function CartRecoveryClient() {
+import {
+  getStorefrontPath
+} from "@/lib/storefront-config";
+
+/*
+ * `storefront` is the site this page is rendered on. The API also reports
+ * the cart's own storefront, which wins, so an Ecoware cart always lands
+ * back in the Ecoware cart.
+ */
+export default function CartRecoveryClient({
+  storefront = "shakti_foods"
+} = {}) {
   const router =
     useRouter();
+
+  const [
+    activeStorefront,
+    setActiveStorefront
+  ] = useState(storefront);
 
   const searchParams =
     useSearchParams();
@@ -125,6 +141,15 @@ export default function CartRecoveryClient() {
         );
 
         if (
+          result?.storefront === "ecoware" ||
+          result?.storefront === "shakti_foods"
+        ) {
+          setActiveStorefront(
+            result.storefront
+          );
+        }
+
+        if (
           !response.ok ||
           !result?.success
         ) {
@@ -182,7 +207,11 @@ export default function CartRecoveryClient() {
         window.setTimeout(
           () => {
             router.replace(
-              "/cart"
+              getStorefrontPath(
+                result.storefront ||
+                  storefront,
+                "/cart"
+              )
             );
           },
           1200
@@ -295,14 +324,20 @@ export default function CartRecoveryClient() {
             {failed ? (
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <Link
-                  href="/products"
+                  href={getStorefrontPath(
+                    activeStorefront,
+                    "/products"
+                  )}
                   className="rounded-full bg-black px-6 py-3.5 text-sm font-bold text-white"
                 >
                   Shop Products
                 </Link>
 
                 <Link
-                  href="/cart"
+                  href={getStorefrontPath(
+                    activeStorefront,
+                    "/cart"
+                  )}
                   className="rounded-full bg-[#f2eadc] px-6 py-3.5 text-sm font-bold text-black"
                 >
                   View Cart
