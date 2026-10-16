@@ -13,23 +13,20 @@ export default async function CustomerActivitySettingsPage({ params }) {
 
   const supabase = createSupabaseAdmin();
 
-  // Validate storefront access
-  const { data: storefrontOrder } = await supabase
-    .from("orders")
+  // Customers are shared across storefronts. Verify the customer exists.
+  const { data: existingCustomer, error: customerLookupError } = await supabase
+    .from("customers")
     .select("id")
-    .eq("customer_id", customerId)
-    .eq("storefront_id", storefront.id)
-    .limit(1)
+    .eq("id", customerId)
     .maybeSingle();
 
-  if (!storefrontOrder) notFound();
+  if (customerLookupError || !existingCustomer) notFound();
 
   // Fetch activity log filtered by both customer_id AND storefront_id
   const { data: activities } = await supabase
-    .from("activity_log")
+    .from("customer_activity_logs")
     .select("*")
     .eq("customer_id", customerId)
-    .eq("storefront_id", storefront.id)
     .order("created_at", { ascending: false });
 
   return (
@@ -43,7 +40,7 @@ export default async function CustomerActivitySettingsPage({ params }) {
           <ul className="divide-y divide-gray-200">
             {activities.map((item) => (
               <li key={item.id} className="p-4">
-                <p className="text-sm font-medium text-gray-900">{item.action}</p>
+                <p className="text-sm font-medium text-gray-900">{item.title || item.activity_type}</p>
                 <p className="text-xs text-gray-500">{item.description}</p>
                 <span className="text-xs text-gray-400">{new Date(item.created_at).toLocaleString()}</span>
               </li>
