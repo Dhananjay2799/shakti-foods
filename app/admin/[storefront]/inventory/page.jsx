@@ -237,7 +237,7 @@ export default async function AdminInventoryPage({
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link
-                          href={`${basePath}/inventory/${item.product_id}`}
+                          href={`/admin/inventory?search=${encodeURIComponent(item.product_id)}`}
                           className="font-bold text-black underline underline-offset-4 hover:text-black/70"
                         >
                           Adjust
