@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatPrice } from "@/lib/data";
+import { isPayPalCheckoutVisible } from "@/lib/paypal-availability";
 
 export default function SubscriptionCheckoutClient({
   prepared
@@ -273,6 +274,9 @@ export default function SubscriptionCheckoutClient({
                   )}`}
             </button>
 
+            {/* Hidden on the live site until live PayPal is switched on. */}
+            {isPayPalCheckoutVisible() ? (
+              <>
             <div className="my-4 flex items-center gap-3">
               <div className="h-px flex-1 bg-black/10" />
 
@@ -298,6 +302,8 @@ export default function SubscriptionCheckoutClient({
                 ? "Opening PayPal..."
                 : "PayPal"}
             </button>
+              </>
+            ) : null}
 
             <p className="mt-4 text-center text-xs leading-5 text-black/45">
               This is a recurring purchase.

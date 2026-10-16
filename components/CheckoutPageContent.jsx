@@ -13,6 +13,7 @@ import {
   PayPalButtons,
   PayPalScriptProvider
 } from "@paypal/react-paypal-js";
+import { isPayPalCheckoutVisible } from "@/lib/paypal-availability";
 
 import { useCart } from "@/components/CartProvider";
 import SectionHeading from "@/components/SectionHeading";
@@ -40,6 +41,11 @@ export default function CheckoutPageContent() {
 
   const isEcoware =
     storefront === "ecoware";
+
+  // PayPal is hidden on the live site until live PayPal is switched on
+  // (see lib/paypal-availability.js). Card checkout is unaffected.
+  const showPayPal =
+    isPayPalCheckoutVisible();
 
   const brandName =
     isEcoware
@@ -880,6 +886,8 @@ export default function CheckoutPageContent() {
                         : "Calculating Price..."}
                   </button>
 
+                  {showPayPal ? (
+                  <>
                   <div className="my-5 flex items-center gap-3">
                     <div className="h-px flex-1 bg-black/10" />
 
@@ -1089,6 +1097,8 @@ export default function CheckoutPageContent() {
                       }}
                     />
                   </PayPalScriptProvider>
+                  </>
+                  ) : null}
                 </div>
               </div>
 
