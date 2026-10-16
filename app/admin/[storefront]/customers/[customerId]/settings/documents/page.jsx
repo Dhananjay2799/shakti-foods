@@ -44,11 +44,6 @@ export default async function CustomerDocumentsSettingsPage({ params }) {
                   <p className="font-medium text-gray-900">{doc.title || doc.original_filename}</p>
                   <p className="text-xs text-gray-500">Uploaded: {new Date(doc.created_at).toLocaleDateString()}</p>
                 </div>
-                {false && doc.file_url && (
-                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
-                    View File
-                  </a>
-                )}
               </li>
             ))}
           </ul>
