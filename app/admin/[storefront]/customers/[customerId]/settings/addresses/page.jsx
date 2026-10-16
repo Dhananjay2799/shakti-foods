@@ -13,16 +13,14 @@ export default async function CustomerAddressesSettingsPage({ params }) {
 
   const supabase = createSupabaseAdmin();
 
-  // Validate storefront access
-  const { data: storefrontOrder } = await supabase
-    .from("orders")
+  // Customers are shared across storefronts. Verify the customer exists.
+  const { data: existingCustomer, error: customerLookupError } = await supabase
+    .from("customers")
     .select("id")
-    .eq("customer_id", customerId)
-    .eq("storefront_id", storefront.id)
-    .limit(1)
+    .eq("id", customerId)
     .maybeSingle();
 
-  if (!storefrontOrder) notFound();
+  if (customerLookupError || !existingCustomer) notFound();
 
   // Fetch shared customer addresses
   const { data: addresses } = await supabase
@@ -46,9 +44,9 @@ export default async function CustomerAddressesSettingsPage({ params }) {
                   Default
                 </span>
               )}
-              <p className="font-medium text-gray-900">{address.first_name} {address.last_name}</p>
-              <p className="text-sm text-gray-600">{address.address_line1}</p>
-              {address.address_line2 && <p className="text-sm text-gray-600">{address.address_line2}</p>}
+              <p className="font-medium text-gray-900">{address.recipient_name || "Customer"}</p>
+              <p className="text-sm text-gray-600">{address.address_line_1}</p>
+              {address.address_line_2 && <p className="text-sm text-gray-600">{address.address_line2}</p>}
               <p className="text-sm text-gray-600">{address.city}, {address.state} {address.postal_code}</p>
               <p className="text-sm text-gray-600">{address.country}</p>
             </div>
