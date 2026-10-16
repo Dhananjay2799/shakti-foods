@@ -14,18 +14,14 @@ export default async function CustomerSettingsPage({ params }) {
 
   const supabase = createSupabaseAdmin();
 
-  // 2. Check if customer has activity/orders on THIS storefront
-  const { data: storefrontOrder } = await supabase
-    .from("orders")
+  // Customers are shared across storefronts. Verify the customer exists.
+  const { data: existingCustomer, error: customerLookupError } = await supabase
+    .from("customers")
     .select("id")
-    .eq("customer_id", customerId)
-    .eq("storefront_id", storefront.id)
-    .limit(1)
+    .eq("id", customerId)
     .maybeSingle();
 
-  if (!storefrontOrder) {
-    notFound(); // Returns 404 if customer is not associated with this storefront
-  }
+  if (customerLookupError || !existingCustomer) notFound();
 
   // 3. Query shared customer profile (no storefront filter)
   const { data: customer, error } = await supabase
@@ -40,19 +36,16 @@ export default async function CustomerSettingsPage({ params }) {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Customer Profile</h1>
-        <p className="text-sm text-gray-500">Profile for {customer.first_name} {customer.last_name}</p>
+        <p className="text-sm text-gray-500">Profile for {customer.full_name || customer.email || "Customer"}</p>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase">First Name</label>
-            <p className="text-base font-medium text-gray-900">{customer.first_name || "-"}</p>
+            <p className="text-base font-medium text-gray-900">{customer.full_name || "-"}</p>
           </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase">Last Name</label>
-            <p className="text-base font-medium text-gray-900">{customer.last_name || "-"}</p>
-          </div>
+          
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase">Email</label>
             <p className="text-base font-medium text-gray-900">{customer.email || "-"}</p>
