@@ -1098,7 +1098,36 @@ export default function CheckoutPageContent() {
                     />
                   </PayPalScriptProvider>
                   </>
-                  ) : null}
+                                    ) : (
+                    <>
+                      <div className="my-5 flex items-center gap-3">
+                        <div className="h-px flex-1 bg-black/10" />
+                        <span className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">
+                          Or pay with
+                        </span>
+                        <div className="h-px flex-1 bg-black/10" />
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled
+                        aria-label="PayPal payments coming soon"
+                        className="w-full cursor-not-allowed rounded-full bg-[#FFC439] px-6 py-3 text-center text-[#003087] opacity-85"
+                      >
+                        <span className="block text-xl font-extrabold italic">
+                          PayPal
+                        </span>
+                        <span className="block text-xs font-semibold not-italic">
+                          Coming Soon
+                        </span>
+                      </button>
+
+                      <p className="mt-3 text-center text-sm text-black/65">
+                        PayPal payments are temporarily unavailable.
+                        Please pay by card.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
