@@ -234,6 +234,7 @@ export default async function CustomerProfilePage({ params }) {
       .from("orders")
       .select("*")
       .eq("customer_id", customerId)
+      .eq("storefront", storefront.id)
       .order("created_at", { ascending: false })
   ]);
 
