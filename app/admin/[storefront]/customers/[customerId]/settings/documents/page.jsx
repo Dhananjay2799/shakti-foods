@@ -13,16 +13,14 @@ export default async function CustomerDocumentsSettingsPage({ params }) {
 
   const supabase = createSupabaseAdmin();
 
-  // Validate storefront access
-  const { data: storefrontOrder } = await supabase
-    .from("orders")
+  // Customers are shared across storefronts. Verify the customer exists.
+  const { data: existingCustomer, error: customerLookupError } = await supabase
+    .from("customers")
     .select("id")
-    .eq("customer_id", customerId)
-    .eq("storefront_id", storefront.id)
-    .limit(1)
+    .eq("id", customerId)
     .maybeSingle();
 
-  if (!storefrontOrder) notFound();
+  if (customerLookupError || !existingCustomer) notFound();
 
   // Fetch shared customer documents
   const { data: documents } = await supabase
@@ -43,10 +41,10 @@ export default async function CustomerDocumentsSettingsPage({ params }) {
             {documents.map((doc) => (
               <li key={doc.id} className="p-4 flex justify-between items-center">
                 <div>
-                  <p className="font-medium text-gray-900">{doc.name || doc.file_name}</p>
+                  <p className="font-medium text-gray-900">{doc.title || doc.original_filename}</p>
                   <p className="text-xs text-gray-500">Uploaded: {new Date(doc.created_at).toLocaleDateString()}</p>
                 </div>
-                {doc.file_url && (
+                {false && doc.file_url && (
                   <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
                     View File
                   </a>
