@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createPayPalOrder } from "@/lib/paypal";
+import { getPayPalCheckoutAvailability } from "@/lib/paypal-availability";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   prepareCheckout,
@@ -25,6 +26,29 @@ function centsToPayPalAmount(cents) {
 }
 
 export async function POST(request) {
+  /*
+   * Never create sandbox PayPal orders on the live site. Runs before any
+   * inventory reservation or order is created. Capture, cancel and webhook
+   * routes for existing PayPal orders are unaffected.
+   */
+  const paypalAvailability =
+    getPayPalCheckoutAvailability();
+
+  if (!paypalAvailability.enabled) {
+    console.warn(
+      "Blocked new PayPal checkout:",
+      paypalAvailability.reason
+    );
+
+    return NextResponse.json(
+      {
+        message:
+          "PayPal checkout is temporarily unavailable. Please pay by card."
+      },
+      { status: 503 }
+    );
+  }
+
   let reservationId = null;
   let createdOrderId = null;
   let paypalOrderId = null;

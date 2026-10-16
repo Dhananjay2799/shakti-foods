@@ -3,6 +3,10 @@ import {
 } from "next/server";
 
 import {
+  getPayPalCheckoutAvailability
+} from "@/lib/paypal-availability";
+
+import {
   createSupabaseAdmin
 } from "@/lib/supabase-admin";
 
@@ -55,6 +59,26 @@ export async function POST(request) {
       {
         success: false,
         message: "Subscribe & Save payments are coming soon."
+      },
+      { status: 503 }
+    );
+  }
+
+  // Never create sandbox PayPal subscriptions on the live site.
+  const paypalAvailability =
+    getPayPalCheckoutAvailability();
+
+  if (!paypalAvailability.enabled) {
+    console.warn(
+      "Blocked new PayPal subscription:",
+      paypalAvailability.reason
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "PayPal is temporarily unavailable for Subscribe & Save. Please pay by card."
       },
       { status: 503 }
     );
