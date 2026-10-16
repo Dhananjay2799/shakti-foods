@@ -138,7 +138,7 @@ export default async function AdminProductsPage({ params }) {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link
-                          href={`${basePath}/products/${product.product_id || product.id}`}
+                          href={`/admin/products/${encodeURIComponent(product.product_id || product.id)}`}
                           className="font-bold text-black underline underline-offset-4 hover:text-black/70"
                         >
                           Edit
