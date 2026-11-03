@@ -1,3 +1,4 @@
+import { fulfillPayPalOrder } from "@/lib/fulfill-checkout";
 import { NextResponse } from "next/server";
 
 import {
@@ -866,19 +867,63 @@ export async function POST(request) {
 
 
       case "PAYMENT.CAPTURE.COMPLETED": {
-        /*
-         * This event is selected in the PayPal
-         * webhook configuration but is not used
-         * to drive subscription state because
-         * PAYMENT.SALE.COMPLETED is the canonical
-         * recurring subscription payment event.
-         */
-        console.log(
-          "Ignoring PayPal capture completed event for subscription webhook:",
-          resource?.id ||
-          null
+        // PayPal supplies the related Orders v2 ID on completed captures.
+        // This webhook is signed and verified above. Fulfillment must also
+        // fetch the order from PayPal and validate its stored reference_id,
+        // custom_id, amount, currency and completed capture before any write.
+        const paypalOrderId = normalizeText(
+          resource?.supplementary_data?.related_ids?.order_id
         );
 
+        if (!paypalOrderId) {
+          console.warn(
+            "PayPal completed capture has no related order ID; cannot reconcile:",
+            resource?.id || null
+          );
+          break;
+        }
+
+        const supabase = createSupabaseAdmin();
+        const { data: retailOrder, error: lookupError } = await supabase
+          .from("orders")
+          .select("id, payment_provider")
+          .eq("paypal_order_id", paypalOrderId)
+          .maybeSingle();
+
+        if (lookupError) {
+          throw new Error(
+            lookupError.message || "Unable to find PayPal order for capture webhook."
+          );
+        }
+
+        // Subscription and unrelated capture events must not trigger retail
+        // fulfillment, and must never create a new local order.
+        if (!retailOrder) {
+          console.log(
+            "PayPal completed capture has no matching retail order:",
+            paypalOrderId
+          );
+          break;
+        }
+
+        if (retailOrder.payment_provider !== "paypal") {
+          throw new Error("PayPal capture webhook order provider mismatch.");
+        }
+
+        if (normalizeText(resource?.status).toUpperCase() !== "COMPLETED") {
+          throw new Error("PayPal capture completed webhook has invalid status.");
+        }
+
+        const result = await fulfillPayPalOrder(paypalOrderId);
+        if (normalizeText(result.paypalCaptureId) !== normalizeText(resource?.id)) {
+          throw new Error("PayPal webhook capture ID does not match the completed order.");
+        }
+
+        console.log("Reconciled PayPal completed retail capture:", {
+          paypalOrderId,
+          orderId: result.orderId,
+          alreadyProcessed: result.alreadyProcessed
+        });
         break;
       }
 
