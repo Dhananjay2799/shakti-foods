@@ -44,8 +44,9 @@ export default function CheckoutPageContent() {
 
   // PayPal is hidden on the live site until live PayPal is switched on
   // (see lib/paypal-availability.js). Card checkout is unaffected.
+  // PayPal Live launches for Shakti Foods only; preserve Ecoware checkout.
   const showPayPal =
-    isPayPalCheckoutVisible();
+    !isEcoware && isPayPalCheckoutVisible();
 
   const brandName =
     isEcoware
