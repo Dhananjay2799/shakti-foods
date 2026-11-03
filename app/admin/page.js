@@ -21,11 +21,13 @@ export default async function AdminDashboard() {
       .select("id", {
         count: "exact",
         head: true
-      }),
+      })
+      .eq("storefront", "shakti_foods"),
 
     supabase
       .from("orders")
       .select("total_amount")
+      .eq("storefront", "shakti_foods")
       .eq("payment_status", "paid"),
 
     supabase
@@ -40,6 +42,7 @@ export default async function AdminDashboard() {
           is_active
         `
       )
+      .eq("storefront", "shakti_foods")
       .order("product_name"),
 
     supabase
@@ -55,6 +58,7 @@ export default async function AdminDashboard() {
           created_at
         `
       )
+      .eq("storefront", "shakti_foods")
       .order("created_at", {
         ascending: false
       })
