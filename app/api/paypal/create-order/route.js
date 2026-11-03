@@ -88,6 +88,19 @@ export async function POST(request) {
       );
     }
 
+    // Shakti Foods PayPal Live rollout must not enable PayPal for
+    // the separate Ecoware storefront on the shared deployment.
+    if (
+      storefront === "ecoware" &&
+      (process.env.VERCEL_ENV === "production" ||
+        (!process.env.VERCEL_ENV && process.env.NODE_ENV === "production"))
+    ) {
+      return NextResponse.json(
+        { message: "PayPal checkout is not available for Ecoware." },
+        { status: 503 }
+      );
+    }
+
     const businessName =
       storefront === "ecoware"
         ? "Simpli Ecoware"
