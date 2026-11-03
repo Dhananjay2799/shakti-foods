@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
@@ -10,6 +10,10 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const resolvedParams = await Promise.resolve(params);
+
+  if (resolvedParams.slug === "shakti-premium-basmati-rice-50lb") {
+    return { robots: { index: false } };
+  }
 
   const product = await getStorefrontProductBySlug(resolvedParams.slug);
 
@@ -44,6 +48,11 @@ export async function generateMetadata({ params }) {
 
 export default async function ProductPage({ params }) {
   const resolvedParams = await Promise.resolve(params);
+
+  // Keep old product bookmarks valid after the 55 lb packaging correction.
+  if (resolvedParams.slug === "shakti-premium-basmati-rice-50lb") {
+    redirect("/products/shakti-premium-basmati-rice-55lb");
+  }
 
   const storefrontProducts = await getStorefrontProducts();
 
