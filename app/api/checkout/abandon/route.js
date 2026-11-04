@@ -1,4 +1,4 @@
-import Stripe from "stripe";
+import { stripeForCheckoutSession } from "@/lib/stripe-storefront";
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -26,18 +26,24 @@ export async function POST(request) {
       );
     }
 
-    const stripeSecretKey =
-      process.env.STRIPE_SECRET_KEY;
+    const supabase = createSupabaseAdmin();
 
-    if (!stripeSecretKey) {
-      throw new Error(
-        "Stripe is not configured."
+    // Resolve account from a stored, matching reservation rather than a
+    // client-provided storefront. Historical Shakti sessions may be legacy.
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("storefront, reservation_id")
+      .eq("stripe_session_id", sessionId)
+      .maybeSingle();
+
+    if (orderError || !order || String(order.reservation_id) !== reservationId) {
+      return NextResponse.json(
+        { message: "Checkout session and reservation do not match." },
+        { status: 409 }
       );
     }
 
-    const stripe = new Stripe(
-      stripeSecretKey
-    );
+    const stripe = await stripeForCheckoutSession(sessionId, order.storefront);
 
     const session =
       await stripe.checkout.sessions.retrieve(
@@ -68,9 +74,6 @@ export async function POST(request) {
         sessionId
       );
     }
-
-    const supabase =
-      createSupabaseAdmin();
 
     const {
       data: reservation,
