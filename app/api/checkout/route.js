@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { stripeKeyForStorefront } from "@/lib/stripe-storefront";
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
@@ -49,25 +50,6 @@ export async function POST(request) {
   let stripe = null;
 
   try {
-    const stripeSecretKey =
-      process.env.STRIPE_SECRET_KEY;
-
-    if (!stripeSecretKey) {
-      console.error(
-        "STRIPE_SECRET_KEY is not configured."
-      );
-
-      return NextResponse.json(
-        {
-          message:
-            "Checkout is temporarily unavailable."
-        },
-        { status: 500 }
-      );
-    }
-
-    stripe = new Stripe(stripeSecretKey);
-
     let body;
 
     try {
@@ -108,6 +90,9 @@ export async function POST(request) {
         }
       );
     }
+
+    // Select the Stripe account only after validating the storefront.
+    stripe = new Stripe(stripeKeyForStorefront(storefront));
 
     const rawCartItems = Array.isArray(body?.items)
       ? body.items
