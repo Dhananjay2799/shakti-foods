@@ -3,10 +3,35 @@ import { notFound } from "next/navigation";
 
 import {
   getStorefrontProductBySlug,
+  getStorefrontProducts,
   PUBLIC_STOREFRONTS
 } from "@/lib/storefront-products";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
 import EcowareAddToCart from "@/components/ecoware/EcowareAddToCart";
+import EcowareVolumePricing from "@/components/ecoware/EcowareVolumePricing";
+
+/*
+ * Product sections shared with Shakti Foods product pages. They are rendered
+ * unchanged; Ecoware only supplies its own links and fonts around them.
+ */
+import ProductSpecificationsPanel from "@/components/ProductSpecificationsPanel";
+import ProductCertificationsPanel from "@/components/ProductCertificationsPanel";
+import ProductReviews from "@/components/ProductReviews";
+import RelatedProducts from "@/components/RelatedProducts";
+import SampleRequestForm from "@/components/SampleRequestForm";
+
+// Stock, reviews and price tiers change often; always render fresh data.
+export const dynamic = "force-dynamic";
+
+// The shared sections use the display font; on Ecoware match its sans headings.
+const ECOWARE_SECTION_FONT_STYLE = {
+  "--font-display": "var(--font-inter), system-ui, sans-serif"
+};
+
+// Lets the shared sample form's multi-column rows shrink to narrower columns.
+const SHRINKABLE_FORM_FIELDS =
+  "[&_input]:w-full [&_input]:min-w-0 [&_label]:min-w-0 [&_select]:min-w-0";
 
 /* =========================================================
    HELPERS
@@ -39,6 +64,153 @@ function getImageUrl(image) {
     image.public_url ||
     ""
   );
+}
+
+/*
+ * Free samples are offered for the tableware range only; the sample request
+ * API enforces the same rule.
+ */
+function isSampleEligible(product) {
+  return (
+    product?.categoryId === "tableware" ||
+    product?.category === "tableware"
+  );
+}
+
+function pickRelatedProducts(product, products) {
+  const others = (products || []).filter(
+    (item) => item && item.id !== product.id
+  );
+
+  const sameCategory = others.filter(
+    (item) => item.categoryId && item.categoryId === product.categoryId
+  );
+
+  const rest = others.filter((item) => !sameCategory.includes(item));
+
+  return [...sameCategory, ...rest].slice(0, 4);
+}
+
+/*
+ * Same Supabase queries as the Shakti Foods product page. Any failure only
+ * hides the affected section; the product page itself still renders.
+ */
+async function loadProductDetails(product) {
+  const empty = {
+    specifications: null,
+    certifications: [],
+    priceTiers: [],
+    reviews: [],
+    relatedProducts: []
+  };
+
+  const relatedPromise = getStorefrontProducts(PUBLIC_STOREFRONTS.ECOWARE)
+    .then((products) => pickRelatedProducts(product, products))
+    .catch((error) => {
+      console.error("Unable to load related Ecoware products:", error);
+      return [];
+    });
+
+  let supabase;
+
+  try {
+    supabase = createSupabaseAdmin();
+  } catch (error) {
+    console.error("Unable to load Ecoware product details:", error);
+
+    return {
+      ...empty,
+      relatedProducts: await relatedPromise
+    };
+  }
+
+  const [
+    specificationsResult,
+    certificationsResult,
+    priceTiersResult,
+    reviewsResult,
+    relatedProducts
+  ] = await Promise.all([
+    supabase
+      .from("product_specifications")
+      .select("*")
+      .eq("product_id", product.id)
+      .maybeSingle(),
+
+    supabase
+      .from("product_certifications")
+      .select(`
+        id,
+        certificate_number,
+        issued_at,
+        expires_at,
+        document_url,
+        verification_status,
+        certification:certifications (
+          id,
+          code,
+          name,
+          issuing_organization,
+          description,
+          logo_url,
+          verification_url
+        )
+      `)
+      .eq("product_id", product.id)
+      .order("created_at", { ascending: true }),
+
+    supabase
+      .from("product_price_tiers")
+      .select(`
+        id,
+        min_quantity,
+        max_quantity,
+        unit_price_cents,
+        tier_name,
+        sort_order
+      `)
+      .eq("product_id", product.id)
+      .eq("is_active", true)
+      .order("min_quantity", { ascending: true }),
+
+    supabase
+      .from("product_reviews")
+      .select(`
+        id,
+        customer_name,
+        rating,
+        review_title,
+        review_text,
+        verified_purchase,
+        created_at
+      `)
+      .eq("product_id", product.id)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false }),
+
+    relatedPromise
+  ]);
+
+  const results = {
+    specifications: specificationsResult,
+    certifications: certificationsResult,
+    "price tiers": priceTiersResult,
+    reviews: reviewsResult
+  };
+
+  for (const [label, result] of Object.entries(results)) {
+    if (result?.error) {
+      console.error(`Unable to load Ecoware product ${label}:`, result.error);
+    }
+  }
+
+  return {
+    specifications: specificationsResult?.data || null,
+    certifications: certificationsResult?.data || [],
+    priceTiers: priceTiersResult?.data || [],
+    reviews: reviewsResult?.data || [],
+    relatedProducts: relatedProducts || []
+  };
 }
 
 /* =========================================================
@@ -207,6 +379,16 @@ export default async function EcowareProductPage({ params }) {
 
   const inStock = availableQuantity > 0;
   const price = Number(product.unitPrice || 0);
+
+  const {
+    specifications,
+    certifications,
+    priceTiers,
+    reviews,
+    relatedProducts
+  } = await loadProductDetails(product);
+
+  const sampleEligible = isSampleEligible(product);
 
   /*
     Current Ecoware products are pack products.
@@ -482,13 +664,18 @@ export default async function EcowareProductPage({ params }) {
               />
             </div>
 
+            <EcowareVolumePricing
+              priceTiers={priceTiers}
+              regularUnitPrice={price}
+            />
+
             {/* ===============================================
                 SAMPLE + WHOLESALE
             =============================================== */}
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <Link
-                href="/ecoware#samples"
+                href="#samples"
                 className="group rounded-[20px] border border-[#dbe3ce] bg-[#f1f6e8] p-5 transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -571,6 +758,74 @@ export default async function EcowareProductPage({ params }) {
           </div>
         </section>
       )}
+
+      {/* =====================================================
+          SPECIFICATIONS, CERTIFICATIONS, SAMPLES, REVIEWS,
+          RELATED PRODUCTS (sections shared with Shakti Foods)
+      ===================================================== */}
+
+      <section
+        className="border-t border-black/10 bg-[#f4f1e8]"
+        style={ECOWARE_SECTION_FONT_STYLE}
+      >
+        <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-12 sm:px-8 sm:py-16 lg:px-12 lg:py-20">
+          {specifications ? (
+            <ProductSpecificationsPanel
+              specifications={specifications}
+            />
+          ) : null}
+
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
+            <div
+              id="samples"
+              className={`min-w-0 scroll-mt-8 ${SHRINKABLE_FORM_FIELDS}`}
+            >
+              {sampleEligible ? (
+                <SampleRequestForm
+                  productId={product.id}
+                  productName={product.title}
+                />
+              ) : (
+                <div className="rounded-[2rem] bg-white p-6 shadow-soft">
+                  <p className="text-xs font-bold uppercase tracking-[.18em] text-black/50">
+                    Samples
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-black tracking-[-0.03em]">
+                    Samples aren&apos;t offered for this product
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-6 text-black/60">
+                    Free samples are available for our tableware range.
+                  </p>
+
+                  <Link
+                    href="/ecoware/sample-requests"
+                    className="mt-5 inline-flex min-h-[48px] items-center justify-center rounded-full bg-black px-6 text-sm font-black text-white transition hover:bg-black/80"
+                  >
+                    See sample-eligible products
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <ProductCertificationsPanel
+              certifications={certifications}
+            />
+          </div>
+
+          <ProductReviews
+            productId={product.id}
+            productName={product.title}
+            reviews={reviews}
+          />
+
+          <RelatedProducts
+            products={relatedProducts}
+            basePath="/ecoware"
+          />
+        </div>
+      </section>
 
       {/* =====================================================
           BOTTOM ECO CTA

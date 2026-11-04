@@ -151,7 +151,7 @@ export default function EcowareLayout({ children }) {
                 </Link>
 
                 <Link
-                  href="/ecoware#about"
+                  href="/ecoware/about"
                   className="rounded-full px-5 py-3 text-sm font-bold transition hover:bg-black/5"
                 >
                   About
@@ -260,7 +260,7 @@ export default function EcowareLayout({ children }) {
                   </Link>
 
                   <Link
-                    href="/ecoware#about"
+                    href="/ecoware/about"
                     className="transition hover:text-black"
                   >
                     About

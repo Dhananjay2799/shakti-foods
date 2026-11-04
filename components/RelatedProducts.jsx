@@ -4,7 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/data";
 
-export default function RelatedProducts({ products = [] }) {
+/*
+ * basePath lets Simpli Ecoware reuse this section with its own links
+ * ("/ecoware"). The default "" keeps Shakti Foods links unchanged.
+ */
+export default function RelatedProducts({
+  products = [],
+  basePath = ""
+}) {
   if (!products.length) {
     return null;
   }
@@ -23,7 +30,7 @@ export default function RelatedProducts({ products = [] }) {
         </div>
 
         <Link
-          href="/products"
+          href={`${basePath}/products`}
           className="rounded-full border border-black/15 px-5 py-2.5 text-sm font-bold text-black transition hover:bg-black hover:text-white"
         >
           View All Products
@@ -44,7 +51,7 @@ export default function RelatedProducts({ products = [] }) {
               className="group overflow-hidden rounded-[1.5rem] border border-black/10 bg-[#f8f4ed]"
             >
               <Link
-                href={`/products/${product.slug}`}
+                href={`${basePath}/products/${product.slug}`}
                 className="block"
               >
                 <div className="relative aspect-square overflow-hidden bg-white">

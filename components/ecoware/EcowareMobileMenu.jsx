@@ -19,7 +19,7 @@ const links = [
     label: "Wholesale"
   },
   {
-    href: "/ecoware#about",
+    href: "/ecoware/about",
     label: "About"
   },
   {
