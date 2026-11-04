@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { stripeWebhookAccounts } from "@/lib/stripe-storefront";
 import { NextResponse } from "next/server";
 
 import {
@@ -19,31 +20,13 @@ export const runtime = "nodejs";
 
 
 export async function POST(request) {
-  const stripeSecretKey =
-    process.env.STRIPE_SECRET_KEY;
-
-  const webhookSecret =
-    process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (
-    !stripeSecretKey ||
-    !webhookSecret
-  ) {
+  const accounts = stripeWebhookAccounts();
+  if (!accounts.length) {
     return NextResponse.json(
-      {
-        message:
-          "Missing Stripe server environment variables."
-      },
-      {
-        status: 500
-      }
+      { message: "Stripe webhooks are not configured." },
+      { status: 500 }
     );
   }
-
-  const stripe =
-    new Stripe(
-      stripeSecretKey
-    );
 
   const signature =
     request.headers.get(
@@ -66,30 +49,47 @@ export async function POST(request) {
     await request.text();
 
   let event;
+  let stripe;
+  let sourceAccount;
 
-  try {
-    event =
-      stripe.webhooks.constructEvent(
+  // Signature determines which Stripe account sent the event.
+  // Never trust client-supplied metadata to choose verification credentials.
+  for (const account of accounts) {
+    const client = new Stripe(account.key);
+    try {
+      event = client.webhooks.constructEvent(
         rawBody,
         signature,
-        webhookSecret
+        account.webhookSecret
       );
-  } catch (error) {
-    console.error(
-      "Stripe webhook signature error:",
-      error
-    );
+      stripe = client;
+      sourceAccount = account.storefront;
+      break;
+    } catch {
+      // An event from the other configured Stripe account is expected.
+    }
+  }
 
+  if (!event) {
     return NextResponse.json(
-      {
-        message:
-          error instanceof Error
-            ? `Invalid webhook signature: ${error.message}`
-            : "Invalid webhook signature."
-      },
-      {
-        status: 400
-      }
+      { message: "Invalid Stripe webhook signature." },
+      { status: 400 }
+    );
+  }
+
+  // A newly issued Shakti key must never fulfill a different storefront.
+  // Legacy Stripe remains valid for old Shakti sessions and Ecoware.
+  const eventStorefront = String(
+    event.data?.object?.metadata?.storefront || ""
+  ).trim();
+  if (
+    sourceAccount === "shakti_foods" &&
+    eventStorefront &&
+    eventStorefront !== "shakti_foods"
+  ) {
+    return NextResponse.json(
+      { message: "Stripe event storefront mismatch." },
+      { status: 400 }
     );
   }
 
@@ -140,7 +140,8 @@ export async function POST(request) {
          */
         const result =
           await fulfillCheckoutSession(
-            session.id
+            session.id,
+            { stripe }
           );
 
         console.log(
