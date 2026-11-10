@@ -31,14 +31,19 @@ const iconMap = {
 export default function AdminNavigation({ navItems = [] }) {
   const pathname = usePathname();
 
-  const isRouteActive = (href) => {
-    // Dashboard should only be active on /admin
-    if (href === "/admin") {
-      return pathname === "/admin";
-    }
+  // Only the most specific matching item is active, so the store dashboard
+  // (/admin/<store>) is not highlighted on every page, and History
+  // (/inventory/history) does not also highlight Inventory.
+  const activeHref = navItems
+    .map((item) => item.href)
+    .filter(
+      (href) =>
+        pathname === href ||
+        pathname.startsWith(`${href}/`)
+    )
+    .sort((a, b) => b.length - a.length)[0];
 
-    return pathname.startsWith(href);
-  };
+  const isRouteActive = (href) => href === activeHref;
 
   return (
     <nav

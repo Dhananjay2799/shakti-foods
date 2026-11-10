@@ -8,6 +8,11 @@ import {
 } from "lucide-react";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
+  adminProductsPath,
+  requireAdminStore,
+  requireStoreProduct
+} from "@/lib/admin-store";
+import {
   saveProductCertification,
   removeProductCertification
 } from "@/app/admin/products/certification-actions";
@@ -44,7 +49,23 @@ function formatStatus(status) {
 export default async function CertificationManagerPage({
   params
 }) {
-  const productId = params.productId;
+  const resolvedParams = await Promise.resolve(params || {});
+  const productId = decodeURIComponent(
+    String(resolvedParams.productId || "").trim()
+  );
+
+  // Only this store's products; another store's product opens in its store.
+  const storefront = requireAdminStore(resolvedParams.storefront);
+
+  await requireStoreProduct({
+    storefront,
+    productId,
+    suffix: "/certifications",
+    select: "product_id"
+  });
+
+  const productBase = adminProductsPath(storefront, productId);
+
   const supabase = createSupabaseAdmin();
 
   const [
@@ -134,18 +155,18 @@ export default async function CertificationManagerPage({
     assignmentsResult.data || [];
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-6xl px-5 py-10 md:px-8 md:py-12">
+    <main>
+      <div className="mx-auto max-w-6xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
-            href={`/admin/products/${productId}`}
+            href={productBase}
             className="inline-flex rounded-full bg-white px-5 py-3 font-bold text-black shadow"
           >
             ← Back to Product
           </Link>
 
           <Link
-            href="/admin/products"
+            href={adminProductsPath(storefront)}
             className="inline-flex rounded-full bg-[#eadfce] px-5 py-3 font-bold text-black"
           >
             All Products

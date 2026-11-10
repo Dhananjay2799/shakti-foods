@@ -201,6 +201,7 @@ export default async function StorefrontAdminDashboard({
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1.45fr_.8fr]">
           <RecentOrders
+            basePath={`/admin/${storefront.slug}`}
             orders={
               recentOrdersResult.data || []
             }

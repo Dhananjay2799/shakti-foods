@@ -38,6 +38,7 @@ function optionalText(formData, field) {
 }
 
 function refreshCertificationPages(productId) {
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${productId}`);
   revalidatePath(

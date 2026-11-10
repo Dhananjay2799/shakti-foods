@@ -113,7 +113,8 @@ export async function POST(request) {
         title,
         status,
         is_active,
-        deleted_at
+        deleted_at,
+        storefront
       `)
       .eq("product_id", productId)
       .is("deleted_at", null)
@@ -155,6 +156,11 @@ export async function POST(request) {
       .from("product_reviews")
       .insert({
         product_id: product.product_id,
+
+        // The review belongs to the product's store (Shakti Foods or
+        // Simpli Ecoware), so it appears in that store's admin.
+        storefront: product.storefront,
+
         customer_name: customerName,
 
         email:

@@ -5,8 +5,33 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { getAdminStorefrontById } from "@/lib/admin-storefronts";
 
 const STORAGE_BUCKET = "product-images";
+
+// Images page inside the product's own store admin.
+async function productImagesPath(productId, query = "") {
+  const id = encodeURIComponent(productId);
+
+  try {
+    const { data } = await createSupabaseAdmin()
+      .from("products")
+      .select("storefront")
+      .eq("product_id", productId)
+      .maybeSingle();
+
+    const store = getAdminStorefrontById(data?.storefront);
+
+    if (store) {
+      return `/admin/${store.slug}/products/${id}/images${query}`;
+    }
+  } catch (error) {
+    console.error("Unable to find the product's store:", error);
+  }
+
+  // Old shared URL; it redirects to the right store.
+  return `/admin/products/${id}/images${query}`;
+}
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -178,6 +203,7 @@ function getStoragePath({ productId, imageType, extension }) {
 }
 
 function refreshProductImagePages(productId) {
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${productId}`);
@@ -618,7 +644,7 @@ export async function uploadProductImage(formData) {
   }
 
   refreshProductImagePages(productId);
-  redirect(`/admin/products/${productId}/images?uploaded=1`);
+  redirect(await productImagesPath(productId, "?uploaded=1"));
 }
 
 export async function updateProductImage(formData) {
@@ -700,7 +726,7 @@ export async function updateProductImage(formData) {
   }
 
   refreshProductImagePages(productId);
-  redirect(`/admin/products/${productId}/images?updated=1`);
+  redirect(await productImagesPath(productId, "?updated=1"));
 }
 
 export async function setPrimaryProductImage(formData) {
@@ -728,9 +754,7 @@ export async function setPrimaryProductImage(formData) {
   });
 
   refreshProductImagePages(productId);
-  redirect(
-    `/admin/products/${productId}/images?primaryChanged=1`
-  );
+  redirect(await productImagesPath(productId, "?primaryChanged=1"));
 }
 
 export async function toggleProductImageStatus(formData) {
@@ -784,9 +808,7 @@ export async function toggleProductImageStatus(formData) {
   }
 
   refreshProductImagePages(productId);
-  redirect(
-    `/admin/products/${productId}/images?statusChanged=1`
-  );
+  redirect(await productImagesPath(productId, "?statusChanged=1"));
 }
 
 export async function deleteProductImage(formData) {
@@ -839,7 +861,7 @@ export async function deleteProductImage(formData) {
   });
 
   refreshProductImagePages(productId);
-  redirect(`/admin/products/${productId}/images?deleted=1`);
+  redirect(await productImagesPath(productId, "?deleted=1"));
 }
 
 async function swapImageSortOrders({
@@ -945,7 +967,7 @@ export async function moveProductImageUp(formData) {
   }
 
   if (!previousImage) {
-    redirect(`/admin/products/${productId}/images`);
+    redirect(await productImagesPath(productId, ""));
   }
 
   await swapImageSortOrders({
@@ -956,7 +978,7 @@ export async function moveProductImageUp(formData) {
   });
 
   refreshProductImagePages(productId);
-  redirect(`/admin/products/${productId}/images?reordered=1`);
+  redirect(await productImagesPath(productId, "?reordered=1"));
 }
 
 export async function moveProductImageDown(formData) {
@@ -994,7 +1016,7 @@ export async function moveProductImageDown(formData) {
   }
 
   if (!nextImage) {
-    redirect(`/admin/products/${productId}/images`);
+    redirect(await productImagesPath(productId, ""));
   }
 
   await swapImageSortOrders({
@@ -1005,5 +1027,5 @@ export async function moveProductImageDown(formData) {
   });
 
   refreshProductImagePages(productId);
-  redirect(`/admin/products/${productId}/images?reordered=1`);
+  redirect(await productImagesPath(productId, "?reordered=1"));
 }

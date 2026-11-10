@@ -233,6 +233,7 @@ export async function saveProductSpecifications(
     );
   }
 
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin/products");
 
   revalidatePath(

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { adminStorePath } from "@/lib/admin-store";
 import { createCustomerActivityLog } from "@/app/admin/customers/activity-log";
 
 const allowedAddressTypes = [
@@ -51,6 +52,7 @@ function validateAddressType(value) {
 }
 
 function refreshAddressPages(customerId) {
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin/customers");
   revalidatePath(`/admin/customers/${customerId}`);
   revalidatePath(`/admin/customers/${customerId}/settings`);
@@ -274,7 +276,7 @@ export async function saveCustomerAddress(formData) {
 
   refreshAddressPages(customerId);
 
-  redirect(`/admin/customers/${customerId}/settings/addresses?saved=1`);
+  redirect(adminStorePath(`/customers/${customerId}/settings/addresses?saved=1`));
 }
 
 export async function setDefaultCustomerAddress(formData) {
@@ -332,7 +334,7 @@ export async function setDefaultCustomerAddress(formData) {
 
   refreshAddressPages(customerId);
 
-  redirect(`/admin/customers/${customerId}/settings/addresses?defaulted=1`);
+  redirect(adminStorePath(`/customers/${customerId}/settings/addresses?defaulted=1`));
 }
 
 export async function toggleCustomerAddressStatus(formData) {
@@ -405,7 +407,7 @@ export async function toggleCustomerAddressStatus(formData) {
 
   refreshAddressPages(customerId);
 
-  redirect(`/admin/customers/${customerId}/settings/addresses?statusChanged=1`);
+  redirect(adminStorePath(`/customers/${customerId}/settings/addresses?statusChanged=1`));
 }
 
 export async function deleteCustomerAddress(formData) {
@@ -469,5 +471,5 @@ export async function deleteCustomerAddress(formData) {
 
   refreshAddressPages(customerId);
 
-  redirect(`/admin/customers/${customerId}/settings/addresses?deleted=1`);
+  redirect(adminStorePath(`/customers/${customerId}/settings/addresses?deleted=1`));
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { adminStorePath } from "@/lib/admin-store";
 import { createCustomerActivityLog } from "@/app/admin/customers/activity-log";
 
 const STORAGE_BUCKET = "customer-documents";
@@ -165,6 +166,7 @@ function getStoragePath({
 }
 
 function refreshDocumentPages(customerId) {
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin/customers");
 
   revalidatePath(
@@ -457,9 +459,7 @@ export async function uploadCustomerDocument(
 
   refreshDocumentPages(customerId);
 
-  redirect(
-    `/admin/customers/${customerId}/settings/documents?uploaded=1`
-  );
+  redirect(adminStorePath(`/customers/${customerId}/settings/documents?uploaded=1`));
 }
 
 export async function updateCustomerDocument(
@@ -670,9 +670,7 @@ export async function updateCustomerDocument(
 
   refreshDocumentPages(customerId);
 
-  redirect(
-    `/admin/customers/${customerId}/settings/documents?updated=1`
-  );
+  redirect(adminStorePath(`/customers/${customerId}/settings/documents?updated=1`));
 }
 
 export async function updateCustomerDocumentStatus(
@@ -756,9 +754,7 @@ export async function updateCustomerDocumentStatus(
 
   refreshDocumentPages(customerId);
 
-  redirect(
-    `/admin/customers/${customerId}/settings/documents?statusChanged=1`
-  );
+  redirect(adminStorePath(`/customers/${customerId}/settings/documents?statusChanged=1`));
 }
 
 export async function deleteCustomerDocument(
@@ -849,7 +845,5 @@ export async function deleteCustomerDocument(
 
   refreshDocumentPages(customerId);
 
-  redirect(
-    `/admin/customers/${customerId}/settings/documents?deleted=1`
-  );
+  redirect(adminStorePath(`/customers/${customerId}/settings/documents?deleted=1`));
 }

@@ -100,7 +100,8 @@ export async function POST(request) {
             category,
             status,
             is_active,
-            deleted_at
+            deleted_at,
+            storefront
             `)
             .eq("product_id", productId)
             .is("deleted_at", null)
@@ -153,6 +154,9 @@ export async function POST(request) {
         .insert({
           product_id: product.product_id,
           product_name: product.title,
+
+          // Shown in this store's admin (Simpli Ecoware samples).
+          storefront: product.storefront || "ecoware",
 
           customer_name: customerName,
           business_name: businessName || null,

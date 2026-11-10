@@ -12,6 +12,12 @@ import {
 } from "lucide-react";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { updateProduct } from "@/app/admin/products/product-actions";
+import {
+  adminProductsPath,
+  requireAdminStore,
+  requireStoreProduct
+} from "@/lib/admin-store";
+import { getStorefrontPageUrl } from "@/lib/storefront-config";
 
 export const dynamic = "force-dynamic";
 
@@ -199,13 +205,27 @@ export default async function EditProductPage({
     );
 
   const productId =
-    String(
-      resolvedParams.productId || ""
-    ).trim();
+    decodeURIComponent(
+      String(
+        resolvedParams.productId || ""
+      ).trim()
+    );
 
   if (!productId) {
     notFound();
   }
+
+  // Only this store's products; another store's product opens in its store.
+  const storefront = requireAdminStore(resolvedParams.storefront);
+
+  await requireStoreProduct({
+    storefront,
+    productId,
+    suffix: "/edit",
+    select: "product_id"
+  });
+
+  const productBase = adminProductsPath(storefront, productId);
 
   const supabase =
     createSupabaseAdmin();
@@ -237,7 +257,7 @@ export default async function EditProductPage({
       .eq("product_id", productId)
       .maybeSingle(),
 
-        supabase
+    supabase
       .from("product_categories")
       .select(`
         id,
@@ -246,6 +266,8 @@ export default async function EditProductPage({
         is_active,
         sort_order
       `)
+      // Only this store's categories.
+      .eq("storefront", storefront.id)
       .order("sort_order", {
         ascending: true
       })
@@ -393,11 +415,11 @@ export default async function EditProductPage({
     );
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-5xl py-3">
+    <main>
+      <div className="mx-auto max-w-5xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href={`/admin/products/${productId}`}
+            href={productBase}
             className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-black shadow-sm transition hover:bg-[#f1eadf]"
           >
             <ArrowLeft size={17} />
@@ -424,25 +446,35 @@ export default async function EditProductPage({
 
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
-              href={`/admin/products/${productId}/images`}
+              href={`${productBase}/images`}
               className="rounded-full bg-[#f1eadf] px-5 py-3 text-sm font-bold text-black transition hover:bg-[#e7dbc8]"
             >
               Manage Images
             </Link>
 
             <Link
-              href={`/admin/products/${productId}/certifications`}
+              href={`${productBase}/certifications`}
               className="rounded-full bg-[#f1eadf] px-5 py-3 text-sm font-bold text-black transition hover:bg-[#e7dbc8]"
             >
               Certifications
             </Link>
 
             <Link
-              href={`/products/${product.slug}`}
+              href={getStorefrontPageUrl(
+                storefront.id,
+                `/products/${product.slug}`
+              )}
               target="_blank"
               className="rounded-full bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-black/80"
             >
-              View Storefront
+              View on {storefront.name}
+            </Link>
+
+            <Link
+              href={`${productBase}/delete`}
+              className="rounded-full border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50"
+            >
+              Delete Product
             </Link>
           </div>
         </header>
@@ -455,6 +487,12 @@ export default async function EditProductPage({
             type="hidden"
             name="originalProductId"
             value={product.product_id}
+          />
+
+          <input
+            type="hidden"
+            name="storefrontSlug"
+            value={storefront.slug}
           />
 
           <FormSection
@@ -1102,7 +1140,7 @@ export default async function EditProductPage({
           <section className="sticky bottom-4 z-20 rounded-[1.75rem] border border-black/5 bg-white/95 p-4 shadow-xl backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Link
-                href={`/admin/products/${productId}`}
+                href={productBase}
                 className="rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-[#f1eadf]"
               >
                 Cancel
