@@ -5,8 +5,26 @@ import { useCallback, useEffect, useState } from "react";
 const TESTS = [
   { kind: "shakti", label: "Shakti Foods order" },
   { kind: "shakti_subscription", label: "Shakti Foods subscription" },
-  { kind: "ecoware", label: "Simpli Ecoware order" }
+  { kind: "ecoware", label: "Simpli Ecoware order" },
+  { kind: "shakti_admin", label: "Shakti Foods admin new-order email" },
+  { kind: "ecoware_admin", label: "Simpli Ecoware admin new-order email" }
 ];
+
+function describeAdminNotifications(settings) {
+  if (!settings) {
+    return "—";
+  }
+
+  if (settings.disabled) {
+    return `Off (${settings.source})`;
+  }
+
+  if (!settings.recipients?.length) {
+    return "No one — set ORDER_NOTIFICATION_EMAILS";
+  }
+
+  return `${settings.recipients.join(", ")} (from ${settings.source})`;
+}
 
 function StatusPill({ ok, children }) {
   return (
@@ -143,6 +161,13 @@ export default function EmailCheckClient() {
                 </Row>
                 <Row label="Reply-to">{sender.replyTo || "—"}</Row>
                 <Row label="Links to">{sender.siteUrl}</Row>
+                <Row label="New-order emails to admins">
+                  <StatusPill
+                    ok={Boolean(sender.adminNotifications?.recipients?.length)}
+                  >
+                    {describeAdminNotifications(sender.adminNotifications)}
+                  </StatusPill>
+                </Row>
               </div>
             ))}
 
@@ -179,9 +204,9 @@ export default function EmailCheckClient() {
       <section className="rounded-[1.5rem] bg-white p-6 shadow md:p-8">
         <h2 className="font-display text-2xl font-bold">Send a test email</h2>
         <p className="mt-2 text-sm leading-6 text-black/60">
-          Sends a sample confirmation to {check?.adminEmail || "your admin email"}.
-          No order is created and nothing is charged. The subject starts with
-          “[Test]”.
+          Sends a sample customer confirmation, or a sample admin new-order
+          email, to {check?.adminEmail || "your admin email"} only. No order is
+          created and nothing is charged. The subject starts with “[Test]”.
         </p>
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
