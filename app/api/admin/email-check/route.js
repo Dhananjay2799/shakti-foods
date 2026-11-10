@@ -13,6 +13,10 @@ import {
   SHAKTI_STOREFRONT,
   getStorefrontBrand
 } from "@/lib/storefront-config";
+import {
+  buildAdminOrderNotificationEmail,
+  getAdminOrderNotificationRecipients
+} from "@/lib/admin-order-notification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,8 +26,9 @@ export const dynamic = "force-dynamic";
  *
  * GET  -> sender per store, Resend domain status, tracking migration,
  *         recent confirmation results.
- * POST -> sends a sample order confirmation to the signed-in admin only
- *         (never to an arbitrary address), without creating an order.
+ * POST -> sends a sample order confirmation, or a sample admin "new order"
+ *         email, to the signed-in admin only (never to an arbitrary
+ *         address), without creating an order.
  */
 
 function emailDomain(from) {
@@ -158,7 +163,9 @@ export async function GET() {
           ? resendDomain?.status || "not added in Resend"
           : "unknown",
         replyTo: brand.replyTo || null,
-        siteUrl: brand.siteUrl
+        siteUrl: brand.siteUrl,
+        adminNotifications:
+          getAdminOrderNotificationRecipients(storefront)
       };
     }
   );
@@ -263,16 +270,42 @@ export async function POST(request) {
     body = {};
   }
 
-  const kind = ["shakti", "shakti_subscription", "ecoware"].includes(
-    body?.kind
-  )
+  const kind = [
+    "shakti",
+    "shakti_subscription",
+    "ecoware",
+    "shakti_admin",
+    "ecoware_admin"
+  ].includes(body?.kind)
     ? body.kind
     : "shakti";
 
-  const sample = buildSample(kind);
+  const isAdminSample = kind.endsWith("_admin");
+  const sample = buildSample(
+    kind === "ecoware_admin" ? "ecoware" : kind === "shakti_admin" ? "shakti" : kind
+  );
   const orderId = crypto.randomUUID();
 
-  const email = buildOrderConfirmationEmail({
+  const email = isAdminSample
+    ? buildAdminOrderNotificationEmail({
+        orderId,
+        storefront: sample.storefront,
+        createdAt: new Date().toISOString(),
+        customerName: "Test Customer",
+        customerEmail: "customer@example.com",
+        customerPhone: "(555) 010-0000",
+        shippingAddress: SAMPLE_ADDRESS,
+        shippingMethod: "Standard Shipping",
+        paymentProvider: "stripe",
+        currency: "USD",
+        items: sample.items,
+        subtotal: sample.subtotal,
+        shippingAmount: sample.shippingAmount,
+        taxAmount: sample.taxAmount,
+        totalAmount: sample.totalAmount,
+        subscription: sample.subscription
+      })
+    : buildOrderConfirmationEmail({
     orderId,
     customerName: "Test Customer",
     currency: "USD",
