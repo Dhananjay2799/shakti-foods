@@ -3,6 +3,12 @@ import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { products as catalogProducts } from "@/lib/data";
 import { saveProductSpecifications } from "@/app/admin/products/actions";
+import {
+  adminProductsPath,
+  requireAdminStore,
+  requireStoreProduct
+} from "@/lib/admin-store";
+import ProductStatusNotice from "@/components/admin/ProductStatusNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -74,9 +80,20 @@ function CheckboxField({
   );
 }
 
-export default async function AdminProductEditorPage({ params }) {
+export default async function AdminProductEditorPage({ params, searchParams }) {
   const resolvedParams = await Promise.resolve(params || {});
-  const productId = resolvedParams.productId;
+  const resolvedSearchParams = await Promise.resolve(searchParams || {});
+  const productId = decodeURIComponent(resolvedParams.productId || "");
+
+  // Only this store's products; another store's product opens in its store.
+  const storefront = requireAdminStore(resolvedParams.storefront);
+  const storeProduct = await requireStoreProduct({
+    storefront,
+    productId,
+    select: "product_id, title, status, is_active"
+  });
+  const productsBase = adminProductsPath(storefront);
+  const productBase = adminProductsPath(storefront, productId);
 
   const supabase = createSupabaseAdmin();
 
@@ -152,13 +169,13 @@ export default async function AdminProductEditorPage({ params }) {
   );
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-6xl px-5 py-10 md:px-8 md:py-12">
+    <main>
+      <div className="mx-auto max-w-6xl py-2">
         
         {/* Step 5: Expanded header block containing the newly introduced 'Manage Images' target */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
-            href="/admin/products"
+            href={productsBase}
             className="inline-flex rounded-full bg-white px-5 py-3 font-bold text-black shadow transition hover:bg-[#f1eadf]"
           >
             ← Back to Products
@@ -166,27 +183,40 @@ export default async function AdminProductEditorPage({ params }) {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href={`/admin/products/${productId}/edit`}
+              href={`${productBase}/edit`}
               className="inline-flex rounded-full bg-black px-5 py-3 font-bold text-white transition hover:bg-black/80"
             >
               Edit Product
             </Link>
 
             <Link
-              href={`/admin/products/${productId}/images`}
+              href={`${productBase}/images`}
               className="inline-flex rounded-full bg-[#f1eadf] px-5 py-3 font-bold text-black transition hover:bg-[#e6dac7]"
             >
               Manage Images
             </Link>
             
             <Link
-              href={`/admin/products/${productId}/certifications`}
+              href={`${productBase}/certifications`}
               className="inline-flex rounded-full bg-black px-5 py-3 font-bold text-white transition hover:bg-black/80"
             >
               Manage Certifications
             </Link>
+
+            <Link
+              href={`${productBase}/delete`}
+              className="inline-flex rounded-full border border-red-200 bg-white px-5 py-3 font-bold text-red-700 transition hover:bg-red-50"
+            >
+              Delete Product
+            </Link>
           </div>
         </div>
+
+        <ProductStatusNotice
+          storefront={storefront}
+          product={storeProduct}
+          searchParams={resolvedSearchParams}
+        />
 
         <div className="mt-7">
           <div className="text-sm font-bold uppercase tracking-[.18em] text-black/50">

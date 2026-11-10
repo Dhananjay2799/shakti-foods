@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { createProduct } from "@/app/admin/products/product-actions";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import {
+  adminProductsPath,
+  requireAdminStore
+} from "@/lib/admin-store";
 
 export const dynamic = "force-dynamic";
 
@@ -149,11 +153,18 @@ function CheckboxField({
   );
 }
 
-export default async function NewProductPage() {
+export default async function NewProductPage({ params }) {
+  const resolvedParams = await Promise.resolve(params || {});
+
+  // The new product belongs to the store this page is opened in.
+  const storefront = requireAdminStore(resolvedParams.storefront);
+  const productsBase = adminProductsPath(storefront);
+
   const supabase = createSupabaseAdmin();
   const { data: categories } = await supabase
     .from("product_categories")
     .select("id, category_id, name")
+    .eq("storefront", storefront.id)
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
@@ -161,11 +172,11 @@ export default async function NewProductPage() {
   const activeCategories = categories || [];
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-5xl px-5 py-8 md:px-8">
+    <main>
+      <div className="mx-auto max-w-5xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/admin/products"
+            href={productsBase}
             className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-black shadow-sm transition hover:bg-[#f1eadf]"
           >
             <ArrowLeft size={17} />
@@ -183,7 +194,7 @@ export default async function NewProductPage() {
           </p>
 
           <h1 className="mt-2 font-display text-3xl font-bold text-black md:text-4xl">
-            Add Product
+            Add {storefront.name} Product
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">
@@ -197,6 +208,13 @@ export default async function NewProductPage() {
           action={createProduct}
           className="mt-6 grid gap-5"
         >
+          {/* Saved to this store only. */}
+          <input
+            type="hidden"
+            name="storefrontSlug"
+            value={storefront.slug}
+          />
+
           <FormSection
             icon={Package}
             title="Basic Information"
@@ -533,7 +551,7 @@ export default async function NewProductPage() {
           <section className="rounded-[1.75rem] border border-black/5 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Link
-                href="/admin/products"
+                href={productsBase}
                 className="rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-[#f1eadf]"
               >
                 Cancel

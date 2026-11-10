@@ -19,6 +19,11 @@ import {
 } from "lucide-react";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
+  adminProductsPath,
+  requireAdminStore,
+  requireStoreProduct
+} from "@/lib/admin-store";
+import {
   deleteProductImage,
   moveProductImageDown,
   moveProductImageUp,
@@ -523,13 +528,27 @@ export default async function ProductImagesPage({
   const resolvedSearchParams =
     await Promise.resolve(searchParams || {});
 
-  const productId = String(
-    resolvedParams.productId || ""
-  ).trim();
+  const productId = decodeURIComponent(
+    String(
+      resolvedParams.productId || ""
+    ).trim()
+  );
 
   if (!productId) {
     notFound();
   }
+
+  // Only this store's products; another store's product opens in its store.
+  const storefront = requireAdminStore(resolvedParams.storefront);
+
+  await requireStoreProduct({
+    storefront,
+    productId,
+    suffix: "/images",
+    select: "product_id"
+  });
+
+  const productBase = adminProductsPath(storefront, productId);
 
   const showUploadForm =
     String(
@@ -663,12 +682,12 @@ export default async function ProductImagesPage({
     );
 
   const basePath =
-    `/admin/products/${productId}/images`;
+    `${productBase}/images`;
 
   if (showUploadForm) {
     return (
-      <main className="min-h-screen bg-[#f8f6f1]">
-        <div className="mx-auto max-w-5xl px-5 py-8 md:px-8">
+      <main>
+        <div className="mx-auto max-w-5xl py-2">
           <UploadImageForm
             productId={productId}
             productName={product.product_name}
@@ -684,8 +703,8 @@ export default async function ProductImagesPage({
 
   if (editingImage) {
     return (
-      <main className="min-h-screen bg-[#f8f6f1]">
-        <div className="mx-auto max-w-5xl px-5 py-8 md:px-8">
+      <main>
+        <div className="mx-auto max-w-5xl py-2">
           <EditImageForm
             productId={productId}
             productName={product.product_name}
@@ -699,11 +718,11 @@ export default async function ProductImagesPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-6xl px-5 py-8 md:px-8">
+    <main>
+      <div className="mx-auto max-w-6xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href={`/admin/products/${productId}`}
+            href={productBase}
             className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-black shadow-sm transition hover:bg-[#f1eadf]"
           >
             <ArrowLeft size={17} />
@@ -711,7 +730,7 @@ export default async function ProductImagesPage({
           </Link>
 
           <Link
-            href="/admin/products"
+            href={adminProductsPath(storefront)}
             className="rounded-full bg-[#f1eadf] px-5 py-3 text-sm font-bold text-black transition hover:bg-[#e6dac7]"
           >
             All Products

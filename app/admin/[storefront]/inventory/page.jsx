@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { getAdminStorefront } from "@/lib/admin-storefronts";
+import InventoryAdjustPanel from "@/components/admin/InventoryAdjustPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ export default async function AdminInventoryPage({
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const search = (resolvedSearchParams?.search || "").trim().toLowerCase();
   const status = resolvedSearchParams?.status || "all";
+  const adjustProductId = String(resolvedSearchParams?.adjust || "").trim();
 
   const supabase = createSupabaseAdmin();
 
@@ -93,6 +95,19 @@ export default async function AdminInventoryPage({
   });
 
   const basePath = `/admin/${storefront.slug}`;
+
+  // Only this store's products can be adjusted here.
+  const adjustingItem = adjustProductId
+    ? allInventory.find((item) => item.product_id === adjustProductId) || null
+    : null;
+
+  const adjustHref = (productId) => {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (status && status !== "all") params.set("status", status);
+    params.set("adjust", productId);
+    return `${basePath}/inventory?${params.toString()}#adjust`;
+  };
 
   const statusOptions = [
     { label: "All Items", value: "all" },
@@ -174,6 +189,13 @@ export default async function AdminInventoryPage({
         </div>
       </div>
 
+      {adjustingItem ? (
+        <InventoryAdjustPanel
+          item={adjustingItem}
+          closeHref={buildInventoryHref({ basePath, search, status })}
+        />
+      ) : null}
+
       <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-soft">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-black">
@@ -237,7 +259,7 @@ export default async function AdminInventoryPage({
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link
-                          href={`/admin/inventory?search=${encodeURIComponent(item.product_id)}`}
+                          href={adjustHref(item.product_id)}
                           className="font-bold text-black underline underline-offset-4 hover:text-black/70"
                         >
                           Adjust

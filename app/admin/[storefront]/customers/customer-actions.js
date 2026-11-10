@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { adminStorePath } from "@/lib/admin-store";
 import { createCustomerActivityLog } from "@/app/admin/customers/activity-log";
 
 const allowedCustomerTypes = [
@@ -238,9 +239,10 @@ export async function updateCustomer(formData) {
   }
 
   revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin/customers");
   revalidatePath(`/admin/customers/${customerId}`);
   revalidatePath(`/admin/customers/${customerId}/settings`);
 
-  redirect(`/admin/customers/${customerId}/settings?updated=1`);
+  redirect(adminStorePath(`/customers/${customerId}/settings?updated=1`));
 }

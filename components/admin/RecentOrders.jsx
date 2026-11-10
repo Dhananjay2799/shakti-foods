@@ -56,6 +56,8 @@ function fulfillmentBadge(status = "") {
 }
 
 export default function RecentOrders({
+  // Store admin base, e.g. /admin/ecoware (old shared URLs redirect).
+  basePath = "/admin",
   orders = []
 }) {
   return (
@@ -141,7 +143,7 @@ export default function RecentOrders({
 
                   <td className="py-4 text-right">
                     <Link
-                      href={`/admin/orders/${order.id}`}
+                      href={`${basePath}/orders/${order.id}`}
                       className="font-semibold text-black underline-offset-4 hover:underline"
                     >
                       View

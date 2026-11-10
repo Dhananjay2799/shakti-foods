@@ -4,6 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import {
+  getAdminStorefront,
+  getAdminStorefrontById
+} from "@/lib/admin-storefronts";
+import {
+  PRODUCT_IMAGE_BUCKET,
+  PRODUCT_OWNED_TABLES,
+  describeBlocker,
+  getProductDeleteBlockers
+} from "@/lib/admin-product-delete";
 
 const ALLOWED_STATUSES = Object.freeze([
   "draft",
@@ -11,7 +21,6 @@ const ALLOWED_STATUSES = Object.freeze([
   "archived"
 ]);
 
-const PRODUCT_IMAGE_BUCKET = Object.freeze(["product-images"]);
 
 async function requireAdmin() {
   const authClient = await createClient();
@@ -157,6 +166,8 @@ function refreshProductPages({
   productId,
   slug
 }) {
+  // Every admin page, including /admin/<store>/products/… .
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
   revalidatePath("/admin/inventory");
@@ -217,6 +228,73 @@ async function getProduct({
   }
 
   return data;
+}
+
+/*
+ * Store separation: the admin form says which store it was opened in
+ * (hidden "storefrontSlug"). A product can only be changed from its own
+ * store's admin, and every redirect goes back into that store.
+ */
+function readFormStore(formData) {
+  const slug = String(
+    formData.get("storefrontSlug") || ""
+  ).trim();
+
+  return slug ? getAdminStorefront(slug) : null;
+}
+
+function assertProductStore(product, formData) {
+  const formStore = readFormStore(formData);
+
+  if (formStore && product.storefront !== formStore.id) {
+    const owner = getAdminStorefrontById(
+      product.storefront
+    );
+
+    throw new Error(
+      `This product belongs to ${owner?.name || "another store"}. Open it from that store's admin.`
+    );
+  }
+}
+
+function productAdminPath(product, productId, suffix = "") {
+  const store = getAdminStorefrontById(
+    product?.storefront
+  );
+
+  const id = encodeURIComponent(
+    productId || product?.product_id || ""
+  );
+
+  return store
+    ? `/admin/${store.slug}/products/${id}${suffix}`
+    : `/admin/products/${id}${suffix}`;
+}
+
+/*
+ * archived_at is optional: if the column has not been added yet (see
+ * supabase/migrations/…_admin_store_separation.sql) save without it.
+ */
+async function updateProductRow(supabase, productId, fields) {
+  let { error } = await supabase
+    .from("products")
+    .update(fields)
+    .eq("product_id", productId);
+
+  if (
+    error &&
+    "archived_at" in fields &&
+    /archived_at/.test(error.message || "")
+  ) {
+    const { archived_at: _ignored, ...rest } = fields;
+
+    ({ error } = await supabase
+      .from("products")
+      .update(rest)
+      .eq("product_id", productId));
+  }
+
+  return { error };
 }
 
 async function assertIdentifiersAvailable({
@@ -795,6 +873,15 @@ export async function createProduct(
       inventoryData
     } = readProductForm(formData);
 
+  // New products belong to the store the admin is working in.
+  const storefront = readFormStore(formData);
+
+  if (!storefront) {
+    throw new Error(
+      "Open Add Product from a store's Products page so the product is saved to the right store."
+    );
+  }
+
     const supabase =
       createSupabaseAdmin();
 
@@ -812,6 +899,7 @@ export async function createProduct(
     .from("products")
     .insert({
       ...productData,
+      storefront: storefront.id,
       created_by_user_id: user.id,
       created_by_email:
         user.email || null,
@@ -843,6 +931,7 @@ export async function createProduct(
     .insert({
       product_id: productId,
       product_name: productData.title,
+      storefront: storefront.id,
 
       stock_quantity:
         inventoryData.stock_quantity,
@@ -891,7 +980,7 @@ export async function createProduct(
   });
 
   redirect(
-    `/admin/products/${createdProduct.product_id}?created=1`
+    `/admin/${storefront.slug}/products/${encodeURIComponent(createdProduct.product_id)}?created=1`
   );
 }
 
@@ -937,6 +1026,8 @@ export async function updateProduct(
       productId:
         originalProductId
     });
+
+  assertProductStore(existingProduct, formData);
 
   await assertIdentifiersAvailable({
     supabase,
@@ -1275,7 +1366,7 @@ export async function updateProduct(
   });
 
   redirect(
-    `/admin/products/${productId}?updated=1`
+    productAdminPath(existingProduct, productId, "?updated=1")
   );
 }
 
@@ -1303,11 +1394,11 @@ export async function archiveProduct(
     productId
   });
 
+  assertProductStore(product, formData);
+
   const {
     error: productError
-  } = await supabase
-    .from("products")
-    .update({
+  } = await updateProductRow(supabase, productId, {
       status: "archived",
       is_active: false,
       archived_at:
@@ -1315,8 +1406,7 @@ export async function archiveProduct(
       updated_by_user_id: user.id,
       updated_by_email:
         user.email || null
-    })
-    .eq("product_id", productId);
+    });
 
   if (productError) {
     throw new Error(
@@ -1347,7 +1437,7 @@ export async function archiveProduct(
   });
 
   redirect(
-    `/admin/products/${productId}?archived=1`
+    productAdminPath(product, productId, "?archived=1")
   );
 }
 
@@ -1388,11 +1478,11 @@ export async function restoreProduct(
     productId
   });
 
+  assertProductStore(product, formData);
+
   const {
     error: productError
-  } = await supabase
-    .from("products")
-    .update({
+  } = await updateProductRow(supabase, productId, {
       status: restoreAs,
       is_active:
         restoreAs === "active",
@@ -1400,8 +1490,7 @@ export async function restoreProduct(
       updated_by_user_id: user.id,
       updated_by_email:
         user.email || null
-    })
-    .eq("product_id", productId);
+    });
 
   if (productError) {
     throw new Error(
@@ -1433,7 +1522,7 @@ export async function restoreProduct(
   });
 
   redirect(
-    `/admin/products/${productId}?restored=1`
+    productAdminPath(product, productId, "?restored=1")
   );
 }
 
@@ -1473,65 +1562,23 @@ export async function deleteProductPermanently(
     productId
   });
 
+  assertProductStore(product, formData);
+
   /*
-   * Prevent deletion when order history references
-   * this product.
+   * Never erase a product that orders, stock history, subscriptions,
+   * samples, wholesale quotes or reviews refer to. Archive it instead.
    */
-  const {
-    count: orderItemCount,
-    error: orderCheckError
-  } = await supabase
-    .from("order_items")
-    .select("id", {
-      count: "exact",
-      head: true
-    })
-    .eq("product_id", productId);
-
-  if (orderCheckError) {
-    console.error(
-      "Unable to check product order history:",
-      orderCheckError
+  const { canDeletePermanently, blockers } =
+    await getProductDeleteBlockers(
+      supabase,
+      productId
     );
 
+  if (!canDeletePermanently) {
     throw new Error(
-      orderCheckError.message ||
-        "Unable to verify whether this product can be deleted."
-    );
-  }
-
-  if (Number(orderItemCount || 0) > 0) {
-    throw new Error(
-      "This product has order history and cannot be permanently deleted. Archive it instead."
-    );
-  }
-
-  const {
-    count: transactionCount,
-    error: transactionCheckError
-  } = await supabase
-    .from("inventory_transactions")
-    .select("id", {
-      count: "exact",
-      head: true
-    })
-    .eq("product_id", productId);
-
-  if (transactionCheckError) {
-    console.error(
-      "Unable to check inventory history:",
-      transactionCheckError
-    );
-
-    throw new Error(
-      transactionCheckError.message ||
-        "Unable to verify the product inventory history."
-    );
-  }
-
-  if (Number(transactionCount || 0) > 0) {
-    throw new Error(
-      "This product has inventory transaction history and cannot be permanently deleted. Archive it instead."
+      `This product has ${blockers
+        .map(describeBlocker)
+        .join(", ")}, so it cannot be permanently deleted. Archive it instead.`
     );
   }
 
@@ -1566,19 +1613,21 @@ export async function deleteProductPermanently(
       (image) => image.storage_path
     );
 
-  // 2. Delete database records FIRST (inventory then product)
-  const {
-    error: inventoryDeleteError
-  } = await supabase
-    .from("inventory")
-    .delete()
-    .eq("product_id", productId);
+  // 2. Remove the rows that exist only for this product, then the product.
+  for (const table of PRODUCT_OWNED_TABLES) {
+    const { error: childDeleteError } =
+      await supabase
+        .from(table)
+        .delete()
+        .eq("product_id", productId);
 
-  if (inventoryDeleteError) {
-    throw new Error(
-      inventoryDeleteError.message ||
-        "Unable to remove the inventory record."
-    );
+    if (childDeleteError) {
+      throw new Error(
+        `Unable to remove the product's ${table.replaceAll("_", " ")}: ${
+          childDeleteError.message || "unknown error"
+        }`
+      );
+    }
   }
 
   const {
@@ -1616,7 +1665,13 @@ export async function deleteProductPermanently(
     slug: product.slug
   });
 
+  const store = getAdminStorefrontById(
+    product.storefront
+  );
+
   redirect(
-    "/admin/products?deleted=1"
+    store
+      ? `/admin/${store.slug}/products?deleted=1`
+      : "/admin/select-store"
   );
 }

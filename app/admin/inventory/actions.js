@@ -79,6 +79,7 @@ async function requireAdmin() {
 }
 
 function revalidateInventoryPaths(productId) {
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin");
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/inventory/history");
