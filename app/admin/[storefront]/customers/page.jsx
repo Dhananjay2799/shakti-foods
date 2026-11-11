@@ -5,10 +5,10 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
+  Search,
   UserRound,
   UsersRound
 } from "lucide-react";
-import CustomerFilters from "@/components/admin/CustomerFilters";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { getAdminStorefront } from "@/lib/admin-storefronts";
 
@@ -536,29 +536,114 @@ export default async function AdminCustomersPage({
         />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-        <div className="px-5 pb-4 pt-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-black">
-              Customer directory
-            </h2>
+      <section className="rounded-[2rem] border border-black/5 bg-white p-5 shadow-sm md:p-6">
+        <form
+          action={`${basePath}/customers`}
+          method="get"
+          className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_180px_160px_180px_auto]"
+        >
+          <label className="relative block">
+            <span className="sr-only">Search customers</span>
 
-            <span className="rounded-lg bg-black/[0.04] px-2.5 py-1 text-xs font-semibold text-black/60">
-              {customerRecords.length.toLocaleString("en-US")} shown
-              {totalResults > customerRecords.length
-                ? ` of ${totalResults.toLocaleString("en-US")}`
-                : ""}
-            </span>
-          </div>
-
-          <div className="mt-4">
-            <CustomerFilters
-              query={query}
-              customerType={customerType}
-              status={status}
-              sort={sort}
+            <Search
+              size={19}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-black/40"
             />
+
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder="Search name, email, phone, or company"
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] pl-12 pr-4 text-sm text-black outline-none transition placeholder:text-black/35 focus:border-black"
+            />
+          </label>
+
+          <label>
+            <span className="sr-only">Customer type</span>
+
+            <select
+              name="type"
+              defaultValue={customerType}
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
+            >
+              <option value="all">All customer types</option>
+              <option value="retail">Retail</option>
+              <option value="wholesale">Wholesale</option>
+              <option value="business">Business</option>
+            </select>
+          </label>
+
+          <label>
+            <span className="sr-only">Customer status</span>
+
+            <select
+              name="status"
+              defaultValue={status}
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
+            >
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </label>
+
+          <label>
+            <span className="sr-only">Sort customers</span>
+
+            <select
+              name="sort"
+              defaultValue={sort}
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
+            >
+              <option value="value">Highest value</option>
+              <option value="recent">Most recent order</option>
+              <option value="orders">Most orders</option>
+              <option value="name">Customer name</option>
+              <option value="oldest">Oldest customer</option>
+            </select>
+          </label>
+
+          <button
+            type="submit"
+            className="h-12 rounded-2xl bg-black px-6 text-sm font-bold text-white transition hover:bg-black/80"
+          >
+            Apply
+          </button>
+        </form>
+
+        {(query ||
+          customerType !== "all" ||
+          status !== "all" ||
+          sort !== "value") && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/5 pt-4">
+            <p className="text-sm text-black/50">
+              Showing filtered customer results.
+            </p>
+
+            <Link
+              href={`${basePath}/customers`}
+              className="text-sm font-bold text-black underline decoration-black/25 underline-offset-4"
+            >
+              Clear filters
+            </Link>
           </div>
+        )}
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-5">
+          <h2 className="text-lg font-bold text-black">
+            Customer directory
+          </h2>
+
+          <span className="rounded-lg bg-black/[0.04] px-2.5 py-1 text-xs font-semibold text-black/60">
+            {customerRecords.length.toLocaleString("en-US")} shown
+            {totalResults > customerRecords.length
+              ? ` of ${totalResults.toLocaleString("en-US")}`
+              : ""}
+          </span>
         </div>
 
         {storefrontOrdersError ? (
