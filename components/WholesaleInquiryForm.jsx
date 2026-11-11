@@ -6,6 +6,10 @@ import {
   whatsappLink,
   mailtoLink
 } from "@/lib/site";
+import {
+  QUANTITY_UNIT_LABELS,
+  getWholesaleUnits
+} from "@/lib/wholesale-units";
 
 const initialForm = {
   customerName: "",
@@ -13,8 +17,9 @@ const initialForm = {
   phone: "",
   businessName: "",
   businessType: "",
+  productId: "",
   estimatedQuantity: "",
-  quantityUnit: "cases",
+  quantityUnit: "",
   purchaseFrequency: "",
   deliveryCity: "",
   deliveryState: "",
@@ -22,13 +27,52 @@ const initialForm = {
   message: ""
 };
 
+const FIELD_CLASS =
+  "h-12 w-full min-w-0 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black";
+
+/*
+ * products: [{ id, name }] for the store, shown in the Product dropdown.
+ * productId / productName: preselect a product (e.g. from a product page).
+ */
 export default function WholesaleInquiryForm({
   productId = "",
   productName = "",
+  products = [],
   storefront = "shakti_foods"
 }) {
+  const units = getWholesaleUnits(storefront);
+
+  const brandPrefix =
+    storefront === "ecoware"
+      ? /^simpli\s+eco\s*ware\s+/i
+      : /^shakti\s+foods\s+/i;
+
+  const productOptions = products
+    .filter((product) => product?.id)
+    .map((product) => ({
+      id: String(product.id),
+      // "Shakti Foods Premium Basmati Rice – 10 lb" -> "Premium Basmati Rice – 10 lb"
+      label: String(product.name || product.id).replace(brandPrefix, "")
+    }));
+
+  const startingForm = {
+    ...initialForm,
+    productId:
+      productId &&
+      (productOptions.length === 0 ||
+        productOptions.some((option) => option.id === productId))
+        ? productId
+        : "",
+    quantityUnit: units[0]
+  };
+
   const [form, setForm] =
-    useState(initialForm);
+    useState(startingForm);
+
+  const selectedProductName =
+    productOptions.find((option) => option.id === form.productId)?.label ||
+    (form.productId === productId ? productName : "") ||
+    "Any / multiple products";
 
   const [status, setStatus] =
     useState(null);
@@ -72,7 +116,8 @@ export default function WholesaleInquiryForm({
 
             body:
               JSON.stringify({
-                productId,
+                productId:
+                  form.productId,
                 storefront,
 
                 customerName:
@@ -143,7 +188,7 @@ export default function WholesaleInquiryForm({
           data.whatsapp
       });
 
-      setForm(initialForm);
+      setForm(startingForm);
     } catch (error) {
       console.error(
         "Wholesale inquiry failed:",
@@ -156,9 +201,8 @@ export default function WholesaleInquiryForm({
         `Phone: ${form.phone}`,
         `Business: ${form.businessName}`,
         `Business Type: ${form.businessType}`,
-        `Product: ${productName}`,
-        `Estimated Quantity: ${form.estimatedQuantity}`,
-        `Quantity Unit: ${form.quantityUnit}`,
+        `Product: ${selectedProductName}`,
+        `Quantity: ${form.estimatedQuantity} ${QUANTITY_UNIT_LABELS[form.quantityUnit] || form.quantityUnit}`,
         `Purchase Frequency: ${form.purchaseFrequency}`,
         `Delivery City: ${form.deliveryCity}`,
         `Delivery State: ${form.deliveryState}`,
@@ -210,7 +254,7 @@ export default function WholesaleInquiryForm({
         distribution.
       </p>
 
-      {productName ? (
+      {productName && productOptions.length === 0 ? (
         <div className="mt-5 rounded-2xl bg-[#f8f6f1] p-4">
           <div className="text-xs font-bold uppercase tracking-[.14em] text-black/40">
             Product
@@ -369,27 +413,60 @@ export default function WholesaleInquiryForm({
           </label>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_180px]">
-          <label className="grid gap-2">
+        {/* Product, quantity and unit on one line (product on its own
+            line on phones). */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          {productOptions.length ? (
+            <label className="col-span-2 grid min-w-0 gap-2 md:col-span-1">
+              <span className="text-sm font-bold">
+                Product
+              </span>
+
+              <select
+                name="productId"
+                value={form.productId}
+                onChange={handleChange}
+                className={FIELD_CLASS}
+              >
+                <option value="">
+                  Any / multiple products
+                </option>
+
+                {productOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          <label
+            className={[
+              "grid min-w-0 gap-2",
+              productOptions.length ? "" : "md:col-span-2"
+            ].join(" ")}
+          >
             <span className="text-sm font-bold">
-              Estimated Quantity
+              Quantity
             </span>
 
             <input
               type="number"
               min="1"
               step="1"
+              inputMode="numeric"
               name="estimatedQuantity"
               value={
                 form.estimatedQuantity
               }
               onChange={handleChange}
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
+              className={FIELD_CLASS}
               placeholder="e.g. 50"
             />
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="text-sm font-bold">
               Unit
             </span>
@@ -398,23 +475,13 @@ export default function WholesaleInquiryForm({
               name="quantityUnit"
               value={form.quantityUnit}
               onChange={handleChange}
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
+              className={FIELD_CLASS}
             >
-              <option value="cases">
-                Cases
-              </option>
-
-              <option value="packs">
-                Packs
-              </option>
-
-              <option value="units">
-                Units
-              </option>
-
-              <option value="pallets">
-                Pallets
-              </option>
+              {units.map((unit) => (
+                <option key={unit} value={unit}>
+                  {QUANTITY_UNIT_LABELS[unit] || unit}
+                </option>
+              ))}
             </select>
           </label>
         </div>

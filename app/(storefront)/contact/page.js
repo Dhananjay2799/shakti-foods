@@ -1,13 +1,19 @@
 import SectionHeading from "@/components/SectionHeading";
 import WholesaleInquiryForm from "@/components/WholesaleInquiryForm";
 import { site, whatsappLink } from "@/lib/site";
+import { getWholesaleProductOptions } from "@/lib/storefront-products";
+
+// Refresh the product list in the wholesale form every 10 minutes.
+export const revalidate = 600;
 
 export const metadata = {
   title: "Contact & Wholesale Inquiry",
   description: "Contact Shakti Foods for Basmati rice, Simpli Ecoware products, restaurant supply, catering, and wholesale pricing."
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const wholesaleProducts = await getWholesaleProductOptions("shakti_foods");
+
   return (
     <main className="bg-white pt-24 text-black md:pt-28">
       <section className="section-pad py-14 md:py-20">
@@ -30,7 +36,10 @@ export default function ContactPage() {
             </div>
           </div>
           <div className="mt-10 max-w-3xl">
-            <WholesaleInquiryForm />
+            <WholesaleInquiryForm
+              storefront="shakti_foods"
+              products={wholesaleProducts}
+            />
           </div>
         </div>
       </section>
