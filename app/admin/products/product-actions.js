@@ -272,6 +272,21 @@ function productAdminPath(product, productId, suffix = "") {
 }
 
 /*
+ * Archive / Restore from the product list send returnTo=list, so the admin
+ * stays on the list instead of being taken to the product page.
+ */
+function productReturnPath(formData, product, productId, suffix) {
+  if (String(formData.get("returnTo") || "") !== "list") {
+    return productAdminPath(product, productId, suffix);
+  }
+
+  const store = getAdminStorefrontById(product?.storefront);
+  const base = store ? `/admin/${store.slug}/products` : "/admin/products";
+
+  return `${base}${suffix}`;
+}
+
+/*
  * archived_at is optional: if the column has not been added yet (see
  * supabase/migrations/…_admin_store_separation.sql) save without it.
  */
@@ -1437,7 +1452,7 @@ export async function archiveProduct(
   });
 
   redirect(
-    productAdminPath(product, productId, "?archived=1")
+    productReturnPath(formData, product, productId, "?archived=1")
   );
 }
 
@@ -1522,7 +1537,7 @@ export async function restoreProduct(
   });
 
   redirect(
-    productAdminPath(product, productId, "?restored=1")
+    productReturnPath(formData, product, productId, "?restored=1")
   );
 }
 
