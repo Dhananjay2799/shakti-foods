@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import ProductForm from "@/components/admin/ProductForm";
+import EditProductForm from "@/components/admin/EditProductForm";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { updateProduct } from "@/app/admin/products/product-actions";
 import {
@@ -8,16 +8,25 @@ import {
   requireStoreProduct
 } from "@/lib/admin-store";
 import { getStorefrontPageUrl } from "@/lib/storefront-config";
+import { normalizeProductEditTab } from "@/lib/admin-product-tabs";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditProductPage({
-  params
+  params,
+  searchParams
 }) {
   const resolvedParams =
     await Promise.resolve(
       params || {}
     );
+
+  const resolvedSearchParams =
+    await Promise.resolve(searchParams || {});
+
+  // ?tab=pricing opens that tab; ?saved=<time> follows a save.
+  const initialTab = normalizeProductEditTab(resolvedSearchParams.tab);
+  const savedAt = String(resolvedSearchParams.saved || "");
 
   const productId =
     decodeURIComponent(
@@ -223,18 +232,20 @@ export default async function EditProductPage({
     categoriesResult.data || [];
 
   return (
-    <ProductForm
-      mode="edit"
+    <EditProductForm
+      // A new key after each save starts the form fresh from the saved values.
+      key={savedAt || "edit"}
       action={updateProduct}
-      storefront={storefront}
-      cancelHref={productBase}
+      storefront={{ slug: storefront.slug, name: storefront.name }}
       product={product}
       inventory={inventory}
       categories={categories}
       priceTiers={priceTiers}
-      subscription={{
-        settings: subscriptionSettings,
-        hasFrequency: hasSubscriptionFrequency
+      subscriptionSettings={subscriptionSettings}
+      frequencies={{
+        2: hasSubscriptionFrequency("week", 2),
+        4: hasSubscriptionFrequency("week", 4),
+        8: hasSubscriptionFrequency("week", 8)
       }}
       links={{
         images: `${productBase}/images`,
@@ -245,6 +256,8 @@ export default async function EditProductPage({
         ),
         delete: `${productBase}/delete`
       }}
+      initialTab={initialTab}
+      justSaved={Boolean(savedAt)}
     />
   );
 }

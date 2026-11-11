@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { products as catalogProducts } from "@/lib/data";
+import { getAdminStorefrontById } from "@/lib/admin-storefronts";
 
 const allowedStatuses = [
   "unverified",
@@ -35,6 +36,30 @@ function optionalText(formData, field) {
   ).trim();
 
   return value || null;
+}
+
+// Certifications page inside the product's own store admin.
+async function productCertificationsPath(productId, query = "") {
+  const id = encodeURIComponent(productId);
+
+  try {
+    const { data } = await createSupabaseAdmin()
+      .from("products")
+      .select("storefront")
+      .eq("product_id", productId)
+      .maybeSingle();
+
+    const store = getAdminStorefrontById(data?.storefront);
+
+    if (store) {
+      return `/admin/${store.slug}/products/${id}/certifications${query}`;
+    }
+  } catch (error) {
+    console.error("Unable to find the product's store:", error);
+  }
+
+  // Old shared URL; it redirects to the right store.
+  return `/admin/products/${id}/certifications${query}`;
 }
 
 function refreshCertificationPages(productId) {
@@ -150,6 +175,9 @@ export async function saveProductCertification(
   }
 
   refreshCertificationPages(productId);
+
+  // Back to the list (this also clears the form) with a confirmation.
+  redirect(await productCertificationsPath(productId, "?saved=1"));
 }
 
 export async function removeProductCertification(
@@ -192,4 +220,6 @@ export async function removeProductCertification(
   }
 
   refreshCertificationPages(productId);
+
+  redirect(await productCertificationsPath(productId, "?removed=1"));
 }

@@ -30,7 +30,6 @@ export default async function NewProductPage({ params }) {
 
   return (
     <ProductForm
-      mode="create"
       action={createProduct}
       storefront={storefront}
       cancelHref={productsBase}

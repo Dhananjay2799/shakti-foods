@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { normalizeProductEditTab } from "@/lib/admin-product-tabs";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
@@ -1379,6 +1380,20 @@ export async function updateProduct(
     productId,
     slug
   });
+
+  // The tabbed editor sends returnTo=edit: stay on the same page and tab.
+  if (String(formData.get("returnTo") || "") === "edit") {
+    const tab = normalizeProductEditTab(formData.get("returnTab"));
+    const query = new URLSearchParams({ saved: String(Date.now()) });
+
+    if (tab !== "details") {
+      query.set("tab", tab);
+    }
+
+    redirect(
+      productAdminPath(existingProduct, productId, `/edit?${query}`)
+    );
+  }
 
   redirect(
     productAdminPath(existingProduct, productId, "?updated=1")
