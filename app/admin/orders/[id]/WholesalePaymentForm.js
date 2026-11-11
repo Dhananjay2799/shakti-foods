@@ -21,7 +21,7 @@ export default function WholesalePaymentForm({ order }) {
 
   if (alreadyPaid) {
     return (
-      <div className="mt-6 rounded-2xl bg-green-50 p-5">
+      <div className="mt-4 rounded-xl bg-green-50 p-4">
         <div className="text-xs font-bold uppercase tracking-[.14em] text-green-700">
           Payment Received
         </div>
@@ -49,7 +49,7 @@ export default function WholesalePaymentForm({ order }) {
   }
 
   return (
-    <form action={recordWholesalePayment} className="mt-6 grid gap-4">
+    <form action={recordWholesalePayment} className="mt-4 grid gap-4">
       <input type="hidden" name="orderId" value={order.id} />
 
       <input
@@ -58,9 +58,9 @@ export default function WholesalePaymentForm({ order }) {
         value={order.storefront || "shakti_foods"}
       />
 
-      <label className="grid gap-2">
-        <span className="text-sm font-bold text-black">
-          Payment Method
+      <label className="grid gap-1.5">
+        <span className="text-sm font-semibold text-black">
+          Payment method
         </span>
 
         <select
@@ -68,7 +68,7 @@ export default function WholesalePaymentForm({ order }) {
           value={paymentMethod}
           onChange={(event) => setPaymentMethod(event.target.value)}
           required
-          className="rounded-2xl border border-black/15 bg-white px-4 py-3 font-semibold text-black outline-none focus:border-black"
+          className="w-full rounded-xl border border-black/15 bg-white px-3.5 py-2.5 text-sm font-medium text-black outline-none transition focus:border-black focus:ring-2 focus:ring-black/10"
         >
           <option value="">Select payment method</option>
           <option value="ach">ACH</option>
@@ -80,9 +80,9 @@ export default function WholesalePaymentForm({ order }) {
         </select>
       </label>
 
-      <label className="grid gap-2">
-        <span className="text-sm font-bold text-black">
-          Payment Reference
+      <label className="grid gap-1.5">
+        <span className="text-sm font-semibold text-black">
+          Payment reference
         </span>
 
         <input
@@ -90,7 +90,7 @@ export default function WholesalePaymentForm({ order }) {
           name="paymentReference"
           maxLength={300}
           placeholder="ACH reference, check number, invoice payment ID..."
-          className="rounded-2xl border border-black/15 bg-white px-4 py-3 text-sm font-semibold text-black outline-none focus:border-black"
+          className="w-full rounded-xl border border-black/15 bg-white px-3.5 py-2.5 text-sm font-medium text-black outline-none transition focus:border-black focus:ring-2 focus:ring-black/10"
         />
       </label>
 
@@ -101,9 +101,9 @@ export default function WholesalePaymentForm({ order }) {
 
       <button
         type="submit"
-        className="rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-black/80"
+        className="rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-black/85"
       >
-        Record Payment
+        Record payment
       </button>
     </form>
   );
