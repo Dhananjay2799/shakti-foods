@@ -147,7 +147,7 @@ export default async function SampleRequestDetailPage({
   const addressLines = formatAddress(sampleRequest.shipping_address);
 
   return (
-    <main>
+    <div>
       <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
         <div>
           <Link
@@ -477,7 +477,7 @@ export default async function SampleRequestDetailPage({
           ) : null}
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
 

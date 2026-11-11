@@ -106,7 +106,7 @@ export default async function CategoriesPage({ params, searchParams }) {
     : null;
 
   return (
-    <main>
+    <div>
       <div>
         <section className="rounded-[1.75rem] border border-black/5 bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -497,6 +497,6 @@ export default async function CategoriesPage({ params, searchParams }) {
           </section>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

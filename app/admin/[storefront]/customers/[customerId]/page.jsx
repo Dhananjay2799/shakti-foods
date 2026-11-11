@@ -262,7 +262,7 @@ export default async function CustomerProfilePage({ params }) {
   const isRepeatCustomer = totalOrders > 1;
 
   return (
-    <main>
+    <div>
       <div>
         
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -521,6 +521,6 @@ export default async function CustomerProfilePage({ params }) {
           </section>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

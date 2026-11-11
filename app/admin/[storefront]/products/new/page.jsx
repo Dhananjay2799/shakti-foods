@@ -172,7 +172,7 @@ export default async function NewProductPage({ params }) {
   const activeCategories = categories || [];
 
   return (
-    <main>
+    <div>
       <div className="mx-auto max-w-5xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -589,6 +589,6 @@ export default async function NewProductPage({ params }) {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

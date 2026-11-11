@@ -139,7 +139,7 @@ export default async function InventoryHistoryPage({
   );
 
   return (
-    <main>
+    <div>
       <div>
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
@@ -333,6 +333,6 @@ export default async function InventoryHistoryPage({
           )}
         </section>
       </div>
-    </main>
+    </div>
   );
 }

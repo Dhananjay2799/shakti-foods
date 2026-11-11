@@ -145,7 +145,7 @@ export default async function AdminSubscriptionsPage({ params, searchParams }) {
   ).length;
 
   return (
-    <main>
+    <div>
       <div>
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
@@ -365,7 +365,7 @@ export default async function AdminSubscriptionsPage({ params, searchParams }) {
           })}
         </section>
       </div>
-    </main>
+    </div>
   );
 }
 

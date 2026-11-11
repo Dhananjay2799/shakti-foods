@@ -415,7 +415,7 @@ export default async function EditProductPage({
     );
 
   return (
-    <main>
+    <div>
       <div className="mx-auto max-w-5xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -1157,6 +1157,6 @@ export default async function EditProductPage({
           </section>
         </form>
       </div>
-    </main>
+    </div>
   );
 }

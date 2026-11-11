@@ -155,7 +155,7 @@ export default async function CertificationManagerPage({
     assignmentsResult.data || [];
 
   return (
-    <main>
+    <div>
       <div className="mx-auto max-w-6xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
@@ -487,6 +487,6 @@ export default async function CertificationManagerPage({
           </section>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

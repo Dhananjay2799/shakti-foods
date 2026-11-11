@@ -341,7 +341,7 @@ export default async function WholesaleInquiryDetailPage({
     );
 
   return (
-    <main>
+    <div>
       {/* Header */}
       <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
         <div>
@@ -1240,7 +1240,7 @@ export default async function WholesaleInquiryDetailPage({
           </div>
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
 

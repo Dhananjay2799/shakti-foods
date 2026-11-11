@@ -686,7 +686,7 @@ export default async function ProductImagesPage({
 
   if (showUploadForm) {
     return (
-      <main>
+      <div>
         <div className="mx-auto max-w-5xl py-2">
           <UploadImageForm
             productId={productId}
@@ -697,13 +697,13 @@ export default async function ProductImagesPage({
             )}
           />
         </div>
-      </main>
+      </div>
     );
   }
 
   if (editingImage) {
     return (
-      <main>
+      <div>
         <div className="mx-auto max-w-5xl py-2">
           <EditImageForm
             productId={productId}
@@ -713,12 +713,12 @@ export default async function ProductImagesPage({
             cancelHref={basePath}
           />
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main>
+    <div>
       <div className="mx-auto max-w-6xl py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -1164,6 +1164,6 @@ export default async function ProductImagesPage({
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
