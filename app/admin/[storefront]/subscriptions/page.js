@@ -145,8 +145,8 @@ export default async function AdminSubscriptionsPage({ params, searchParams }) {
   ).length;
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1] px-4 py-10 md:px-8">
-      <div className="mx-auto max-w-7xl">
+    <main>
+      <div>
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="text-xs font-bold uppercase tracking-[.18em] text-black/40">

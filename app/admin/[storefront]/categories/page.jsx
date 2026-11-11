@@ -106,8 +106,8 @@ export default async function CategoriesPage({ params, searchParams }) {
     : null;
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-6xl py-3">
+    <main>
+      <div>
         <section className="rounded-[1.75rem] border border-black/5 bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>

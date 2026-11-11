@@ -262,8 +262,8 @@ export default async function CustomerProfilePage({ params }) {
   const isRepeatCustomer = totalOrders > 1;
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-12">
+    <main>
+      <div>
         
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link href={`/admin/${storefront.slug}/customers`} className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-black shadow-sm transition hover:bg-[#f1eadf]">
