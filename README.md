@@ -2,7 +2,8 @@
 
 A production e-commerce platform that runs two brands from one Next.js codebase:
 
-- **Shakti Foods**: premium basmati rice, live at [shakti-foods.com](https://shakti-foods.com)
+- **Shakti Foods**: premium basmati rice, live at [shaktifoodsus.com](https://shaktifoodsus.com)
+  (the older shakti-foods.com addresses forward there)
 - **Simpli Ecoware**: compostable food-service products, live at [simpliecoware.vercel.app](https://simpliecoware.vercel.app)
 
 It covers everything from browsing to delivery: the storefront, cart, Stripe and PayPal checkout,
@@ -35,7 +36,7 @@ Stripe · PayPal · Resend · Shippo · Vercel (hosting and cron)
 
 ```mermaid
 flowchart TD
-    Shopper["Shopper<br/>shakti-foods.com / Ecoware domain"] --> MW["middleware.js<br/>store routing, admin sessions"]
+    Shopper["Shopper<br/>shaktifoodsus.com / Ecoware domain"] --> MW["middleware.js<br/>store routing, admin sessions"]
     Admin["Store admin"] --> MW
     MW --> Pages["App Router pages<br/>storefronts and /admin"]
     MW --> API["API routes<br/>checkout, payments, cart, inventory"]

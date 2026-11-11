@@ -158,7 +158,7 @@ export default function EcowareLayout({ children }) {
                 </Link>
 
                 <a
-                  href="https://www.shakti-foods.com"
+                  href="https://shaktifoodsus.com"
                   className="
                     ml-2
                     flex
@@ -277,7 +277,7 @@ export default function EcowareLayout({ children }) {
                 </p>
 
                 <a
-                  href="https://www.shakti-foods.com"
+                  href="https://shaktifoodsus.com"
                   className="
                     mt-6
                     inline-flex

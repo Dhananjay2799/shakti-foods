@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { getShaktiLegacyRedirectUrl } from "@/lib/storefront-hosts";
 
 const ECOWARE_HOSTS = new Set([
   "simpliecoware.vercel.app",
@@ -8,7 +9,26 @@ const ECOWARE_HOSTS = new Set([
 ]);
 
 export async function middleware(request) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
+
+  // shakti-foods.com and www.shakti-foods.com → the same page on
+  // shaktifoodsus.com. Google's Change of Address tool checks for 301s;
+  // form posts get a 308 so the browser keeps the method and the body.
+  const legacyRedirectUrl = getShaktiLegacyRedirectUrl({
+    hostHeader: request.headers.get("host"),
+    pathname,
+    search
+  });
+
+  if (legacyRedirectUrl) {
+    const keepsMethod =
+      request.method !== "GET" && request.method !== "HEAD";
+
+    return NextResponse.redirect(
+      legacyRedirectUrl,
+      keepsMethod ? 308 : 301
+    );
+  }
 
   // Keep existing Supabase admin authentication behavior.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {

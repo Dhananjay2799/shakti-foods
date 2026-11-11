@@ -113,7 +113,7 @@ export default function EcowareMobileMenu() {
 
             <div className="mt-2 border-t border-black/10 pt-3">
               <a
-                href="https://www.shakti-foods.com"
+                href="https://shaktifoodsus.com"
                 onClick={closeMenu}
                 className="
                   flex
