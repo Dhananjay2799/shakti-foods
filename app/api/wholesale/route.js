@@ -1,11 +1,13 @@
-import nodemailer from "nodemailer";
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   mailtoLink,
-  site,
   whatsappLink
 } from "@/lib/site";
+import {
+  formatQuantity,
+  notifyWholesaleInquiry
+} from "@/lib/wholesale-notification";
 
 export const runtime = "nodejs";
 
@@ -26,10 +28,9 @@ function inquiryText(data) {
     `Business: ${data.businessName || "-"}`,
     `Business Type: ${data.businessType || "-"}`,
     `Product: ${data.productName || "-"}`,
-    `Estimated Quantity: ${
-      data.estimatedQuantity || "-"
+    `Quantity: ${
+      formatQuantity(data.estimatedQuantity, data.quantityUnit) || "-"
     }`,
-    `Quantity Unit: ${data.quantityUnit || "-"}`,
     `Purchase Frequency: ${
       data.purchaseFrequency || "-"
     }`,
@@ -364,160 +365,48 @@ export async function POST(request) {
     }
 
     /*
-     * Prepare the internal sales
-     * notification.
+     * Email the business (Resend, then SMTP as a backup). The inquiry is
+     * already saved, so a failed email never fails the customer's
+     * submission; they get email/WhatsApp links to send it themselves.
      */
+    const notification =
+      await notifyWholesaleInquiry({
+        inquiryId: inquiry.id,
+        createdAt: inquiry.created_at,
+        inquiry: inquiryData
+      });
+
     const text =
       inquiryText(inquiryData);
 
     const subject =
       `Wholesale Inquiry - ${productName}`;
 
-    const missingSmtp = [
-      "SMTP_HOST",
-      "SMTP_PORT",
-      "SMTP_USER",
-      "SMTP_PASS"
-    ].filter(
-      (key) =>
-        !process.env[key]
+    return NextResponse.json(
+      {
+        success: true,
+        saved: true,
+        emailSent: notification.sent,
+
+        inquiryId:
+          inquiry.id,
+
+        status:
+          inquiry.status,
+
+        ...(notification.sent
+          ? {}
+          : {
+              fallback: true,
+              mailto: mailtoLink(subject, text),
+              whatsapp: whatsappLink(text)
+            }),
+
+        message:
+          "Wholesale inquiry received successfully."
+      },
+      { status: 201 }
     );
-
-    /*
-     * IMPORTANT:
-     * The inquiry is already safely stored
-     * in Supabase at this point.
-     *
-     * Missing SMTP therefore does not make
-     * the customer submission fail.
-     */
-    if (missingSmtp.length) {
-      return NextResponse.json(
-        {
-          success: true,
-          saved: true,
-          fallback: true,
-
-          inquiryId:
-            inquiry.id,
-
-          status:
-            inquiry.status,
-
-          mailto:
-            mailtoLink(
-              subject,
-              text
-            ),
-
-          whatsapp:
-            whatsappLink(text),
-
-          message:
-            "Wholesale inquiry received successfully."
-        },
-        { status: 201 }
-      );
-    }
-
-    /*
-     * Try to notify the sales/admin inbox.
-     * If email fails, preserve the database
-     * lead and return fallback contact links.
-     */
-    try {
-      const transporter =
-        nodemailer.createTransport({
-          host:
-            process.env.SMTP_HOST,
-
-          port:
-            Number(
-              process.env.SMTP_PORT
-            ),
-
-          secure:
-            Number(
-              process.env.SMTP_PORT
-            ) === 465,
-
-          auth: {
-            user:
-              process.env.SMTP_USER,
-
-            pass:
-              process.env.SMTP_PASS
-          }
-        });
-
-      await transporter.sendMail({
-        from:
-          process.env.SMTP_FROM ||
-          process.env.SMTP_USER,
-
-        to:
-          process.env.INQUIRY_TO ||
-          site.email,
-
-        replyTo:
-          email,
-
-        subject,
-
-        text
-      });
-
-      return NextResponse.json(
-        {
-          success: true,
-          saved: true,
-          emailSent: true,
-
-          inquiryId:
-            inquiry.id,
-
-          status:
-            inquiry.status,
-
-          message:
-            "Wholesale inquiry received successfully."
-        },
-        { status: 201 }
-      );
-    } catch (emailError) {
-      console.error(
-        "Wholesale notification email failed:",
-        emailError
-      );
-
-      return NextResponse.json(
-        {
-          success: true,
-          saved: true,
-          emailSent: false,
-          fallback: true,
-
-          inquiryId:
-            inquiry.id,
-
-          status:
-            inquiry.status,
-
-          mailto:
-            mailtoLink(
-              subject,
-              text
-            ),
-
-          whatsapp:
-            whatsappLink(text),
-
-          message:
-            "Wholesale inquiry received successfully."
-        },
-        { status: 201 }
-      );
-    }
   } catch (error) {
     console.error(
       "Wholesale inquiry API error:",

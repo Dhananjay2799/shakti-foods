@@ -1,5 +1,9 @@
 import Link from "next/link";
 import WholesaleInquiryForm from "@/components/WholesaleInquiryForm";
+import { getWholesaleProductOptions } from "@/lib/storefront-products";
+
+// Refresh the product list in the wholesale form every 10 minutes.
+export const revalidate = 600;
 
 export const metadata = {
   title: "Wholesale | Simpli Ecoware",
@@ -7,7 +11,9 @@ export const metadata = {
     "Request wholesale pricing for Simpli Ecoware sustainable foodservice products, restaurant supply, catering, hospitality and distribution."
 };
 
-export default function EcowareWholesalePage() {
+export default async function EcowareWholesalePage() {
+  const wholesaleProducts = await getWholesaleProductOptions("ecoware");
+
   return (
     <main className="min-h-screen bg-[#f8f5ed] pt-[132px] text-[#182114]">
       <section className="px-5 py-12 sm:px-8 sm:py-16 md:py-20">
@@ -89,6 +95,7 @@ export default function EcowareWholesalePage() {
             <div>
               <WholesaleInquiryForm
                 storefront="ecoware"
+                products={wholesaleProducts}
               />
             </div>
           </div>
