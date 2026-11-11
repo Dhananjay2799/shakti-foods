@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { getAdminStorefront } from "@/lib/admin-storefronts";
+import {
+  categoryWithDescendants,
+  orderCategoryTree
+} from "@/lib/admin-categories";
 
 async function requireAdmin() {
   const authClient = await createClient();
@@ -22,16 +26,11 @@ async function requireAdmin() {
 }
 
 function requiredText(formData, fieldName) {
-  return String(
-    formData.get(fieldName) || ""
-  ).trim();
+  return String(formData.get(fieldName) || "").trim();
 }
 
 function optionalText(formData, fieldName) {
-  const value = String(
-    formData.get(fieldName) || ""
-  ).trim();
-
+  const value = String(formData.get(fieldName) || "").trim();
   return value || null;
 }
 
@@ -44,858 +43,390 @@ function normalizeIdentifier(value) {
 }
 
 function getStorefrontFromForm(formData) {
-  const storefrontSlug =
-    requiredText(
-      formData,
-      "storefrontSlug"
-    );
+  const storefrontSlug = requiredText(formData, "storefrontSlug");
+  const storefrontId = requiredText(formData, "storefrontId");
+  const storefront = getAdminStorefront(storefrontSlug);
 
-  const storefrontId =
-    requiredText(
-      formData,
-      "storefrontId"
-    );
-
-  const storefront =
-    getAdminStorefront(storefrontSlug);
-
-  if (
-    !storefront ||
-    storefront.id !== storefrontId
-  ) {
-    throw new Error(
-      "Invalid storefront."
-    );
+  if (!storefront || storefront.id !== storefrontId) {
+    throw new Error("Invalid storefront.");
   }
 
   return storefront;
 }
 
+function categoriesPath(storefront, query = "") {
+  return `/admin/${storefront.slug}/categories${query}`;
+}
+
 function refreshCategoryPages(storefront) {
-  const basePath =
-    `/admin/${storefront.slug}`;
+  const basePath = `/admin/${storefront.slug}`;
 
   revalidatePath(basePath);
-
-  revalidatePath(
-    `${basePath}/categories`
-  );
-
-  revalidatePath(
-    `${basePath}/products`
-  );
-
-  revalidatePath(
-    `${basePath}/products/new`
-  );
-
+  revalidatePath(`${basePath}/categories`);
+  revalidatePath(`${basePath}/products`);
+  revalidatePath(`${basePath}/products/new`);
   revalidatePath("/products");
 }
 
-async function getNextSortOrder(
-  supabase,
-  storefrontId
-) {
-  const { data, error } =
-    await supabase
-      .from("product_categories")
-      .select("sort_order")
-      .eq(
-        "storefront",
-        storefrontId
-      )
-      .order("sort_order", {
-        ascending: false
-      })
-      .limit(1)
-      .maybeSingle();
+async function loadCategories(supabase, storefrontId) {
+  const { data, error } = await supabase
+    .from("product_categories")
+    .select("id, name, sort_order, parent_category_id")
+    .eq("storefront", storefrontId);
 
   if (error) {
-    throw new Error(
-      error.message ||
-        "Unable to calculate category position."
-    );
+    throw new Error(error.message || "Unable to load categories.");
   }
 
-  return Number(
-    data?.sort_order || 0
-  ) + 1;
+  return data || [];
 }
 
-async function getCategoryById(
-  supabase,
-  categoryRecordId,
-  storefrontId
-) {
-  const { data, error } =
-    await supabase
-      .from("product_categories")
-      .select("*")
-      .eq("id", categoryRecordId)
-      .eq(
-        "storefront",
-        storefrontId
-      )
-      .maybeSingle();
+async function getCategoryById(supabase, categoryRecordId, storefrontId) {
+  const { data, error } = await supabase
+    .from("product_categories")
+    .select("*")
+    .eq("id", categoryRecordId)
+    .eq("storefront", storefrontId)
+    .maybeSingle();
 
   if (error) {
-    throw new Error(
-      error.message ||
-        "Unable to load category."
-    );
+    throw new Error(error.message || "Unable to load category.");
   }
 
   if (!data) {
-    throw new Error(
-      "Category was not found for this storefront."
-    );
+    throw new Error("Category was not found for this storefront.");
   }
 
   return data;
 }
 
-async function normalizeCategorySortOrders(
-  supabase,
-  storefrontId
-) {
-  const { data, error } =
-    await supabase
-      .from("product_categories")
-      .select(
-        "id, sort_order, name"
-      )
-      .eq(
-        "storefront",
-        storefrontId
-      )
-      .order("sort_order", {
-        ascending: true
-      })
-      .order("name", {
-        ascending: true
-      });
+/**
+ * Writes sort_order 1, 2, 3 … in tree order (each category followed by its
+ * subcategories), so the store's list matches the admin. Only changed rows
+ * are updated.
+ */
+async function saveTreeOrder(supabase, storefrontId, categories, saved = categories) {
+  const ordered = orderCategoryTree(categories);
+  // Compare with what is stored, not with the rearranged copy.
+  const storedOrder = new Map(
+    saved.map((category) => [category.id, Number(category.sort_order)])
+  );
 
-  if (error) {
-    throw new Error(
-      error.message ||
-        "Unable to normalize category order."
-    );
-  }
+  for (let index = 0; index < ordered.length; index += 1) {
+    const category = ordered[index];
+    const sortOrder = index + 1;
 
-  const categories = data || [];
-
-  for (
-    let index = 0;
-    index < categories.length;
-    index += 1
-  ) {
-    const desiredSortOrder =
-      index + 1;
-
-    const category =
-      categories[index];
-
-    if (
-      Number(
-        category.sort_order
-      ) === desiredSortOrder
-    ) {
+    if (storedOrder.get(category.id) === sortOrder) {
       continue;
     }
 
-    const { error: updateError } =
-      await supabase
-        .from("product_categories")
-        .update({
-          sort_order:
-            desiredSortOrder
-        })
-        .eq("id", category.id)
-        .eq(
-          "storefront",
-          storefrontId
-        );
+    const { error } = await supabase
+      .from("product_categories")
+      .update({ sort_order: sortOrder })
+      .eq("id", category.id)
+      .eq("storefront", storefrontId);
 
-    if (updateError) {
-      throw new Error(
-        updateError.message ||
-          "Unable to normalize category order."
-      );
+    if (error) {
+      throw new Error(error.message || "Unable to save category order.");
     }
   }
 }
 
-export async function createCategory(
-  formData
-) {
+/** The parent from the form, checked: same store, and not itself or below itself. */
+function readParentId(formData, categories, categoryRecordId = null) {
+  const parentId = optionalText(formData, "parentCategoryId");
+
+  if (!parentId) {
+    return null;
+  }
+
+  if (!categories.some((category) => category.id === parentId)) {
+    throw new Error("Choose a parent category from this store.");
+  }
+
+  if (
+    categoryRecordId &&
+    categoryWithDescendants(categories, categoryRecordId).has(parentId)
+  ) {
+    throw new Error("A category can't be placed inside itself or one of its subcategories.");
+  }
+
+  return parentId;
+}
+
+function friendlySaveError(error, fallback) {
+  if (error?.code === "23505") {
+    return new Error(
+      "That category ID or URL slug is already in use. Category IDs and slugs must be unique across both stores."
+    );
+  }
+
+  return new Error(error?.message || fallback);
+}
+
+async function createCategoryRecord(formData) {
   await requireAdmin();
 
-  const storefront =
-    getStorefrontFromForm(
-      formData
-    );
-
-  const name =
-    requiredText(
-      formData,
-      "name"
-    );
-
-  const categoryId =
-    normalizeIdentifier(
-      requiredText(
-        formData,
-        "categoryId"
-      ) || name
-    );
-
-  const slug =
-    normalizeIdentifier(
-      requiredText(
-        formData,
-        "slug"
-      ) || categoryId
-    );
+  const storefront = getStorefrontFromForm(formData);
+  const name = requiredText(formData, "name");
+  const categoryId = normalizeIdentifier(requiredText(formData, "categoryId") || name);
+  const slug = normalizeIdentifier(requiredText(formData, "slug") || categoryId);
 
   if (!name) {
-    throw new Error(
-      "Category name is required."
-    );
+    throw new Error("Category name is required.");
   }
 
   if (!categoryId) {
-    throw new Error(
-      "Category ID is required."
-    );
+    throw new Error("Category ID is required.");
   }
 
   if (!slug) {
-    throw new Error(
-      "Category slug is required."
-    );
+    throw new Error("Category slug is required.");
   }
 
-  const supabase =
-    createSupabaseAdmin();
+  const supabase = createSupabaseAdmin();
+  const categories = await loadCategories(supabase, storefront.id);
+  const parentId = readParentId(formData, categories);
 
   const nextSortOrder =
-    await getNextSortOrder(
-      supabase,
-      storefront.id
-    );
+    categories.reduce((max, category) => Math.max(max, Number(category.sort_order || 0)), 0) + 1;
 
-  const { error } =
-    await supabase
-      .from("product_categories")
-      .insert({
-        category_id: categoryId,
-        name,
-        slug,
-
-        description:
-          optionalText(
-            formData,
-            "description"
-          ),
-
-        parent_category_id:
-          optionalText(
-            formData,
-            "parentCategoryId"
-          ),
-
-        sort_order:
-          nextSortOrder,
-
-        is_active: true,
-
-        storefront:
-          storefront.id
-      });
+  const { data: created, error } = await supabase
+    .from("product_categories")
+    .insert({
+      category_id: categoryId,
+      name,
+      slug,
+      description: optionalText(formData, "description"),
+      parent_category_id: parentId,
+      sort_order: nextSortOrder,
+      is_active: formData.get("isActive") === "on",
+      storefront: storefront.id
+    })
+    .select("id, name, sort_order, parent_category_id")
+    .single();
 
   if (error) {
-    console.error(
-      "Unable to create category:",
-      error
-    );
-
-    if (error.code === "23505") {
-      throw new Error(
-        "That category ID or slug is already in use."
-      );
-    }
-
-    throw new Error(
-      error.message ||
-        "Unable to create category."
-    );
+    console.error("Unable to create category:", error);
+    throw friendlySaveError(error, "Unable to create category.");
   }
 
-  refreshCategoryPages(
-    storefront
-  );
+  // A new subcategory goes to the end of its parent's group.
+  await saveTreeOrder(supabase, storefront.id, [...categories, created]);
 
-  redirect(
-    `/admin/${storefront.slug}/categories?created=1`
-  );
+  refreshCategoryPages(storefront);
+
+  return { storefront, name };
 }
 
-export async function updateCategory(
-  formData
-) {
+async function updateCategoryRecord(formData) {
   await requireAdmin();
 
-  const storefront =
-    getStorefrontFromForm(
-      formData
-    );
+  const storefront = getStorefrontFromForm(formData);
+  const categoryRecordId = requiredText(formData, "categoryRecordId");
+  const name = requiredText(formData, "name");
+  const categoryId = normalizeIdentifier(requiredText(formData, "categoryId"));
+  const slug = normalizeIdentifier(requiredText(formData, "slug"));
 
-  const categoryRecordId =
-    requiredText(
-      formData,
-      "categoryRecordId"
-    );
-
-  const name =
-    requiredText(
-      formData,
-      "name"
-    );
-
-  const categoryId =
-    normalizeIdentifier(
-      requiredText(
-        formData,
-        "categoryId"
-      )
-    );
-
-  const slug =
-    normalizeIdentifier(
-      requiredText(
-        formData,
-        "slug"
-      )
-    );
-
-  if (
-    !categoryRecordId ||
-    !name ||
-    !categoryId ||
-    !slug
-  ) {
-    throw new Error(
-      "Category ID, name, and slug are required."
-    );
+  if (!categoryRecordId || !name || !categoryId || !slug) {
+    throw new Error("Category name, ID, and URL slug are required.");
   }
 
-  const supabase =
-    createSupabaseAdmin();
+  const supabase = createSupabaseAdmin();
+  const existingCategory = await getCategoryById(supabase, categoryRecordId, storefront.id);
+  const categories = await loadCategories(supabase, storefront.id);
+  const parentId = readParentId(formData, categories, categoryRecordId);
 
-  const existingCategory =
-    await getCategoryById(
-      supabase,
-      categoryRecordId,
-      storefront.id
-    );
-
-  const { error } =
-    await supabase
-      .from("product_categories")
-      .update({
-        category_id: categoryId,
-        name,
-        slug,
-
-        description:
-          optionalText(
-            formData,
-            "description"
-          ),
-
-        parent_category_id:
-          optionalText(
-            formData,
-            "parentCategoryId"
-          ),
-
-        is_active:
-          formData.get(
-            "isActive"
-          ) === "on"
-      })
-      .eq(
-        "id",
-        categoryRecordId
-      )
-      .eq(
-        "storefront",
-        storefront.id
-      );
+  const { error } = await supabase
+    .from("product_categories")
+    .update({
+      category_id: categoryId,
+      name,
+      slug,
+      description: optionalText(formData, "description"),
+      parent_category_id: parentId,
+      is_active: formData.get("isActive") === "on"
+    })
+    .eq("id", categoryRecordId)
+    .eq("storefront", storefront.id);
 
   if (error) {
-    if (error.code === "23505") {
-      throw new Error(
-        "That category ID or slug is already in use."
-      );
-    }
-
-    throw new Error(
-      error.message ||
-        "Unable to update category."
-    );
+    throw friendlySaveError(error, "Unable to update category.");
   }
 
-  if (
-    existingCategory.category_id !==
-    categoryId
-  ) {
-    const {
-      error: productsUpdateError
-    } = await supabase
+  if (existingCategory.category_id !== categoryId) {
+    const { error: productsUpdateError } = await supabase
       .from("products")
-      .update({
-        category: categoryId
-      })
-      .eq(
-        "category",
-        existingCategory.category_id
-      )
-      .eq(
-        "storefront",
-        storefront.id
-      )
-      .is(
-        "deleted_at",
-        null
-      );
+      .update({ category: categoryId })
+      .eq("category", existingCategory.category_id)
+      .eq("storefront", storefront.id)
+      .is("deleted_at", null);
 
-    if (
-      productsUpdateError
-    ) {
+    if (productsUpdateError) {
       throw new Error(
-        productsUpdateError.message ||
-          "Linked products could not be updated."
+        productsUpdateError.message || "Linked products could not be updated."
       );
     }
   }
 
-  refreshCategoryPages(
-    storefront
-  );
+  if ((existingCategory.parent_category_id || null) !== parentId) {
+    // Moved under another parent: it joins the end of that group.
+    await saveTreeOrder(
+      supabase,
+      storefront.id,
+      categories.map((category) =>
+        category.id === categoryRecordId
+          ? { ...category, parent_category_id: parentId, sort_order: Number.MAX_SAFE_INTEGER }
+          : category
+      ),
+      categories
+    );
+  }
 
-  redirect(
-    `/admin/${storefront.slug}/categories?updated=1`
-  );
+  refreshCategoryPages(storefront);
+
+  return { storefront, name };
 }
 
-export async function moveCategoryUp(
-  formData
-) {
+/**
+ * Add / Edit category dialog (useFormState). Returns { ok, message } or
+ * { error } instead of leaving the page, so the dialog can show problems
+ * such as a category ID that is already taken.
+ */
+export async function saveCategory(previousState, formData) {
+  const editing = Boolean(requiredText(formData, "categoryRecordId"));
+
+  try {
+    const { name } = editing
+      ? await updateCategoryRecord(formData)
+      : await createCategoryRecord(formData);
+
+    return {
+      ok: true,
+      message: editing ? `“${name}” saved.` : `“${name}” added.`,
+      at: Date.now()
+    };
+  } catch (error) {
+    // Let Next.js handle its own redirects (e.g. to the login page).
+    if (String(error?.digest || "").startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
+
+    return {
+      ok: false,
+      error: error?.message || "Unable to save category.",
+      at: Date.now()
+    };
+  }
+}
+
+async function moveCategory(formData, direction) {
   await requireAdmin();
 
-  const storefront =
-    getStorefrontFromForm(
-      formData
-    );
-
-  const categoryRecordId =
-    requiredText(
-      formData,
-      "categoryRecordId"
-    );
+  const storefront = getStorefrontFromForm(formData);
+  const categoryRecordId = requiredText(formData, "categoryRecordId");
 
   if (!categoryRecordId) {
-    throw new Error(
-      "Category information is missing."
-    );
+    throw new Error("Category information is missing.");
   }
 
-  const supabase =
-    createSupabaseAdmin();
+  const supabase = createSupabaseAdmin();
+  const categories = await loadCategories(supabase, storefront.id);
+  const ordered = orderCategoryTree(categories);
+  const current = ordered.find((category) => category.id === categoryRecordId);
 
-  await normalizeCategorySortOrders(
+  if (!current) {
+    throw new Error("Category was not found for this storefront.");
+  }
+
+  // Only categories with the same parent swap places.
+  const siblings = ordered.filter((category) => category.parentKey === current.parentKey);
+  const index = siblings.findIndex((category) => category.id === current.id);
+  const target = siblings[direction === "up" ? index - 1 : index + 1];
+
+  if (!target) {
+    redirect(categoriesPath(storefront, direction === "up" ? "?position=first" : "?position=last"));
+  }
+
+  await saveTreeOrder(
     supabase,
-    storefront.id
+    storefront.id,
+    categories.map((category) => {
+      if (category.id === current.id) {
+        return { ...category, sort_order: target.sort_order };
+      }
+
+      if (category.id === target.id) {
+        return { ...category, sort_order: current.sort_order };
+      }
+
+      return category;
+    }),
+    categories
   );
 
-  const currentCategory =
-    await getCategoryById(
-      supabase,
-      categoryRecordId,
-      storefront.id
-    );
-
-  const {
-    data: previousCategory,
-    error: previousError
-  } = await supabase
-    .from("product_categories")
-    .select(
-      "id, sort_order"
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    )
-    .lt(
-      "sort_order",
-      currentCategory.sort_order
-    )
-    .order("sort_order", {
-      ascending: false
-    })
-    .limit(1)
-    .maybeSingle();
-
-  if (previousError) {
-    throw new Error(
-      previousError.message ||
-        "Unable to move category."
-    );
-  }
-
-  if (!previousCategory) {
-    redirect(
-      `/admin/${storefront.slug}/categories?position=first`
-    );
-  }
-
-  const {
-    error: currentTempError
-  } = await supabase
-    .from("product_categories")
-    .update({
-      sort_order: 0
-    })
-    .eq(
-      "id",
-      currentCategory.id
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    );
-
-  if (currentTempError) {
-    throw new Error(
-      currentTempError.message
-    );
-  }
-
-  const {
-    error: previousUpdateError
-  } = await supabase
-    .from("product_categories")
-    .update({
-      sort_order:
-        currentCategory.sort_order
-    })
-    .eq(
-      "id",
-      previousCategory.id
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    );
-
-  if (previousUpdateError) {
-    throw new Error(
-      previousUpdateError.message
-    );
-  }
-
-  const {
-    error: currentUpdateError
-  } = await supabase
-    .from("product_categories")
-    .update({
-      sort_order:
-        previousCategory.sort_order
-    })
-    .eq(
-      "id",
-      currentCategory.id
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    );
-
-  if (currentUpdateError) {
-    throw new Error(
-      currentUpdateError.message
-    );
-  }
-
-  refreshCategoryPages(
-    storefront
-  );
-
-  redirect(
-    `/admin/${storefront.slug}/categories?reordered=1`
-  );
+  refreshCategoryPages(storefront);
+  redirect(categoriesPath(storefront, "?reordered=1"));
 }
 
-export async function moveCategoryDown(
-  formData
-) {
+export async function moveCategoryUp(formData) {
+  await moveCategory(formData, "up");
+}
+
+export async function moveCategoryDown(formData) {
+  await moveCategory(formData, "down");
+}
+
+export async function deleteCategory(formData) {
   await requireAdmin();
 
-  const storefront =
-    getStorefrontFromForm(
-      formData
-    );
-
-  const categoryRecordId =
-    requiredText(
-      formData,
-      "categoryRecordId"
-    );
+  const storefront = getStorefrontFromForm(formData);
+  const categoryRecordId = requiredText(formData, "categoryRecordId");
 
   if (!categoryRecordId) {
-    throw new Error(
-      "Category information is missing."
-    );
+    throw new Error("Category information is missing.");
   }
 
-  const supabase =
-    createSupabaseAdmin();
+  const supabase = createSupabaseAdmin();
+  const category = await getCategoryById(supabase, categoryRecordId, storefront.id);
 
-  await normalizeCategorySortOrders(
-    supabase,
-    storefront.id
-  );
-
-  const currentCategory =
-    await getCategoryById(
-      supabase,
-      categoryRecordId,
-      storefront.id
-    );
-
-  const {
-    data: nextCategory,
-    error: nextError
-  } = await supabase
-    .from("product_categories")
-    .select(
-      "id, sort_order"
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    )
-    .gt(
-      "sort_order",
-      currentCategory.sort_order
-    )
-    .order("sort_order", {
-      ascending: true
-    })
-    .limit(1)
-    .maybeSingle();
-
-  if (nextError) {
-    throw new Error(
-      nextError.message ||
-        "Unable to move category."
-    );
-  }
-
-  if (!nextCategory) {
-    redirect(
-      `/admin/${storefront.slug}/categories?position=last`
-    );
-  }
-
-  const {
-    error: currentTempError
-  } = await supabase
-    .from("product_categories")
-    .update({
-      sort_order: 0
-    })
-    .eq(
-      "id",
-      currentCategory.id
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    );
-
-  if (currentTempError) {
-    throw new Error(
-      currentTempError.message
-    );
-  }
-
-  const {
-    error: nextUpdateError
-  } = await supabase
-    .from("product_categories")
-    .update({
-      sort_order:
-        currentCategory.sort_order
-    })
-    .eq(
-      "id",
-      nextCategory.id
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    );
-
-  if (nextUpdateError) {
-    throw new Error(
-      nextUpdateError.message
-    );
-  }
-
-  const {
-    error: currentUpdateError
-  } = await supabase
-    .from("product_categories")
-    .update({
-      sort_order:
-        nextCategory.sort_order
-    })
-    .eq(
-      "id",
-      currentCategory.id
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    );
-
-  if (currentUpdateError) {
-    throw new Error(
-      currentUpdateError.message
-    );
-  }
-
-  refreshCategoryPages(
-    storefront
-  );
-
-  redirect(
-    `/admin/${storefront.slug}/categories?reordered=1`
-  );
-}
-
-export async function deleteCategory(
-  formData
-) {
-  await requireAdmin();
-
-  const storefront =
-    getStorefrontFromForm(
-      formData
-    );
-
-  const categoryRecordId =
-    requiredText(
-      formData,
-      "categoryRecordId"
-    );
-
-  const categoryId =
-    requiredText(
-      formData,
-      "categoryId"
-    );
-
-  if (
-    !categoryRecordId ||
-    !categoryId
-  ) {
-    throw new Error(
-      "Category information is missing."
-    );
-  }
-
-  const supabase =
-    createSupabaseAdmin();
-
-  await getCategoryById(
-    supabase,
-    categoryRecordId,
-    storefront.id
-  );
-
-  const {
-    count: productCount,
-    error: productCheckError
-  } = await supabase
+  const { count: productCount, error: productCheckError } = await supabase
     .from("products")
-    .select("product_id", {
-      count: "exact",
-      head: true
-    })
-    .eq(
-      "category",
-      categoryId
-    )
-    .eq(
-      "storefront",
-      storefront.id
-    )
-    .is(
-      "deleted_at",
-      null
-    );
+    .select("product_id", { count: "exact", head: true })
+    .eq("category", category.category_id)
+    .eq("storefront", storefront.id)
+    .is("deleted_at", null);
 
   if (productCheckError) {
-    throw new Error(
-      productCheckError.message ||
-        "Unable to check category products."
-    );
+    throw new Error(productCheckError.message || "Unable to check category products.");
   }
 
-  if (
-    Number(
-      productCount || 0
-    ) > 0
-  ) {
-    throw new Error(
-      "This category contains products. Move those products to another category before deleting it."
-    );
+  if (Number(productCount || 0) > 0) {
+    redirect(categoriesPath(storefront, "?error=has-products"));
   }
 
-  const { error } =
-    await supabase
-      .from("product_categories")
-      .delete()
-      .eq(
-        "id",
-        categoryRecordId
-      )
-      .eq(
-        "storefront",
-        storefront.id
-      );
+  // Subcategories move up to the top level (the database sets their parent to empty).
+  const { error } = await supabase
+    .from("product_categories")
+    .delete()
+    .eq("id", categoryRecordId)
+    .eq("storefront", storefront.id);
 
   if (error) {
-    throw new Error(
-      error.message ||
-        "Unable to delete category."
-    );
+    throw new Error(error.message || "Unable to delete category.");
   }
 
-  await normalizeCategorySortOrders(
+  const remaining = await loadCategories(supabase, storefront.id);
+  await saveTreeOrder(
     supabase,
-    storefront.id
+    storefront.id,
+    remaining.map((item) =>
+      item.parent_category_id === categoryRecordId
+        ? { ...item, parent_category_id: null }
+        : item
+    )
   );
 
-  refreshCategoryPages(
-    storefront
-  );
-
-  redirect(
-    `/admin/${storefront.slug}/categories?deleted=1`
-  );
+  refreshCategoryPages(storefront);
+  redirect(categoriesPath(storefront, "?deleted=1"));
 }
