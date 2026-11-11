@@ -262,7 +262,14 @@ function Breadcrumb({ storefront, pathname }) {
               ].join(" ")}
             >
               {index > 0 ? (
-                <ChevronRight size={14} className="shrink-0 text-black/30" />
+                <ChevronRight
+                  size={14}
+                  className={[
+                    "shrink-0 text-black/30",
+                    // First step shown on phones gets no leading arrow.
+                    index === crumbs.length - 2 ? "hidden sm:block" : ""
+                  ].join(" ")}
+                />
               ) : null}
 
               {isLast || !crumb.href ? (

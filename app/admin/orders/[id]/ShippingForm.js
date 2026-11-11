@@ -8,7 +8,9 @@ import {
   buyShippingLabel,
 } from "../shipping-actions";
 
-export default function ShippingForm({ order }) {
+// embedded: shown inside the order page's "Shipping label" section, which
+// already has the title and frame.
+export default function ShippingForm({ order, embedded = false }) {
   const router = useRouter();
 
   const [weight, setWeight] = useState("");
@@ -402,14 +404,26 @@ export default function ShippingForm({ order }) {
 
   if (hasExistingLabel) {
     return (
-      <section className="rounded-3xl border border-green-200 bg-green-50 p-5 md:p-6">
+      <section
+        className={
+          embedded
+            ? "rounded-2xl border border-green-200 bg-green-50 p-4"
+            : "rounded-3xl border border-green-200 bg-green-50 p-5 md:p-6"
+        }
+      >
         <div className="flex items-start gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-700 text-xl font-bold text-white">
             ✓
           </div>
 
           <div className="min-w-0">
-            <h2 className="font-display text-2xl font-bold text-green-950">
+            <h2
+              className={
+                embedded
+                  ? "text-base font-bold text-green-950"
+                  : "font-display text-2xl font-bold text-green-950"
+              }
+            >
               Shipping Label Created
             </h2>
 
@@ -484,13 +498,21 @@ export default function ShippingForm({ order }) {
   }
 
   return (
-    <section className="rounded-3xl border border-black/10 bg-white p-5 md:p-6">
+    <section
+      className={
+        embedded
+          ? ""
+          : "rounded-3xl border border-black/10 bg-white p-5 md:p-6"
+      }
+    >
       <div>
-        <h2 className="font-display text-2xl font-bold text-black">
-          Shipping Label
-        </h2>
+        {embedded ? null : (
+          <h2 className="font-display text-2xl font-bold text-black">
+            Shipping Label
+          </h2>
+        )}
 
-        <p className="mt-2 text-sm leading-6 text-black/60">
+        <p className={`${embedded ? "" : "mt-2 "}text-sm leading-6 text-black/60`}>
           Parcel measurements are calculated from
           the ordered products. You can adjust
           them before retrieving shipping rates.

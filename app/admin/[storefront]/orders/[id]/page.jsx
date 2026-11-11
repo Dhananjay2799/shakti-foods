@@ -1,12 +1,33 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  Ban,
+  Check,
+  ChevronDown,
+  Clock,
+  CreditCard,
+  ExternalLink,
+  History,
+  MapPin,
+  Package,
+  PackageCheck,
+  ShoppingBag,
+  Truck,
+  User
+} from "lucide-react";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import FulfillmentForm from "@/app/admin/orders/[id]/FulfillmentForm";
 import ShippingForm from "@/app/admin/orders/[id]/ShippingForm";
 import WholesalePaymentForm from "@/app/admin/orders/[id]/WholesalePaymentForm";
+import {
+  FulfillmentBadge,
+  PaymentBadge,
+  statusLabel
+} from "@/components/admin/OrderStatusBadge";
 import { getAdminStorefront } from "@/lib/admin-storefronts";
 
 export const dynamic = "force-dynamic";
+
+const TIME_ZONE = "America/New_York";
 
 function formatMoney(cents) {
   return new Intl.NumberFormat("en-US", {
@@ -15,39 +36,153 @@ function formatMoney(cents) {
   }).format(Number(cents || 0) / 100);
 }
 
-function formatDate(value) {
-  if (!value) {
-    return "Not available";
-  }
+function formatDateTime(value) {
+  if (!value) return "";
 
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/New_York"
-  }).format(new Date(value));
+  const date = new Date(value);
+
+  const day = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: TIME_ZONE
+  }).format(date);
+
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: TIME_ZONE
+  }).format(date);
+
+  return `${day} · ${time}`;
 }
 
-function formatAddress(address) {
-  if (!address) {
-    return "No shipping address available";
-  }
+function formatShortDateTime(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  const day = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: TIME_ZONE
+  }).format(date);
+
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: TIME_ZONE
+  }).format(date);
+
+  return `${day} · ${time}`;
+}
+
+const COUNTRY_NAMES = {
+  US: "United States",
+  CA: "Canada"
+};
+
+function addressLines(address) {
+  if (!address) return [];
 
   if (typeof address === "string") {
-    return address;
+    return address.split(/\n|,\s*(?=\S)/).filter(Boolean);
   }
 
-  const parts = [
+  const cityLine = [
+    address.city,
+    [address.state, address.postal_code].filter(Boolean).join(" ")
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return [
     address.line1,
     address.line2,
-    address.city,
-    address.state,
-    address.postal_code,
-    address.country
+    cityLine,
+    COUNTRY_NAMES[address.country] || address.country
   ].filter(Boolean);
+}
 
-  return parts.length
-    ? parts.join(", ")
-    : "No shipping address available";
+// Stripe orders keep the shipping-rate ID (shr_…) here; only show names.
+function deliveryName(order) {
+  const method = String(order.shipping_method || "").trim();
+
+  return (
+    order.shipping_service ||
+    (method && !/^shr_/i.test(method) ? method : "")
+  );
+}
+
+const CARRIER_NAMES = {
+  ups: "UPS",
+  fedex: "FedEx",
+  usps: "USPS",
+  dhl: "DHL",
+  local_pickup: "Local pickup",
+  other: "Other carrier"
+};
+
+const PROVIDER_NAMES = {
+  stripe: "Stripe",
+  paypal: "PayPal",
+  wholesale: "Wholesale"
+};
+
+function parcelSummary(order) {
+  const weight = Number(order.parcel_weight);
+  const dims = [order.parcel_length, order.parcel_width, order.parcel_height].map(Number);
+
+  if (!(weight > 0)) return "";
+
+  const size = dims.every((value) => value > 0)
+    ? ` · ${dims.map((value) => Number(value.toFixed(2))).join(" × ")} in`
+    : "";
+
+  return `${weight.toFixed(2)} lb${size}`;
+}
+
+const STEPS = [
+  { key: "placed", label: "Placed", icon: ShoppingBag },
+  { key: "packed", label: "Packed", icon: Package },
+  { key: "shipped", label: "Shipped", icon: Truck },
+  { key: "delivered", label: "Delivered", icon: PackageCheck }
+];
+
+const STEP_INDEX = {
+  new: 0,
+  pending: 0,
+  processing: 0,
+  packed: 1,
+  shipped: 2,
+  delivered: 3,
+  fulfilled: 3
+};
+
+function Card({ title, icon: Icon, aside, children, className = "" }) {
+  return (
+    <section className={`min-w-0 rounded-2xl border border-black/10 bg-white shadow-sm ${className}`}>
+      <div className="flex items-center justify-between gap-3 px-5 pt-5">
+        <h2 className="flex items-center gap-2 text-base font-bold text-black">
+          {Icon ? <Icon size={18} className="text-black/45" aria-hidden="true" /> : null}
+          {title}
+        </h2>
+
+        {aside}
+      </div>
+
+      {children}
+    </section>
+  );
+}
+
+function Detail({ label, children }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2 text-sm">
+      <dt className="shrink-0 text-black/55">{label}</dt>
+      <dd className="min-w-0 break-all text-right font-medium text-black">{children}</dd>
+    </div>
+  );
 }
 
 export default async function AdminOrderDetailsPage({ params }) {
@@ -148,376 +283,419 @@ export default async function AdminOrderDetailsPage({ params }) {
 
   const order = orderResult.data;
   const orderItems = itemsResult.data || [];
-  const basePath = `/admin/${storefront.slug}`;
+  const orderNumber = order.id.slice(0, 8).toUpperCase();
+  const currency = String(order.currency || "USD").toUpperCase();
+
+  const paymentStatus = String(order.payment_status || "").toLowerCase();
+  const fulfillmentStatus = String(order.fulfillment_status || "new").toLowerCase();
+  const isPaid = paymentStatus === "paid";
+  const isCanceled = fulfillmentStatus === "canceled" || fulfillmentStatus === "cancelled";
+  const stepIndex = STEP_INDEX[fulfillmentStatus] ?? 0;
+
+  const address = addressLines(order.shipping_address);
+  const delivery = deliveryName(order);
+  const carrierName = CARRIER_NAMES[order.shipping_carrier] || order.shipping_carrier || "";
+  const hasLabel = Boolean(order.shippo_transaction_id || order.label_url || order.tracking_number);
+  const parcel = parcelSummary(order);
+  const provider = PROVIDER_NAMES[order.payment_provider] || statusLabel(order.payment_provider, "");
+
+  const stripeIsTest = String(order.stripe_session_id || "").startsWith("cs_test_");
+  const stripePaymentUrl = order.stripe_payment_intent_id
+    ? `https://dashboard.stripe.com/${stripeIsTest ? "test/" : ""}payments/${encodeURIComponent(order.stripe_payment_intent_id)}`
+    : "";
+
+  const events = [
+    { at: order.created_at, label: "Order created" },
+    order.paid_at ? { at: order.paid_at, label: "Payment recorded" } : null,
+    order.packed_at ? { at: order.packed_at, label: "Order packed" } : null,
+    order.shipped_at
+      ? {
+          at: order.shipped_at,
+          label: carrierName ? `Order shipped with ${carrierName}` : "Order shipped"
+        }
+      : null,
+    order.delivered_at ? { at: order.delivered_at, label: "Order delivered" } : null,
+    order.canceled_at ? { at: order.canceled_at, label: "Order canceled", tone: "text-red-700" } : null
+  ]
+    .filter((event) => event && event.at)
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+
+  const itemCount = orderItems.length;
 
   return (
-    <main>
-      <div>
-        <Link
-          href={`${basePath}/orders`}
-          className="inline-flex rounded-full bg-white px-5 py-3 font-bold text-black shadow transition hover:bg-[#f1eadf]"
-        >
-          ← Back to Orders
-        </Link>
+    <div className="grid gap-6">
+      {/* Header */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-black/55">
+            <ShoppingBag size={16} aria-hidden="true" />
+            Order details
+          </p>
 
-        <div className="mt-7 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <div className="text-sm font-bold uppercase tracking-[.18em] text-black/55">
-              {storefront.name} Order Details
+          <h1 className="mt-1.5 font-display text-4xl font-bold text-black">
+            Order #{orderNumber}
+          </h1>
+
+          <p className="mt-1.5 text-sm text-black/55">
+            Created {formatDateTime(order.created_at)}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <PaymentBadge status={order.payment_status} size="md" />
+          <FulfillmentBadge status={order.fulfillment_status || "new"} size="md" />
+        </div>
+      </header>
+
+      {/* Order items */}
+      <Card
+        title="Order items"
+        icon={Package}
+        aside={
+          <span className="text-sm text-black/50">
+            {itemCount} item{itemCount === 1 ? "" : "s"}
+          </span>
+        }
+      >
+        {itemCount === 0 ? (
+          <p className="px-5 pb-5 pt-4 text-sm text-black/55">
+            No order items were found.
+          </p>
+        ) : (
+          <div className="mt-4">
+            <div className="hidden grid-cols-[minmax(0,1fr)_4rem_6.5rem_6.5rem] gap-4 border-y border-black/[0.07] bg-[#faf7f2] px-5 py-2.5 text-xs font-semibold text-black/50 sm:grid">
+              <span>Product</span>
+              <span className="text-center">Qty</span>
+              <span className="text-right">Price</span>
+              <span className="text-right">Total</span>
             </div>
 
-            <h1 className="mt-2 font-display text-4xl font-bold text-black md:text-6xl">
-              Order #{order.id.slice(0, 8).toUpperCase()}
-            </h1>
+            <ul className="divide-y divide-black/[0.07] border-t border-black/[0.07] sm:border-t-0">
+              {orderItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_4rem_6.5rem_6.5rem] sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <p className="font-bold text-black">{item.product_name}</p>
+                    <p className="mt-0.5 text-xs text-black/50">
+                      Product ID: {item.product_id}
+                      <span className="sm:hidden">
+                        {" · "}
+                        {Number(item.quantity || 0).toLocaleString()} × {formatMoney(item.unit_price)}
+                      </span>
+                    </p>
+                  </div>
 
-            <p className="mt-2 text-black/60">
-              Created {formatDate(order.created_at)}
+                  <span className="hidden text-center text-sm font-semibold text-black sm:block">
+                    {Number(item.quantity || 0).toLocaleString()}
+                  </span>
+
+                  <span className="hidden text-right text-sm text-black/70 sm:block">
+                    {formatMoney(item.unit_price)}
+                  </span>
+
+                  <span className="text-right text-sm font-bold text-black">
+                    {formatMoney(item.line_total)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <dl className="border-t border-black/[0.07] px-5 py-4 text-sm">
+          <div className="flex justify-between gap-4 py-1">
+            <dt className="text-black/55">Subtotal</dt>
+            <dd className="font-semibold text-black">{formatMoney(order.subtotal)}</dd>
+          </div>
+
+          {Number(order.discount_amount || 0) > 0 ? (
+            <div className="flex justify-between gap-4 py-1">
+              <dt className="text-black/55">Discount</dt>
+              <dd className="font-semibold text-emerald-700">−{formatMoney(order.discount_amount)}</dd>
+            </div>
+          ) : null}
+
+          <div className="flex justify-between gap-4 py-1">
+            <dt className="text-black/55">Shipping</dt>
+            <dd className="font-semibold text-black">{formatMoney(order.shipping_amount)}</dd>
+          </div>
+
+          <div className="flex justify-between gap-4 py-1">
+            <dt className="text-black/55">Tax</dt>
+            <dd className="font-semibold text-black">{formatMoney(order.tax_amount)}</dd>
+          </div>
+
+          <div className="mt-3 flex items-baseline justify-between gap-4 border-t border-black/10 pt-4">
+            <dt className="text-base font-bold text-black">
+              {isPaid ? "Total paid" : "Total"}{" "}
+              <span className="text-sm font-semibold text-black/45">{currency}</span>
+            </dt>
+            <dd className="text-2xl font-bold text-black">{formatMoney(order.total_amount)}</dd>
+          </div>
+        </dl>
+      </Card>
+
+      {/* Customer & delivery */}
+      <Card title="Customer & delivery" icon={User}>
+        <div className="grid gap-6 px-5 pb-5 pt-4 sm:grid-cols-2">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-black/50">
+              <User size={14} aria-hidden="true" />
+              Customer
             </p>
+
+            <p className="mt-2 font-bold text-black">
+              {order.customer_name || "Guest"}
+            </p>
+
+            {order.customer_email ? (
+              <a
+                href={`mailto:${order.customer_email}`}
+                className="mt-1 block truncate text-sm text-black/70 underline-offset-4 hover:text-black hover:underline"
+              >
+                {order.customer_email}
+              </a>
+            ) : (
+              <p className="mt-1 text-sm text-black/45">No email provided</p>
+            )}
+
+            {order.customer_phone ? (
+              <a
+                href={`tel:${String(order.customer_phone).replace(/[^\d+]/g, "")}`}
+                className="mt-0.5 block text-sm text-black/70 underline-offset-4 hover:text-black hover:underline"
+              >
+                {order.customer_phone}
+              </a>
+            ) : (
+              <p className="mt-0.5 text-sm text-black/45">No phone provided</p>
+            )}
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <span className="rounded-full bg-green-100 px-4 py-2 font-bold text-green-800">
-              Payment: {order.payment_status || "unknown"}
-            </span>
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-black/50">
+              <MapPin size={14} aria-hidden="true" />
+              Shipping address
+            </p>
 
-            <span className="rounded-full bg-[#eee7db] px-4 py-2 font-bold text-black">
-              Fulfillment: {order.fulfillment_status || "new"}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-10 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,.75fr)]">
-          {/* Main Left Column */}
-          <div className="grid min-w-0 grid-cols-1 gap-6">
-            {/* Order Items */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-3xl font-bold text-black">
-                Order Items
-              </h2>
-
-              {orderItems.length === 0 ? (
-                <p className="mt-6 text-black/60">
-                  No order items were found.
-                </p>
-              ) : (
-                <div className="mt-6 overflow-x-auto">
-                  <table className="w-full min-w-[650px] text-left">
-                    <thead>
-                      <tr className="border-b border-black/10 text-sm text-black/50">
-                        <th className="pb-3 pr-4">Product</th>
-                        <th className="pb-3 pr-4">Product ID</th>
-                        <th className="pb-3 pr-4">Quantity</th>
-                        <th className="pb-3 pr-4">Unit Price</th>
-                        <th className="pb-3">Total</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {orderItems.map((item) => (
-                        <tr key={item.id} className="border-b border-black/5">
-                          <td className="py-4 pr-4 font-bold text-black">
-                            {item.product_name}
-                          </td>
-
-                          <td className="py-4 pr-4 text-black/60">
-                            {item.product_id}
-                          </td>
-
-                          <td className="py-4 pr-4 text-black">
-                            {Number(item.quantity || 0).toLocaleString()}
-                          </td>
-
-                          <td className="py-4 pr-4 text-black">
-                            {formatMoney(item.unit_price)}
-                          </td>
-
-                          <td className="py-4 font-bold text-black">
-                            {formatMoney(item.line_total)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            {/* Customer & Delivery */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-3xl font-bold text-black">
-                Customer & Delivery
-              </h2>
-
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
-                <div className="rounded-2xl bg-[#faf7f1] p-5">
-                  <div className="text-sm font-bold uppercase tracking-[.14em] text-black/50">
-                    Customer
-                  </div>
-
-                  <p className="mt-3 text-lg font-bold text-black">
-                    {order.customer_name || "Guest"}
-                  </p>
-
-                  <p className="mt-2 text-black/70">
-                    {order.customer_email || "No email provided"}
-                  </p>
-
-                  <p className="mt-1 text-black/70">
-                    {order.customer_phone || "No phone provided"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-[#faf7f1] p-5">
-                  <div className="text-sm font-bold uppercase tracking-[.14em] text-black/50">
-                    Shipping Address
-                  </div>
-
-                  <p className="mt-3 leading-7 text-black">
-                    {formatAddress(order.shipping_address)}
-                  </p>
-
-                  <p className="mt-3 text-sm text-black/60">
-                    Shipping service: {
-                      order.shipping_service ||
-                      order.shipping_method ||
-                      "Not recorded"
-                    }
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Shipping Information */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-3xl font-bold text-black">
-                Shipping Information
-              </h2>
-
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
-                <div className="rounded-2xl bg-[#faf7f1] p-5">
-                  <div className="text-xs uppercase tracking-[0.15em] text-black/50 font-bold">
-                    Carrier
-                  </div>
-
-                  <div className="mt-2 text-lg font-bold text-black capitalize">
-                    {order.shipping_carrier || "Not assigned"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-[#faf7f1] p-5">
-                  <div className="text-xs uppercase tracking-[0.15em] text-black/50 font-bold">
-                    Tracking Number
-                  </div>
-
-                  <div className="mt-2 text-lg font-bold text-black">
-                    {order.tracking_number || "Not available"}
-                  </div>
-                </div>
-              </div>
-
-              {order.tracking_url || order.label_url ? (
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {order.tracking_url ? (
-                    <a
-                      href={order.tracking_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-black px-6 py-3 font-bold text-white transition hover:bg-black/80"
-                    >
-                      Track Package ↗
-                    </a>
-                  ) : null}
-
-                  {order.label_url ? (
-                    <a
-                      href={order.label_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[#eee7db] px-6 py-3 font-bold text-black transition hover:bg-[#e2d8c8]"
-                    >
-                      Open Shipping Label ↗
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
-
-            </section>
-
-            {/* Internal Notes */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-3xl font-bold text-black">
-                Internal Notes
-              </h2>
-
-              <div className="mt-4 min-h-[60px] rounded-2xl bg-[#faf7f1] p-5 whitespace-pre-wrap text-black/80">
-                {order.internal_notes || "No internal notes recorded."}
-              </div>
-            </section>
-
-            {/* Timeline */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-3xl font-bold text-black">
-                Fulfillment Timeline
-              </h2>
-
-              <div className="mt-6 space-y-4">
-                {[
-                  ["Packed", order.packed_at],
-                  ["Shipped", order.shipped_at],
-                  ["Delivered", order.delivered_at],
-                  ["Canceled", order.canceled_at]
-                ].map(([label, time]) => (
-                  <div
-                    key={label}
-                    className="flex justify-between items-center border-b border-black/5 pb-3 text-sm"
-                  >
-                    <span className="font-bold text-black">{label}</span>
-                    <span className="text-black/60">
-                      {time ? formatDate(time) : "—"}
-                    </span>
-                  </div>
+            {address.length ? (
+              <address className="mt-2 text-sm not-italic leading-6 text-black">
+                {address.map((line, index) => (
+                  <span key={`${line}-${index}`} className="block">{line}</span>
                 ))}
-              </div>
-            </section>
+              </address>
+            ) : (
+              <p className="mt-2 text-sm text-black/45">No shipping address</p>
+            )}
+
+            {delivery ? (
+              <p className="mt-2 text-xs text-black/50">Delivery: {delivery}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mx-5 flex flex-wrap items-start justify-between gap-3 border-t border-black/[0.07] py-4">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <Truck size={18} className="mt-0.5 shrink-0 text-black/45" aria-hidden="true" />
+
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-black">
+                {carrierName || "Carrier not assigned"}
+              </p>
+              <p className="break-all text-sm text-black/55">
+                {order.tracking_number || "Tracking number not added"}
+              </p>
+            </div>
           </div>
 
-          {/* Right Sidebar */}
-          <aside className="grid h-fit min-w-0 grid-cols-1 gap-6">
-            {/* Fulfillment Management Form */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-3xl font-bold text-black">
-                Fulfillment
-              </h2>
-
-              <p className="mt-2 text-sm leading-6 text-black/60">
-                Update status, carrier, tracking number, and notes.
-              </p>
-
-              <FulfillmentForm
-                key={`${order.updated_at}-${order.fulfillment_status}-${order.shipping_carrier}`}
-                order={order}
-              />
-              
-              <hr className="my-8 border-black/10" />
-
-              <ShippingForm order={order} />
-            </section>
-
-            {/* Order Summary */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-3xl font-bold text-black">
-                Order Summary
-              </h2>
-
-              <div className="mt-6 grid gap-4 text-black">
-                <div className="flex justify-between gap-4">
-                  <span>Subtotal</span>
-                  <span className="font-bold">{formatMoney(order.subtotal)}</span>
-                </div>
-
-                {Number(
-                  order.discount_amount || 0
-                ) > 0 ? (
-                  <div className="flex justify-between gap-4">
-                    <span>Discount</span>
-                    <span className="font-bold">
-                      -
-                      {formatMoney(
-                        order.discount_amount
-                      )}
-                    </span>
-                  </div>
-                ) : null}
-
-                <div className="flex justify-between gap-4">
-                  <span>Shipping</span>
-                  <span className="font-bold">
-                    {formatMoney(order.shipping_amount)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <span>Tax</span>
-                  <span className="font-bold">{formatMoney(order.tax_amount)}</span>
-                </div>
-
-                <div className="flex justify-between gap-4 border-t border-black/10 pt-4 text-lg">
-                  <span className="font-bold">Total</span>
-                  <span className="font-bold">
-                    {formatMoney(order.total_amount)}
-                  </span>
-                </div>
-              </div>
-            </section>
-
-            {/* Payment Information */}
-            <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-              <h2 className="font-display text-2xl font-bold text-black">
-                Payment Information
-              </h2>
-
-              <div className="mt-5 grid gap-4 text-sm">
-                {order.payment_provider === "stripe" ? (
-                  <>
-                    <div>
-                      <div className="font-bold text-black">
-                        Checkout Session
-                      </div>
-                      <div className="mt-1 break-all text-black/60">
-                        {order.stripe_session_id ||
-                          "Not recorded"}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="font-bold text-black">
-                        Payment Intent
-                      </div>
-                      <div className="mt-1 break-all text-black/60">
-                        {order.stripe_payment_intent_id ||
-                          "Not recorded"}
-                      </div>
-                    </div>
-                  </>
-                ) : null}
-
-                {order.payment_provider === "paypal" ? (
-                  <>
-                    <div>
-                      <div className="font-bold text-black">
-                        PayPal Order
-                      </div>
-                      <div className="mt-1 break-all text-black/60">
-                        {order.paypal_order_id ||
-                          "Not recorded"}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="font-bold text-black">
-                        PayPal Capture
-                      </div>
-                      <div className="mt-1 break-all text-black/60">
-                        {order.paypal_capture_id ||
-                          "Not recorded"}
-                      </div>
-                    </div>
-                  </>
-                ) : null}
-              </div>
-
-              {order.payment_provider === "wholesale" ? (
-                <>
-                  <hr className="my-6 border-black/10" />
-                  <WholesalePaymentForm
-                    order={order}
-                  />
-                </>
+          {order.tracking_url || order.label_url ? (
+            <div className="flex flex-wrap gap-2">
+              {order.tracking_url ? (
+                <a
+                  href={order.tracking_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-sm font-semibold text-black transition hover:bg-black/[0.03]"
+                >
+                  Track package
+                  <ExternalLink size={14} aria-hidden="true" />
+                </a>
               ) : null}
-            </section>
-          </aside>
+
+              {order.label_url ? (
+                <a
+                  href={order.label_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-sm font-semibold text-black transition hover:bg-black/[0.03]"
+                >
+                  Shipping label
+                  <ExternalLink size={14} aria-hidden="true" />
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </div>
+      </Card>
+
+      {/* Order activity */}
+      <Card title="Order activity" icon={History}>
+        <div className="px-5 pb-5 pt-5">
+          {isCanceled ? (
+            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              <Ban size={16} aria-hidden="true" />
+              This order was canceled.
+            </div>
+          ) : (
+            <ol className="grid grid-cols-4" aria-label="Fulfillment progress">
+              {STEPS.map((step, index) => {
+                const done = index <= stepIndex;
+                const current = index === stepIndex;
+                const Icon = index < stepIndex ? Check : step.icon;
+
+                return (
+                  <li key={step.key} className="relative flex flex-col items-center text-center">
+                    {index > 0 ? (
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-1/2 top-4 h-0.5 w-full -translate-y-1/2 ${index <= stepIndex ? "bg-black" : "bg-black/10"}`}
+                      />
+                    ) : null}
+
+                    <span
+                      className={[
+                        "relative z-10 flex h-8 w-8 items-center justify-center rounded-full",
+                        done ? "bg-black text-white" : "border border-black/15 bg-white text-black/35",
+                        current ? "ring-4 ring-black/10" : ""
+                      ].join(" ")}
+                    >
+                      <Icon size={15} aria-hidden="true" />
+                    </span>
+
+                    <span
+                      className={`mt-2 text-xs ${current ? "font-bold text-black" : done ? "font-medium text-black/70" : "text-black/40"}`}
+                      aria-current={current ? "step" : undefined}
+                    >
+                      {step.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
+          {!isPaid && !isCanceled ? (
+            <p className="mt-4 flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+              <Clock size={15} aria-hidden="true" />
+              {paymentStatus === "cancelled" || paymentStatus === "canceled"
+                ? "The customer left checkout without paying."
+                : "Waiting for payment. Don't ship this order yet."}
+            </p>
+          ) : null}
+
+          <ul className="mt-5 grid gap-2.5">
+            {events.map((event) => (
+              <li key={`${event.label}-${event.at}`} className="flex items-start justify-between gap-4 text-sm">
+                <span className={`flex items-center gap-2 font-medium ${event.tone || "text-black"}`}>
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-black/35" aria-hidden="true" />
+                  {event.label}
+                </span>
+                <time dateTime={event.at} className="shrink-0 text-black/50">
+                  {formatShortDateTime(event.at)}
+                </time>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Card>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        {/* Fulfillment */}
+        <Card title="Fulfillment" icon={Truck}>
+          <div className="px-5 pb-5 pt-4">
+            <FulfillmentForm
+              key={`${order.updated_at}-${order.fulfillment_status}-${order.shipping_carrier}`}
+              order={order}
+            />
+          </div>
+
+          <details className="group border-t border-black/[0.07]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-black">Shipping label</span>
+                <span className="block truncate text-xs text-black/50">
+                  {hasLabel
+                    ? `Label created${carrierName ? ` · ${carrierName}` : ""}`
+                    : parcel || "Get rates and buy a label"}
+                </span>
+              </span>
+
+              <ChevronDown size={18} className="shrink-0 text-black/45 transition group-open:rotate-180" aria-hidden="true" />
+            </summary>
+
+            <div className="px-5 pb-5">
+              <ShippingForm order={order} embedded />
+            </div>
+          </details>
+        </Card>
+
+        {/* Payment */}
+        <Card
+          title="Payment"
+          icon={CreditCard}
+          aside={<PaymentBadge status={order.payment_status} />}
+        >
+          <div className="flex items-end justify-between gap-3 px-5 pb-5 pt-3">
+            <p className="text-3xl font-bold text-black">
+              {formatMoney(order.total_amount)}{" "}
+              <span className="text-sm font-semibold text-black/45">{currency}</span>
+            </p>
+
+            {provider ? (
+              <span className="pb-1 text-sm font-semibold text-black/55">{provider}</span>
+            ) : null}
+          </div>
+
+          {order.payment_provider === "wholesale" ? (
+            <div className="border-t border-black/[0.07] px-5 pb-5">
+              <WholesalePaymentForm order={order} />
+            </div>
+          ) : null}
+
+          <details className="group border-t border-black/[0.07]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-bold text-black [&::-webkit-details-marker]:hidden">
+              Payment details
+              <ChevronDown size={18} className="shrink-0 text-black/45 transition group-open:rotate-180" aria-hidden="true" />
+            </summary>
+
+            <dl className="divide-y divide-black/[0.06] px-5 pb-4">
+              <Detail label="Status">{statusLabel(order.payment_status)}</Detail>
+              {provider ? <Detail label="Paid with">{provider}{order.payment_method && order.payment_method !== order.payment_provider ? ` · ${statusLabel(order.payment_method)}` : ""}</Detail> : null}
+              {order.paid_at ? <Detail label="Paid on">{formatDateTime(order.paid_at)}</Detail> : null}
+              {order.payment_reference ? <Detail label="Reference">{order.payment_reference}</Detail> : null}
+              {order.stripe_session_id ? <Detail label="Checkout session">{order.stripe_session_id}</Detail> : null}
+              {order.stripe_payment_intent_id ? <Detail label="Payment intent">{order.stripe_payment_intent_id}</Detail> : null}
+              {order.paypal_order_id ? <Detail label="PayPal order">{order.paypal_order_id}</Detail> : null}
+              {order.paypal_capture_id ? <Detail label="PayPal capture">{order.paypal_capture_id}</Detail> : null}
+            </dl>
+
+            {stripePaymentUrl ? (
+              <div className="px-5 pb-5">
+                <a
+                  href={stripePaymentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-black underline-offset-4 hover:underline"
+                >
+                  Open in Stripe
+                  <ExternalLink size={14} aria-hidden="true" />
+                </a>
+              </div>
+            ) : null}
+          </details>
+        </Card>
       </div>
-    </main>
+    </div>
   );
 }
