@@ -17,6 +17,43 @@ import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/data";
 import { useInventory } from "@/hooks/useInventory";
 
+/*
+ * Sale price in red with the regular price crossed out beside it, the same
+ * as the product cards on /products. Only the red price shows when there
+ * is no higher regular price.
+ */
+function ShowcasePrice({ product, className = "", size = "text-[18px]" }) {
+  const compareAtPrice = Number(product.compareAtPrice || 0);
+  const hasDiscount =
+    compareAtPrice > 0 &&
+    compareAtPrice > Number(product.unitPrice || 0);
+
+  return (
+    <div className={`flex items-end gap-2 ${className}`}>
+      <span
+        className={`
+          font-sans
+          ${size}
+          font-extrabold
+          leading-none
+          tracking-[-0.02em]
+          text-[#c90019]
+        `}
+      >
+        {hasDiscount ? <span className="sr-only">Sale price </span> : null}
+        {formatPrice(product.unitPrice)}
+      </span>
+
+      {hasDiscount ? (
+        <span className="pb-[1px] text-[11px] leading-none text-[#8d857d] line-through">
+          <span className="sr-only">Regular price </span>
+          {formatPrice(compareAtPrice)}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 /* =========================================================
    DESKTOP & MOBILE BENEFITS
 ========================================================= */
@@ -205,18 +242,7 @@ function RiceProductCard({
         </p>
 
         <div className="mt-auto pt-3">
-          <div
-            className="
-              font-sans
-              text-[18px]
-              font-extrabold
-              leading-none
-              tracking-[-0.02em]
-              text-[#c90019]
-            "
-          >
-            {formatPrice(product.unitPrice)}
-          </div>
+          <ShowcasePrice product={product} size="text-[18px]" />
 
           <button
             type="button"
@@ -392,19 +418,11 @@ function MobileProductCard({
           {getProductDescription(product)}
         </p>
 
-        <div
-          className="
-            mt-3
-            font-sans
-            text-[20px]
-            font-extrabold
-            leading-none
-            tracking-[-0.02em]
-            text-[#c90019]
-          "
-        >
-          {formatPrice(product.unitPrice)}
-        </div>
+        <ShowcasePrice
+          product={product}
+          className="mt-3"
+          size="text-[20px]"
+        />
       </div>
 
       {/* ADD TO CART */}
