@@ -110,3 +110,27 @@ export function SubmitButton({ children, pendingLabel, className = "" }) {
     </button>
   );
 }
+
+/**
+ * A submit button that asks "Are you sure?" first, for actions that
+ * cannot be undone (deleting an image, removing a certification).
+ */
+export function ConfirmSubmitButton({ message, children, pendingLabel, className = "", ...props }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={(event) => {
+        if (!window.confirm(message)) {
+          event.preventDefault();
+        }
+      }}
+      className={className}
+      {...props}
+    >
+      {pending && pendingLabel ? pendingLabel : children}
+    </button>
+  );
+}
