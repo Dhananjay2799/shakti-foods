@@ -8,6 +8,14 @@ import { getStorefrontProducts } from "@/lib/storefront-products";
 
 export const dynamic = "force-dynamic";
 
+// Tells search engines the homepage's one address (metadataBase in
+// app/layout.js, i.e. https://shaktifoodsus.com).
+export const metadata = {
+  alternates: {
+    canonical: "/"
+  }
+};
+
 export default async function Home() {
   const products = await getStorefrontProducts();
 
