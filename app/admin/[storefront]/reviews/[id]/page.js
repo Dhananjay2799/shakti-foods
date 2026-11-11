@@ -109,7 +109,7 @@ export default async function ReviewDetailPage({
   }
 
   return (
-    <main>
+    <div>
       <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
         <div>
           <Link
@@ -340,7 +340,7 @@ export default async function ReviewDetailPage({
           </form>
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
 

@@ -139,7 +139,7 @@ export default async function AdminSubscriptionDetailPage({
     !["canceled", "ended"].includes(status);
 
   return (
-    <main>
+    <div>
       <div className="max-w-4xl">
         <Link
           href={`${basePath}/subscriptions`}
@@ -344,7 +344,7 @@ export default async function AdminSubscriptionDetailPage({
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 

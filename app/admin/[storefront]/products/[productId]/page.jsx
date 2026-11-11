@@ -169,7 +169,7 @@ export default async function AdminProductEditorPage({ params, searchParams }) {
   );
 
   return (
-    <main>
+    <div>
       <div className="mx-auto max-w-6xl py-2">
         
         {/* Step 5: Expanded header block containing the newly introduced 'Manage Images' target */}
@@ -432,6 +432,6 @@ export default async function AdminProductEditorPage({ params, searchParams }) {
           </div>
         </form>
       </div>
-    </main>
+    </div>
   );
 }

@@ -2,10 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Building2,
+  ChevronLeft,
   ChevronRight,
   CircleDollarSign,
   Search,
-  ShoppingBag,
   UserRound,
   UsersRound
 } from "lucide-react";
@@ -71,27 +71,47 @@ function formatCustomerType(type) {
 function getCustomerTypeStyles(type) {
   switch (type) {
     case "wholesale":
-      return "bg-purple-100 text-purple-800";
+      return "bg-violet-50 text-violet-700 ring-violet-600/20";
 
     case "business":
-      return "bg-blue-100 text-blue-800";
+      return "bg-sky-50 text-sky-700 ring-sky-600/20";
 
     default:
-      return "bg-[#efe7d8] text-[#604d2f]";
+      return "bg-black/[0.04] text-black/65 ring-black/10";
   }
 }
 
 function getStatusStyles(status) {
   switch (status) {
     case "blocked":
-      return "bg-red-100 text-red-800";
+      return { badge: "bg-red-50 text-red-700 ring-red-600/20", dot: "bg-red-500" };
 
     case "inactive":
-      return "bg-gray-200 text-gray-700";
+      return { badge: "bg-black/[0.04] text-black/55 ring-black/10", dot: "bg-black/35" };
 
     default:
-      return "bg-green-100 text-green-800";
+      return { badge: "bg-emerald-50 text-emerald-700 ring-emerald-600/20", dot: "bg-emerald-500" };
   }
+}
+
+// A soft colour per customer, so the list is easier to scan.
+const AVATAR_TONES = [
+  "bg-rose-50 text-rose-700 ring-rose-200",
+  "bg-sky-50 text-sky-700 ring-sky-200",
+  "bg-violet-50 text-violet-700 ring-violet-200",
+  "bg-amber-50 text-amber-800 ring-amber-200",
+  "bg-emerald-50 text-emerald-700 ring-emerald-200"
+];
+
+function avatarTone(seed) {
+  const text = String(seed || "");
+  let hash = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+  }
+
+  return AVATAR_TONES[hash % AVATAR_TONES.length];
 }
 
 function formatStatus(status) {
@@ -146,30 +166,43 @@ function CustomerMetricCard({
   title,
   value,
   description,
-  icon: Icon
+  icon: Icon,
+  accent = false
 }) {
   return (
-    <article className="rounded-[1.75rem] border border-black/5 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.12em] text-black/45">
-            {title}
-          </p>
+    <article
+      className="min-w-0 rounded-2xl border border-black/10 bg-white p-4 shadow-sm sm:p-5"
+      title={description}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-black/60">
+          {title}
+        </p>
 
-          <p className="mt-3 text-3xl font-bold text-black md:text-4xl">
-            {value}
-          </p>
-
-          <p className="mt-2 text-sm leading-6 text-black/50">
-            {description}
-          </p>
-        </div>
-
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f1eadf] text-black">
-          <Icon size={22} />
+        <span
+          className={[
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+            accent ? "bg-[#f1eadf] text-black" : "bg-black/[0.04] text-black/55"
+          ].join(" ")}
+          aria-hidden="true"
+        >
+          <Icon size={16} />
         </span>
       </div>
+
+      <p className="mt-3 truncate text-2xl font-bold tracking-tight text-black sm:text-3xl">
+        {value}
+      </p>
     </article>
+  );
+}
+
+function Metric({ label, children, className = "" }) {
+  return (
+    <div className={`min-w-0 ${className}`}>
+      <p className="text-xs text-black/50 lg:hidden">{label}</p>
+      <p className="mt-0.5 truncate text-sm font-bold text-black lg:mt-0">{children}</p>
+    </div>
   );
 }
 
@@ -454,488 +487,324 @@ export default async function AdminCustomersPage({
     totalResults
   );
 
+  const ROW_GRID =
+    "lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_4.5rem_6.5rem_7.5rem_4rem]";
+
   return (
-    <main>
-      <div>
-        <header className="flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-black/40">
-              {storefront.name}
-            </p>
+    <div className="grid gap-6">
+      <header>
+        <h1 className="font-display text-4xl font-bold text-black">
+          Customers
+        </h1>
 
-            <h1 className="mt-2 text-3xl font-bold text-black md:text-5xl">
-              Customers
-            </h1>
+        <p className="mt-1.5 text-sm text-black/55">
+          Customer profiles and purchase activity on {storefront.name}.
+        </p>
+      </header>
 
-            <p className="mt-2 text-sm text-black/55">
-              Customers with activity on {storefront.name}.
-            </p>
-          </div>
+      <section
+        aria-label="Customer statistics"
+        className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4"
+      >
+        <CustomerMetricCard
+          title="Total customers"
+          value={totalCustomers.toLocaleString("en-US")}
+          description={`Customers who have placed orders on ${storefront.name}.`}
+          icon={UsersRound}
+          accent
+        />
 
-          <Link
-            href={`${basePath}/orders`}
-            className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-black/80"
-          >
-            <ShoppingBag size={17} />
-            View Orders
-          </Link>
-        </header>
+        <CustomerMetricCard
+          title="Lifetime revenue"
+          value={formatCurrency(lifetimeRevenue)}
+          description={`Total from paid orders on ${storefront.name}.`}
+          icon={CircleDollarSign}
+        />
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <CustomerMetricCard
-            title="Total Customers"
-            value={totalCustomers.toLocaleString("en-US")}
-            description={`Customers who have placed orders on ${storefront.name}.`}
-            icon={UsersRound}
-          />
+        <CustomerMetricCard
+          title="Avg. customer value"
+          value={formatCurrency(averageCustomerValue)}
+          description="Average revenue per customer."
+          icon={UserRound}
+        />
 
-          <CustomerMetricCard
-            title="Lifetime Revenue"
-            value={formatCurrency(lifetimeRevenue)}
-            description={`Total revenue from paid orders on ${storefront.name}.`}
-            icon={CircleDollarSign}
-          />
+        <CustomerMetricCard
+          title="Wholesale accounts"
+          value={wholesaleCustomers.toLocaleString("en-US")}
+          description="Wholesale accounts on this storefront."
+          icon={Building2}
+        />
+      </section>
 
-          <CustomerMetricCard
-            title="Average Customer Value"
-            value={formatCurrency(averageCustomerValue)}
-            description="Average revenue per customer for this storefront."
-            icon={UserRound}
-          />
+      <section className="rounded-[2rem] border border-black/5 bg-white p-5 shadow-sm md:p-6">
+        <form
+          action={`${basePath}/customers`}
+          method="get"
+          className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_180px_160px_180px_auto]"
+        >
+          <label className="relative block">
+            <span className="sr-only">Search customers</span>
 
-          <CustomerMetricCard
-            title="Wholesale"
-            value={wholesaleCustomers.toLocaleString("en-US")}
-            description="Wholesale accounts active on this storefront."
-            icon={Building2}
-          />
-        </section>
+            <Search
+              size={19}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-black/40"
+            />
 
-        <section className="mt-8 rounded-[2rem] border border-black/5 bg-white p-5 shadow-sm md:p-6">
-          <form
-            action={`${basePath}/customers`}
-            method="get"
-            className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_180px_160px_180px_auto]"
-          >
-            <label className="relative block">
-              <span className="sr-only">Search customers</span>
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder="Search name, email, phone, or company"
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] pl-12 pr-4 text-sm text-black outline-none transition placeholder:text-black/35 focus:border-black"
+            />
+          </label>
 
-              <Search
-                size={19}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-black/40"
-              />
+          <label>
+            <span className="sr-only">Customer type</span>
 
-              <input
-                type="search"
-                name="q"
-                defaultValue={query}
-                placeholder="Search name, email, phone, or company"
-                className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] pl-12 pr-4 text-sm text-black outline-none transition placeholder:text-black/35 focus:border-black"
-              />
-            </label>
-
-            <label>
-              <span className="sr-only">Customer type</span>
-
-              <select
-                name="type"
-                defaultValue={customerType}
-                className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
-              >
-                <option value="all">All customer types</option>
-                <option value="retail">Retail</option>
-                <option value="wholesale">Wholesale</option>
-                <option value="business">Business</option>
-              </select>
-            </label>
-
-            <label>
-              <span className="sr-only">Customer status</span>
-
-              <select
-                name="status"
-                defaultValue={status}
-                className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
-              >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="blocked">Blocked</option>
-              </select>
-            </label>
-
-            <label>
-              <span className="sr-only">Sort customers</span>
-
-              <select
-                name="sort"
-                defaultValue={sort}
-                className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
-              >
-                <option value="value">Highest value</option>
-                <option value="recent">Most recent order</option>
-                <option value="orders">Most orders</option>
-                <option value="name">Customer name</option>
-                <option value="oldest">Oldest customer</option>
-              </select>
-            </label>
-
-            <button
-              type="submit"
-              className="h-12 rounded-2xl bg-black px-6 text-sm font-bold text-white transition hover:bg-black/80"
+            <select
+              name="type"
+              defaultValue={customerType}
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
             >
-              Apply
-            </button>
-          </form>
+              <option value="all">All customer types</option>
+              <option value="retail">Retail</option>
+              <option value="wholesale">Wholesale</option>
+              <option value="business">Business</option>
+            </select>
+          </label>
 
-          {(query ||
-            customerType !== "all" ||
-            status !== "all" ||
-            sort !== "value") && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/5 pt-4">
-              <p className="text-sm text-black/50">
-                Showing filtered customer results.
-              </p>
+          <label>
+            <span className="sr-only">Customer status</span>
 
-              <Link
-                href={`${basePath}/customers`}
-                className="text-sm font-bold text-black underline decoration-black/25 underline-offset-4"
-              >
-                Clear filters
-              </Link>
-            </div>
-          )}
-        </section>
+            <select
+              name="status"
+              defaultValue={status}
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
+            >
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </label>
 
-        <section className="mt-6 overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/5 px-5 py-5 md:px-6">
-            <div>
-              <h2 className="font-display text-2xl font-bold text-black">
-                Customer Directory
-              </h2>
+          <label>
+            <span className="sr-only">Sort customers</span>
 
-              <p className="mt-1 text-sm text-black/50">
-                {totalResults === 0
-                  ? "No customer records found."
-                  : `Showing ${resultStart}–${resultEnd} of ${totalResults} customers`}
-              </p>
-            </div>
+            <select
+              name="sort"
+              defaultValue={sort}
+              className="h-12 w-full rounded-2xl border border-black/10 bg-[#faf8f4] px-4 text-sm font-semibold text-black outline-none focus:border-black"
+            >
+              <option value="value">Highest value</option>
+              <option value="recent">Most recent order</option>
+              <option value="orders">Most orders</option>
+              <option value="name">Customer name</option>
+              <option value="oldest">Oldest customer</option>
+            </select>
+          </label>
 
-            <span className="rounded-full bg-[#f1eadf] px-4 py-2 text-sm font-bold text-black">
-              {totalResults.toLocaleString("en-US")} results
-            </span>
+          <button
+            type="submit"
+            className="h-12 rounded-2xl bg-black px-6 text-sm font-bold text-white transition hover:bg-black/80"
+          >
+            Apply
+          </button>
+        </form>
+
+        {(query ||
+          customerType !== "all" ||
+          status !== "all" ||
+          sort !== "value") && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/5 pt-4">
+            <p className="text-sm text-black/50">
+              Showing filtered customer results.
+            </p>
+
+            <Link
+              href={`${basePath}/customers`}
+              className="text-sm font-bold text-black underline decoration-black/25 underline-offset-4"
+            >
+              Clear filters
+            </Link>
           </div>
+        )}
+      </section>
 
-          {storefrontOrdersError ? (
-            <div className="p-6 md:p-10">
-              <div className="rounded-2xl bg-red-50 p-5 text-red-800">
-                <p className="font-bold">
-                  Unable to load customers
-                </p>
+      <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-5">
+          <h2 className="text-lg font-bold text-black">
+            Customer directory
+          </h2>
 
-                <p className="mt-2 text-sm leading-6">
-                  Check the server terminal for the Supabase error details.
-                </p>
-              </div>
-            </div>
-          ) : customerRecords.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f1eadf] text-black">
-                <UsersRound size={28} />
-              </span>
+          <span className="rounded-lg bg-black/[0.04] px-2.5 py-1 text-xs font-semibold text-black/60">
+            {customerRecords.length.toLocaleString("en-US")} shown
+            {totalResults > customerRecords.length
+              ? ` of ${totalResults.toLocaleString("en-US")}`
+              : ""}
+          </span>
+        </div>
 
-              <h3 className="mt-5 text-xl font-bold text-black">
-                No customers found
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-black/50">
-                No customer records match the selected search and filters on {storefront.name}.
+        {storefrontOrdersError ? (
+          <div className="border-t border-black/[0.07] p-5">
+            <div className="rounded-xl bg-red-50 p-4 text-red-800">
+              <p className="font-bold">Unable to load customers</p>
+              <p className="mt-1 text-sm">
+                Check the server logs for the Supabase error details.
               </p>
-
-              <Link
-                href={`${basePath}/customers`}
-                className="mt-5 inline-flex rounded-full bg-black px-5 py-3 text-sm font-bold text-white"
-              >
-                View all customers
-              </Link>
             </div>
-          ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full min-w-[1100px] border-collapse text-left">
-                  <thead>
-                    <tr className="bg-[#faf8f4] text-xs font-bold uppercase tracking-[0.1em] text-black/45">
-                      <th className="px-6 py-4">Customer</th>
-                      <th className="px-4 py-4">Type</th>
-                      <th className="px-4 py-4 text-right">Orders</th>
-                      <th className="px-4 py-4 text-right">Storefront Revenue</th>
-                      <th className="px-4 py-4">Last Purchase</th>
-                      <th className="px-4 py-4">Status</th>
-                      <th className="px-6 py-4 text-right">Action</th>
-                    </tr>
-                  </thead>
+          </div>
+        ) : customerRecords.length === 0 ? (
+          <div className="border-t border-black/[0.07] px-6 py-14 text-center">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#f1eadf] text-black">
+              <UsersRound size={24} />
+            </span>
 
-                  <tbody>
-                    {customerRecords.map((customer) => (
-                      <tr
-                        key={customer.id}
-                        className="border-t border-black/5 transition hover:bg-[#fcfaf6]"
-                      >
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-sm font-bold text-white">
-                              {getInitials(
-                                customer.full_name,
-                                customer.email
-                              )}
-                            </span>
+            <h3 className="mt-4 text-lg font-bold text-black">
+              No customers found
+            </h3>
 
-                            <div className="min-w-0">
-                              <p className="truncate font-bold text-black">
-                                {customer.full_name ||
-                                  "Unnamed customer"}
-                              </p>
+            <p className="mx-auto mt-1.5 max-w-md text-sm text-black/55">
+              {query || customerType !== "all" || status !== "all"
+                ? "No customers match this search or filter."
+                : `Customers appear here after their first order on ${storefront.name}.`}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div
+              className={`hidden gap-4 border-y border-black/[0.07] bg-[#faf7f2] px-5 py-2.5 text-xs font-semibold text-black/50 lg:grid ${ROW_GRID}`}
+            >
+              <span>Customer</span>
+              <span>Type &amp; status</span>
+              <span className="text-right">Orders</span>
+              <span className="text-right">Revenue</span>
+              <span>Last purchase</span>
+              <span className="sr-only">Actions</span>
+            </div>
 
-                              <p className="mt-1 truncate text-sm text-black/50">
-                                {customer.email}
-                              </p>
+            <ul className="divide-y divide-black/[0.07] border-t border-black/[0.07] lg:border-t-0">
+              {customerRecords.map((customer) => {
+                const statusStyles = getStatusStyles(customer.status);
+                const profileHref = `${basePath}/customers/${customer.id}`;
 
-                              {customer.phone ? (
-                                <p className="mt-1 text-xs text-black/40">
-                                  {customer.phone}
-                                </p>
-                              ) : null}
-
-                              {customer.company_name ? (
-                                <p className="mt-1 text-xs font-semibold text-black/50">
-                                  {customer.company_name}
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-5">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getCustomerTypeStyles(
-                              customer.customer_type
-                            )}`}
-                          >
-                            {formatCustomerType(
-                              customer.customer_type
-                            )}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-5 text-right font-bold text-black">
-                          {Number(
-                            customer.storefront_order_count || 0
-                          ).toLocaleString("en-US")}
-                        </td>
-
-                        <td className="px-4 py-5 text-right font-bold text-black">
-                          {formatCurrency(
-                            customer.storefront_total_spent
-                          )}
-                        </td>
-
-                        <td className="px-4 py-5">
-                          <p className="font-semibold text-black">
-                            {formatDate(
-                              customer.storefront_last_order_at
-                            )}
-                          </p>
-
-                          <p className="mt-1 text-xs text-black/40">
-                            Customer since{" "}
-                            {formatDate(
-                              customer.first_order_at ||
-                                customer.created_at
-                            )}
-                          </p>
-                        </td>
-
-                        <td className="px-4 py-5">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusStyles(
-                              customer.status
-                            )}`}
-                          >
-                            {formatStatus(customer.status)}
-                          </span>
-                        </td>
-
-                        <td className="px-6 py-5 text-right">
-                          <Link
-                            href={`${basePath}/customers/${customer.id}`}
-                            className="inline-flex items-center gap-1 rounded-full bg-black px-4 py-2 text-sm font-bold text-white transition hover:bg-black/80"
-                          >
-                            View
-                            <ChevronRight size={15} />
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile and tablet cards */}
-              <div className="grid gap-4 p-4 lg:hidden">
-                {customerRecords.map((customer) => (
-                  <article
+                return (
+                  <li
                     key={customer.id}
-                    className="rounded-2xl border border-black/8 bg-[#fcfaf6] p-5"
+                    className={`grid gap-3 px-5 py-4 transition hover:bg-[#faf7f2] lg:items-center lg:gap-4 ${ROW_GRID}`}
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-sm font-bold text-white">
-                        {getInitials(
-                          customer.full_name,
-                          customer.email
-                        )}
+                    <div className="flex min-w-0 items-start gap-3 lg:items-center">
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 ${avatarTone(customer.id)}`}
+                        aria-hidden="true"
+                      >
+                        {getInitials(customer.full_name, customer.email)}
                       </span>
 
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-bold text-black">
-                          {customer.full_name ||
-                            "Unnamed customer"}
+                        <Link
+                          href={profileHref}
+                          className="block truncate font-bold text-black hover:underline hover:underline-offset-4"
+                        >
+                          {customer.full_name || "Unnamed customer"}
+                        </Link>
+
+                        <p className="truncate text-sm text-black/55">
+                          {customer.email || customer.phone || "No email"}
                         </p>
 
-                        <p className="mt-1 truncate text-sm text-black/50">
-                          {customer.email}
-                        </p>
-
-                        {customer.phone ? (
-                          <p className="mt-1 text-xs text-black/40">
-                            {customer.phone}
+                        {customer.company_name ? (
+                          <p className="truncate text-xs font-semibold text-black/45">
+                            {customer.company_name}
                           </p>
                         ) : null}
                       </div>
 
-                      <span
-                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${getStatusStyles(
-                          customer.status
-                        )}`}
+                      <Link
+                        href={profileHref}
+                        className="inline-flex shrink-0 items-center gap-0.5 text-sm font-bold text-black transition hover:gap-1.5 lg:hidden"
+                        aria-label={`View ${customer.full_name || customer.email || "customer"}`}
                       >
+                        View
+                        <ChevronRight size={16} aria-hidden="true" />
+                      </Link>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      <span
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${getCustomerTypeStyles(customer.customer_type)}`}
+                      >
+                        {formatCustomerType(customer.customer_type)}
+                      </span>
+
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${statusStyles.badge}`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusStyles.dot}`} aria-hidden="true" />
                         {formatStatus(customer.status)}
                       </span>
                     </div>
 
-                    <div className="mt-5 grid grid-cols-2 gap-3">
-                      <div className="rounded-xl bg-white p-3">
-                        <p className="text-xs text-black/45">
-                          Orders
-                        </p>
+                    <div className="grid grid-cols-3 gap-3 lg:contents">
+                      <Metric label="Orders" className="lg:text-right">
+                        {Number(customer.storefront_order_count || 0).toLocaleString("en-US")}
+                      </Metric>
 
-                        <p className="mt-1 font-bold text-black">
-                          {Number(
-                            customer.storefront_order_count || 0
-                          ).toLocaleString("en-US")}
-                        </p>
-                      </div>
+                      <Metric label="Revenue" className="lg:text-right">
+                        {formatCurrency(customer.storefront_total_spent)}
+                      </Metric>
 
-                      <div className="rounded-xl bg-white p-3">
-                        <p className="text-xs text-black/45">
-                          Storefront spent
-                        </p>
-
-                        <p className="mt-1 font-bold text-black">
-                          {formatCurrency(
-                            customer.storefront_total_spent
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="col-span-2 rounded-xl bg-white p-3">
-                        <p className="text-xs text-black/45">
-                          Last purchase
-                        </p>
-
-                        <p className="mt-1 text-sm font-bold text-black">
-                          {formatDate(
-                            customer.storefront_last_order_at
-                          )}
-                        </p>
-                      </div>
+                      <Metric label="Last purchase">
+                        {formatDate(customer.storefront_last_order_at)}
+                      </Metric>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-bold ${getCustomerTypeStyles(
-                          customer.customer_type
-                        )}`}
-                      >
-                        {formatCustomerType(
-                          customer.customer_type
-                        )}
-                      </span>
+                    <Link
+                      href={profileHref}
+                      className="hidden items-center justify-end gap-0.5 text-sm font-bold text-black transition hover:gap-1.5 lg:inline-flex"
+                      aria-label={`View ${customer.full_name || customer.email || "customer"}`}
+                    >
+                      View
+                      <ChevronRight size={16} aria-hidden="true" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
 
-                      <Link
-                        href={`${basePath}/customers/${customer.id}`}
-                        className="inline-flex items-center gap-1 rounded-full bg-black px-4 py-2 text-sm font-bold text-white"
-                      >
-                        View Profile
-                        <ChevronRight size={15} />
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
+        {totalPages > 1 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.07] px-5 py-3.5">
+            <p className="text-sm text-black/55">
+              {resultStart}–{resultEnd} of {totalResults} · Page {currentPage} of {totalPages}
+            </p>
 
-          {totalResults > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-black/5 px-5 py-5 md:px-6">
-              <p className="text-sm text-black/50">
-                Page {currentPage} of {totalPages}
-              </p>
+            <div className="flex items-center gap-2">
+              {hasPreviousPage ? (
+                <Link
+                  href={buildPageUrl({ basePath, query, customerType, status, sort, page: currentPage - 1 })}
+                  className="inline-flex items-center gap-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold text-black transition hover:bg-black/[0.03]"
+                >
+                  <ChevronLeft size={15} aria-hidden="true" />
+                  Previous
+                </Link>
+              ) : null}
 
-              <div className="flex items-center gap-2">
-                {hasPreviousPage ? (
-                  <Link
-                    href={buildPageUrl({
-                      basePath,
-                      query,
-                      customerType,
-                      status,
-                      sort,
-                      page: currentPage - 1
-                    })}
-                    className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-bold text-black transition hover:bg-[#f1eadf]"
-                  >
-                    Previous
-                  </Link>
-                ) : (
-                  <span className="cursor-not-allowed rounded-full border border-black/5 bg-black/5 px-5 py-2.5 text-sm font-bold text-black/30">
-                    Previous
-                  </span>
-                )}
-
-                {hasNextPage ? (
-                  <Link
-                    href={buildPageUrl({
-                      basePath,
-                      query,
-                      customerType,
-                      status,
-                      sort,
-                      page: currentPage + 1
-                    })}
-                    className="rounded-full bg-black px-5 py-2.5 text-sm font-bold text-white transition hover:bg-black/80"
-                  >
-                    Next
-                  </Link>
-                ) : (
-                  <span className="cursor-not-allowed rounded-full bg-black/10 px-5 py-2.5 text-sm font-bold text-black/30">
-                    Next
-                  </span>
-                )}
-              </div>
+              {hasNextPage ? (
+                <Link
+                  href={buildPageUrl({ basePath, query, customerType, status, sort, page: currentPage + 1 })}
+                  className="inline-flex items-center gap-1 rounded-xl bg-black px-3 py-2 text-sm font-bold text-white transition hover:bg-black/85"
+                >
+                  Next
+                  <ChevronRight size={15} aria-hidden="true" />
+                </Link>
+              ) : null}
             </div>
-          )}
-        </section>
-      </div>
-    </main>
+          </div>
+        ) : null}
+      </section>
+    </div>
   );
 }

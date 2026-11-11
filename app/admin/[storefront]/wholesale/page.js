@@ -176,7 +176,7 @@ export default async function WholesalePage({
   const rows = inquiries || [];
 
   return (
-    <main>
+    <div>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-xs font-bold uppercase tracking-[.2em] text-black/40">
@@ -354,6 +354,6 @@ export default async function WholesalePage({
           ))}
         </div>
       )}
-    </main>
+    </div>
   );
 }

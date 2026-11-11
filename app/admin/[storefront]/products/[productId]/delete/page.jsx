@@ -51,7 +51,7 @@ export default async function DeleteProductPage({ params }) {
   const isArchived = product.status === "archived";
 
   return (
-    <main>
+    <div>
       <div className="mx-auto max-w-4xl py-2">
         <Link
           href={productBase}
@@ -189,6 +189,6 @@ export default async function DeleteProductPage({ params }) {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }
