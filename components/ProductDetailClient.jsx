@@ -190,23 +190,42 @@ export default function ProductDetailClient({
     setQuantity(nextQuantity);
   }
   function handleAddToCart() {
+    let addedQuantity = 0;
     for (
       let index = 0;
       index < quantity;
       index += 1
     ) {
-      addItem(product);
+      // Pass the stock so the cart never holds more than is available.
+      const result = addItem(product, { availableStock });
+      if (!result?.success) {
+        if (result?.reason === "storefront_mismatch") {
+          alert(
+            product.storefront === "ecoware"
+              ? "Your cart contains Shakti Foods products. Clear the cart before adding Simpli Ecoware products."
+              : "Your cart contains Simpli Ecoware products. Clear the cart before adding Shakti Foods products."
+          );
+        }
+        break;
+      }
+      addedQuantity += 1;
+    }
+    if (addedQuantity === 0) {
+      return;
     }
     trackEvent("add_to_cart", {
       currency: "USD",
-      value: currentTotal,
+      value:
+        addedQuantity === quantity
+          ? currentTotal
+          : Number((currentUnitPrice * addedQuantity).toFixed(2)),
       items: [
         productToGaItem(
           {
             ...product,
             unitPrice: currentUnitPrice
           },
-          quantity
+          addedQuantity
         )
       ]
     });

@@ -2,17 +2,72 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
+import CartToast from "@/components/CartToast";
+import { playAddToCartSound } from "@/lib/cart-sound";
 
 const CartContext = createContext(null);
+
+const CART_PAGES = {
+  shakti_foods: "/cart",
+  ecoware: "/ecoware/cart"
+};
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
   const [cartLoaded, setCartLoaded] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  // The cart as of the last change, so addItem can decide right away
+  // (React may run a setItems updater later, after addItem has returned).
+  const itemsRef = useRef(items);
+  const pendingToastRef = useRef(null);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const closeToast = useCallback(() => setToast(null), []);
+
+  // One click can call addItem several times (quantity 3 on the product
+  // page); those become one pop-up and one sound.
+  function announce(entry) {
+    const pending = pendingToastRef.current;
+
+    if (pending) {
+      if (entry.type === "added") {
+        pending.quantityAdded += 1;
+        pending.cartQuantity = entry.cartQuantity;
+      } else if (pending.type === "added") {
+        pending.limitReached = true;
+      }
+      return;
+    }
+
+    pendingToastRef.current = {
+      ...entry,
+      quantityAdded: entry.type === "added" ? 1 : 0
+    };
+
+    if (entry.type === "added") {
+      playAddToCartSound();
+    }
+
+    queueMicrotask(() => {
+      const next = pendingToastRef.current;
+      pendingToastRef.current = null;
+
+      if (next) {
+        setToast({ ...next, id: `${Date.now()}-${Math.random()}` });
+      }
+    });
+  }
 
   useEffect(() => {
     try {
@@ -78,45 +133,47 @@ export function CartProvider({ children }) {
       };
     }
 
-    let result = {
-      success: true
-    };
+    const currentItems = itemsRef.current;
 
-    setItems((currentItems) => {
-      const existingStorefront =
-        currentItems[0]?.storefront || "shakti_foods";
+    const existingStorefront =
+      currentItems[0]?.storefront || "shakti_foods";
 
-      if (
-        currentItems.length > 0 &&
-        existingStorefront !== incomingStorefront
-      ) {
-        result = {
-          success: false,
-          reason: "storefront_mismatch"
-        };
-        return currentItems;
-      }
+    if (
+      currentItems.length > 0 &&
+      existingStorefront !== incomingStorefront
+    ) {
+      return {
+        success: false,
+        reason: "storefront_mismatch"
+      };
+    }
 
-      const existingItem = currentItems.find(
-        (item) => item.id === product.id
-      );
+    const existingItem = currentItems.find(
+      (item) => item.id === product.id
+    );
 
-      const currentQuantity = existingItem?.quantity || 0;
+    const currentQuantity = existingItem?.quantity || 0;
 
-      if (
-        Number.isFinite(availableStock) &&
-        currentQuantity >= availableStock
-      ) {
-        alert(`Only ${availableStock} item(s) available in stock.`);
-        result = {
-          success: false,
-          reason: "stock_limit"
-        };
-        return currentItems;
-      }
+    if (
+      Number.isFinite(availableStock) &&
+      currentQuantity >= availableStock
+    ) {
+      announce({
+        type: "error",
+        message: `Only ${availableStock} in stock, and ${
+          availableStock === 1 ? "it's" : "they're all"
+        } already in your cart.`,
+        cartHref: CART_PAGES[incomingStorefront]
+      });
 
-      if (existingItem) {
-        return currentItems.map((item) =>
+      return {
+        success: false,
+        reason: "stock_limit"
+      };
+    }
+
+    const nextItems = existingItem
+      ? currentItems.map((item) =>
           item.id === product.id
             ? {
                 ...item,
@@ -125,21 +182,30 @@ export function CartProvider({ children }) {
                 availableStock
               }
             : item
-        );
-      }
+        )
+      : [
+          ...currentItems,
+          {
+            ...product,
+            storefront: incomingStorefront,
+            quantity: 1,
+            availableStock
+          }
+        ];
 
-      return [
-        ...currentItems,
-        {
-          ...product,
-          storefront: incomingStorefront,
-          quantity: 1,
-          availableStock
-        }
-      ];
+    itemsRef.current = nextItems;
+    setItems(nextItems);
+
+    announce({
+      type: "added",
+      item: product,
+      cartQuantity: currentQuantity + 1,
+      cartHref: CART_PAGES[incomingStorefront]
     });
 
-    return result;
+    return {
+      success: true
+    };
   }
 
   function removeItem(id) {
@@ -248,6 +314,7 @@ export function CartProvider({ children }) {
       }}
     >
       {children}
+      <CartToast toast={toast} onClose={closeToast} />
     </CartContext.Provider>
   );
 }
