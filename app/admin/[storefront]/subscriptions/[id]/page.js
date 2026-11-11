@@ -139,8 +139,8 @@ export default async function AdminSubscriptionDetailPage({
     !["canceled", "ended"].includes(status);
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1] px-4 py-10 md:px-8">
-      <div className="mx-auto max-w-4xl">
+    <main>
+      <div className="max-w-4xl">
         <Link
           href={`${basePath}/subscriptions`}
           className="text-sm font-bold text-black/50 transition hover:text-black"

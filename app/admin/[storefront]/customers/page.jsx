@@ -455,8 +455,8 @@ export default async function AdminCustomersPage({
   );
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-12">
+    <main>
+      <div>
         <header className="flex flex-wrap items-end justify-between gap-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-black/40">

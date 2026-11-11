@@ -1,10 +1,8 @@
-"use client";
-
 import {
-  AlertTriangle,
+  Boxes,
   DollarSign,
   Package,
-  ShoppingCart
+  ShoppingBag
 } from "lucide-react";
 
 function formatCurrency(cents = 0) {
@@ -24,37 +22,43 @@ function formatNumber(value = 0) {
 export default function DashboardStats({
   stats = {}
 }) {
+  const lowStock = Number(stats.lowStockProducts || 0);
+
   const cards = [
     {
-      title: "Total Orders",
+      title: "Total orders",
       value: formatNumber(stats.totalOrders),
-      icon: ShoppingCart,
+      icon: ShoppingBag,
       description: "All customer orders"
     },
     {
       title: "Revenue",
       value: formatCurrency(stats.totalRevenue),
       icon: DollarSign,
-      description: "Completed sales"
+      description: "From paid orders"
     },
     {
       title: "Products",
       value: formatNumber(stats.totalProducts),
       icon: Package,
-      description: "Products in catalog"
+      description: "In your catalog"
     },
     {
-      title: "Low Stock",
-      value: formatNumber(stats.lowStockProducts),
-      icon: AlertTriangle,
-      description: "Need restocking"
+      title: "Low stock",
+      value: formatNumber(lowStock),
+      icon: Boxes,
+      description:
+        lowStock === 0
+          ? "No restocking alerts"
+          : `${formatNumber(lowStock)} need${lowStock === 1 ? "s" : ""} restocking`,
+      tone: lowStock === 0 ? "text-emerald-700" : "text-amber-700"
     }
   ];
 
   return (
     <section
       aria-label="Dashboard statistics"
-      className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4"
+      className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4"
     >
       {cards.map((card) => {
         const Icon = card.icon;
@@ -62,30 +66,23 @@ export default function DashboardStats({
         return (
           <article
             key={card.title}
-            className="rounded-3xl bg-white p-6 shadow transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+            className="min-w-0 rounded-2xl border border-black/10 bg-white p-4 shadow-sm sm:p-5"
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  {card.title}
-                </p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-semibold text-black/60">
+                {card.title}
+              </p>
 
-                <h2 className="mt-3 text-4xl font-bold text-black">
-                  {card.value}
-                </h2>
-
-                <p className="mt-2 text-sm text-gray-500">
-                  {card.description}
-                </p>
-              </div>
-
-              <div className="rounded-full bg-black p-3">
-                <Icon
-                  size={28}
-                  className="text-white"
-                />
-              </div>
+              <Icon size={18} className="shrink-0 text-black/40" aria-hidden="true" />
             </div>
+
+            <p className="mt-3 truncate text-2xl font-bold tracking-tight text-black sm:text-3xl">
+              {card.value}
+            </p>
+
+            <p className={`mt-1.5 text-xs sm:text-sm ${card.tone || "text-black/55"}`}>
+              {card.description}
+            </p>
           </article>
         );
       })}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 function formatMoney(cents = 0) {
   return new Intl.NumberFormat("en-US", {
@@ -8,51 +9,53 @@ function formatMoney(cents = 0) {
 }
 
 function formatDate(value) {
-  if (!value) return "Unknown";
+  if (!value) return "";
 
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: "America/New_York"
   }).format(new Date(value));
 }
 
-function paymentBadge(status = "") {
-  switch (status.toLowerCase()) {
-    case "paid":
-      return "bg-green-100 text-green-800";
+function label(status, fallback) {
+  const text = String(status || "").trim().replace(/_/g, " ");
 
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-
-    case "failed":
-      return "bg-red-100 text-red-800";
-
-    case "refunded":
-      return "bg-blue-100 text-blue-800";
-
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
+  return text
+    ? text.charAt(0).toUpperCase() + text.slice(1)
+    : fallback;
 }
 
-function fulfillmentBadge(status = "") {
-  switch (status.toLowerCase()) {
-    case "fulfilled":
-      return "bg-green-100 text-green-800";
+const PAYMENT_STYLES = {
+  paid: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  pending: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  failed: "bg-red-50 text-red-700 ring-red-600/20",
+  refunded: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  partially_refunded: "bg-sky-50 text-sky-700 ring-sky-600/20"
+};
 
-    case "processing":
-      return "bg-blue-100 text-blue-800";
+const FULFILLMENT_STYLES = {
+  new: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  pending: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  processing: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  packed: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  shipped: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
+  delivered: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  fulfilled: "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+};
 
-    case "shipped":
-      return "bg-purple-100 text-purple-800";
+const NEUTRAL = "bg-black/[0.04] text-black/60 ring-black/10";
 
-    case "cancelled":
-      return "bg-red-100 text-red-800";
-
-    default:
-      return "bg-[#eee7db] text-black";
-  }
+function Badge({ className, children }) {
+  return (
+    <span
+      className={`inline-flex w-fit items-center rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${className}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 export default function RecentOrders({
@@ -61,99 +64,83 @@ export default function RecentOrders({
   orders = []
 }) {
   return (
-    <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
-      <div className="flex items-center justify-between gap-4">
+    <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+      <div className="flex items-start justify-between gap-4 px-5 pb-4 pt-5">
         <div>
-          <h2 className="font-display text-3xl font-bold text-black">
-            Recent Orders
+          <h2 className="text-lg font-bold text-black">
+            Recent orders
           </h2>
 
-          <p className="mt-1 text-sm text-black/60">
-            Most recent customer orders
+          <p className="mt-0.5 text-sm text-black/55">
+            The latest orders from customers
           </p>
         </div>
 
-        <span className="rounded-full bg-black px-4 py-2 text-sm font-bold text-white">
-          {orders.length}
-        </span>
+        <Link
+          href={`${basePath}/orders`}
+          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-bold text-black transition hover:gap-2"
+        >
+          View all
+          <ArrowRight size={16} />
+        </Link>
       </div>
 
       {orders.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed border-gray-300 p-8 text-center">
-          <p className="text-black/60">
-            No orders have been placed yet.
-          </p>
+        <div className="mx-5 mb-5 rounded-xl border border-dashed border-black/15 p-8 text-center text-sm text-black/55">
+          No orders have been placed yet.
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left">
-            <thead>
-              <tr className="border-b border-black/10 text-sm text-black/50">
-                <th className="pb-3 pr-5">Customer</th>
-                <th className="pb-3 pr-5">Email</th>
-                <th className="pb-3 pr-5">Payment</th>
-                <th className="pb-3 pr-5">Fulfillment</th>
-                <th className="pb-3 pr-5">Total</th>
-                <th className="pb-3 pr-5">Date</th>
-                <th className="pb-3 text-right">Action</th>
-              </tr>
-            </thead>
+        <>
+          <ul className="divide-y divide-black/[0.07] border-t border-black/[0.07]">
+            {orders.map((order) => {
+              const payment = String(order.payment_status || "").toLowerCase();
+              const fulfillment = String(order.fulfillment_status || "").toLowerCase();
 
-            <tbody>
-              {orders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="border-b border-black/5 transition hover:bg-[#faf7f2]"
-                >
-                  <td className="py-4 pr-5 font-semibold">
-                    {order.customer_name || "Guest"}
-                  </td>
+              return (
+                <li key={order.id}>
+                  <Link
+                    href={`${basePath}/orders/${order.id}`}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-5 py-3.5 transition hover:bg-[#faf7f2] sm:grid-cols-[minmax(0,1fr)_7.5rem_7.5rem_6.5rem]"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-mono text-sm font-bold text-black">
+                        #{String(order.id || "").slice(0, 8).toUpperCase()}
+                      </p>
 
-                  <td className="py-4 pr-5 text-black/70">
-                    {order.customer_email || "Not provided"}
-                  </td>
+                      <p className="mt-0.5 truncate text-sm text-black/55">
+                        {order.customer_name || order.customer_email || "Guest"}
+                        {order.created_at ? (
+                          <span className="text-black/35"> · {formatDate(order.created_at)}</span>
+                        ) : null}
+                      </p>
+                    </div>
 
-                  <td className="py-4 pr-5">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${paymentBadge(
-                        order.payment_status
-                      )}`}
-                    >
-                      {order.payment_status || "Unknown"}
-                    </span>
-                  </td>
+                    <p className="text-right text-sm font-bold text-black sm:order-last">
+                      {formatMoney(order.total_amount)}
+                    </p>
 
-                  <td className="py-4 pr-5">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${fulfillmentBadge(
-                        order.fulfillment_status
-                      )}`}
-                    >
-                      {order.fulfillment_status || "New"}
-                    </span>
-                  </td>
+                    <div className="col-span-2 flex flex-wrap gap-2 sm:contents">
+                      <Badge className={PAYMENT_STYLES[payment] || NEUTRAL}>
+                        {label(order.payment_status, "Unknown")}
+                      </Badge>
 
-                  <td className="py-4 pr-5 font-bold">
-                    {formatMoney(order.total_amount)}
-                  </td>
+                      <Badge className={FULFILLMENT_STYLES[fulfillment] || NEUTRAL}>
+                        {label(order.fulfillment_status, "New")}
+                      </Badge>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
 
-                  <td className="py-4 pr-5 text-black/60">
-                    {formatDate(order.created_at)}
-                  </td>
-
-                  <td className="py-4 text-right">
-                    <Link
-                      href={`${basePath}/orders/${order.id}`}
-                      className="font-semibold text-black underline-offset-4 hover:underline"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <div className="flex items-center justify-between border-t border-black/[0.07] px-5 py-3 text-sm text-black/50">
+            <span>
+              Showing {orders.length} latest order{orders.length === 1 ? "" : "s"}
+            </span>
+            <span>USD</span>
+          </div>
+        </>
       )}
     </section>
   );

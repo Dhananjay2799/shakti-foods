@@ -151,8 +151,8 @@ export default async function AdminOrderDetailsPage({ params }) {
   const basePath = `/admin/${storefront.slug}`;
 
   return (
-    <main className="min-h-screen bg-[#f8f6f1]">
-      <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-12">
+    <main>
+      <div>
         <Link
           href={`${basePath}/orders`}
           className="inline-flex rounded-full bg-white px-5 py-3 font-bold text-black shadow transition hover:bg-[#f1eadf]"
@@ -186,9 +186,9 @@ export default async function AdminOrderDetailsPage({ params }) {
           </div>
         </div>
 
-        <div className="mt-10 grid gap-6 xl:grid-cols-[1.35fr_.75fr]">
+        <div className="mt-10 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,.75fr)]">
           {/* Main Left Column */}
-          <div className="grid gap-6">
+          <div className="grid min-w-0 grid-cols-1 gap-6">
             {/* Order Items */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-3xl font-bold text-black">
@@ -382,7 +382,7 @@ export default async function AdminOrderDetailsPage({ params }) {
           </div>
 
           {/* Right Sidebar */}
-          <aside className="grid h-fit gap-6">
+          <aside className="grid h-fit min-w-0 grid-cols-1 gap-6">
             {/* Fulfillment Management Form */}
             <section className="rounded-[2rem] bg-white p-5 shadow md:p-7">
               <h2 className="font-display text-3xl font-bold text-black">
