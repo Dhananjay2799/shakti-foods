@@ -229,11 +229,58 @@ export default async function ProductPage({ params }) {
       ? [product.image]
       : [];
 
+  // 3. Ratings and reviews for Google, only from real approved reviews.
+  //    With no reviews the fields are left out (Google lists them as
+  //    optional), never filled with made-up values.
+  const ratedReviews = (reviewsResult.data || []).filter((review) => {
+    const rating = Number(review.rating);
+    return rating >= 1 && rating <= 5;
+  });
+
+  const averageRating = ratedReviews.length
+    ? ratedReviews.reduce((sum, review) => sum + Number(review.rating), 0) /
+      ratedReviews.length
+    : 0;
+
+  const absoluteUrl = (src) =>
+    !src || /^https?:\/\//i.test(src)
+      ? src
+      : `${site.baseUrl}${src.startsWith("/") ? "" : "/"}${src}`;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    image: productImages,
+    image: productImages.map(absoluteUrl).filter(Boolean),
+    aggregateRating: ratedReviews.length
+      ? {
+          "@type": "AggregateRating",
+          ratingValue: Number(averageRating.toFixed(1)),
+          reviewCount: ratedReviews.length,
+          bestRating: 5,
+          worstRating: 1
+        }
+      : undefined,
+    review: ratedReviews.length
+      ? ratedReviews.slice(0, 5).map((review) => ({
+          "@type": "Review",
+          author: {
+            "@type": "Person",
+            name: String(review.customer_name || "").trim() || "Verified customer"
+          },
+          datePublished: review.created_at
+            ? String(review.created_at).slice(0, 10)
+            : undefined,
+          name: review.review_title || undefined,
+          reviewBody: review.review_text || undefined,
+          reviewRating: {
+            "@type": "Rating",
+            ratingValue: Number(review.rating),
+            bestRating: 5,
+            worstRating: 1
+          }
+        }))
+      : undefined,
     description: product.shortDescription || product.subtitle,
     brand: {
       "@type": "Brand",
@@ -260,7 +307,9 @@ export default async function ProductPage({ params }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd)
+          // Review text comes from customers: escape "<" so it can never
+          // close this script tag.
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c")
         }}
       />
 
