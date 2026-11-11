@@ -3,22 +3,37 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import {
+  ChefHat,
   ChevronLeft,
   ChevronRight,
-  Quote,
+  House,
+  Package,
   Sparkles
 } from "lucide-react";
 
-import { testimonials } from "@/lib/data";
+import { shaktiPromises } from "@/lib/data";
 
+const PROMISE_ICONS = {
+  home: House,
+  catering: ChefHat,
+  wholesale: Package
+};
+
+/*
+ * "The Shakti Promise" cards on the home page. They speak in the brand's
+ * own voice (no customer names or star ratings) until real reviews exist.
+ */
 export default function Testimonials() {
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const testimonials = shaktiPromises;
 
   if (!testimonials?.length) {
     return null;
   }
 
   const activeTestimonial = testimonials[activeIndex];
+  const ActiveIcon = PROMISE_ICONS[activeTestimonial.icon] || Sparkles;
 
   function previousTestimonial() {
     setActiveIndex((current) =>
@@ -178,7 +193,7 @@ export default function Testimonials() {
                 md:text-[11px]
               "
             >
-              Loved By Families
+              The Shakti Promise
             </div>
 
             <span
@@ -225,8 +240,8 @@ export default function Testimonials() {
             "
           >
             From everyday meals to special occasions,
-            discover the experience Shakti Foods brings
-            to homes, restaurants, and businesses.
+            here is what Shakti Foods brings to homes,
+            restaurants, and businesses.
           </p>
         </motion.div>
 
@@ -245,9 +260,12 @@ export default function Testimonials() {
             lg:gap-6
           "
         >
-          {testimonials.map((item, index) => (
+          {testimonials.map((item, index) => {
+            const Icon = PROMISE_ICONS[item.icon] || Sparkles;
+
+            return (
             <motion.article
-              key={`${item.name}-${index}`}
+              key={`${item.title}-${index}`}
               initial={{
                 opacity: 0,
                 y: 24
@@ -309,19 +327,19 @@ export default function Testimonials() {
                       text-[#bd0b1a]
                     "
                   >
-                    {getInitials(item.name)}
+                    <Icon size={21} strokeWidth={1.7} aria-hidden="true" />
                   </div>
 
                   <div>
-                    <div
+                    <h3
                       className="
                         text-[13px]
                         font-bold
                         text-[#17120f]
                       "
                     >
-                      {item.name}
-                    </div>
+                      {item.title}
+                    </h3>
 
                     <div
                       className="
@@ -333,40 +351,15 @@ export default function Testimonials() {
                         text-[#a9701d]
                       "
                     >
-                      Buyer Perspective
+                      {item.audience}
                     </div>
                   </div>
                 </div>
-
-                <Quote
-                  size={32}
-                  strokeWidth={1.4}
-                  className="
-                    text-[#d99a35]
-                  "
-                />
-              </div>
-
-              {/* Decorative stars */}
-              <div
-                aria-hidden="true"
-                className="
-                  mt-6
-                  flex
-                  gap-[3px]
-                  text-[#dc951f]
-                "
-              >
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
               </div>
 
               <p
                 className="
-                  mt-4
+                  mt-6
                   flex-1
                   font-display
                   text-[17px]
@@ -374,7 +367,7 @@ export default function Testimonials() {
                   text-[#332a25]
                 "
               >
-                &ldquo;{item.text}&rdquo;
+                {item.text}
               </p>
 
               <div
@@ -385,7 +378,8 @@ export default function Testimonials() {
                 "
               />
             </motion.article>
-          ))}
+            );
+          })}
         </div>
 
         {/* DESKTOP DOTS */}
@@ -401,7 +395,7 @@ export default function Testimonials() {
         >
           {testimonials.map((item, index) => (
             <span
-              key={`${item.name}-desktop-dot`}
+              key={`${item.title}-desktop-dot`}
               className={
                 index === 0
                   ? "h-[10px] w-[10px] rounded-full bg-[#c90019]"
@@ -488,21 +482,19 @@ export default function Testimonials() {
                       text-[#bd0b1a]
                     "
                   >
-                    {getInitials(
-                      activeTestimonial.name
-                    )}
+                    <ActiveIcon size={19} strokeWidth={1.7} aria-hidden="true" />
                   </div>
 
                   <div>
-                    <div
+                    <h3
                       className="
                         text-[12px]
                         font-bold
                         text-[#17120f]
                       "
                     >
-                      {activeTestimonial.name}
-                    </div>
+                      {activeTestimonial.title}
+                    </h3>
 
                     <div
                       className="
@@ -514,49 +506,22 @@ export default function Testimonials() {
                         text-[#a9701d]
                       "
                     >
-                      Buyer Perspective
+                      {activeTestimonial.audience}
                     </div>
                   </div>
                 </div>
-
-                <Quote
-                  size={28}
-                  strokeWidth={1.4}
-                  className="
-                    text-[#d99a35]
-                  "
-                />
-              </div>
-
-              <div
-                aria-hidden="true"
-                className="
-                  mt-5
-                  flex
-                  gap-[2px]
-                  text-[14px]
-                  text-[#dc951f]
-                "
-              >
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
               </div>
 
               <p
                 className="
-                  mt-4
+                  mt-5
                   font-display
                   text-[16px]
                   leading-[1.5]
                   text-[#332a25]
                 "
               >
-                &ldquo;
                 {activeTestimonial.text}
-                &rdquo;
               </p>
             </motion.article>
           </AnimatePresence>
@@ -575,7 +540,7 @@ export default function Testimonials() {
             <button
               type="button"
               onClick={previousTestimonial}
-              aria-label="Previous testimonial"
+              aria-label="Previous card"
               className="
                 flex
                 h-[38px]
@@ -606,12 +571,12 @@ export default function Testimonials() {
               {testimonials.map(
                 (item, index) => (
                   <button
-                    key={`${item.name}-${index}-mobile-dot`}
+                    key={`${item.title}-${index}-mobile-dot`}
                     type="button"
                     onClick={() =>
                       setActiveIndex(index)
                     }
-                    aria-label={`Show testimonial ${
+                    aria-label={`Show card ${
                       index + 1
                     }`}
                     className={
@@ -627,7 +592,7 @@ export default function Testimonials() {
             <button
               type="button"
               onClick={nextTestimonial}
-              aria-label="Next testimonial"
+              aria-label="Next card"
               className="
                 flex
                 h-[38px]
@@ -652,14 +617,4 @@ export default function Testimonials() {
       </div>
     </section>
   );
-}
-
-function getInitials(name = "") {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
 }
