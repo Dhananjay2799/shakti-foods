@@ -2,7 +2,7 @@
 
 A production e-commerce platform that runs two brands from one Next.js codebase:
 
-- **Shakti Foods**: premium basmati rice, live at [shakti-foods.com](https://shakti-foods.com)
+- **Shakti Foods**: premium basmati rice, live at [shaktifoodsus.com](https://shaktifoodsus.com)
 - **Simpli Ecoware**: compostable food-service products, live at [simpliecoware.vercel.app](https://simpliecoware.vercel.app)
 
 It covers everything from browsing to delivery: the storefront, cart, Stripe and PayPal checkout,
