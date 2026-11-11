@@ -99,7 +99,7 @@ export function PageHeader({ title, subtitle, children, actions }) {
       <div className="min-w-0">
         <h1 className="font-display text-4xl font-bold text-black">{title}</h1>
         {subtitle ? (
-          <p className="mt-1.5 truncate text-sm text-black/60">{subtitle}</p>
+          <p className="mt-1.5 break-words text-sm text-black/60">{subtitle}</p>
         ) : null}
         {children}
       </div>
