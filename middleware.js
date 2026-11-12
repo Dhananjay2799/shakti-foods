@@ -1,12 +1,44 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { getShaktiLegacyRedirectUrl } from "@/lib/storefront-hosts";
+import {
+  ECOWARE_STOREFRONT,
+  getStorefrontPageUrl
+} from "@/lib/storefront-config";
 
 const ECOWARE_HOSTS = new Set([
   "simpliecoware.vercel.app",
   "www.simpliecoware.com",
   "simpliecoware.com",
 ]);
+
+// Shakti Foods' public addresses (not previews or localhost, where
+// /ecoware is how the Ecoware pages are opened during development).
+const SHAKTI_PUBLIC_HOSTS = new Set(["shaktifoodsus.com", "www.shaktifoodsus.com"]);
+
+// Simpli Ecoware pages that Google has tried on the Shakti Foods address.
+const ECOWARE_ONLY_PATHS = new Set(["/sustainability", "/sample-requests"]);
+
+/**
+ * On shaktifoodsus.com, the Ecoware page a request is really for
+ * ("/ecoware/about" -> "/about"), or null. Those pages live on the
+ * Simpli Ecoware site, so they are not served twice under two brands.
+ */
+function ecowarePathRequestedOnShakti(hostname, pathname) {
+  if (!SHAKTI_PUBLIC_HOSTS.has(hostname)) {
+    return null;
+  }
+
+  if (pathname === "/ecoware") {
+    return "/";
+  }
+
+  if (pathname.startsWith("/ecoware/")) {
+    return pathname.slice("/ecoware".length);
+  }
+
+  return ECOWARE_ONLY_PATHS.has(pathname) ? pathname : null;
+}
 
 export async function middleware(request) {
   const { pathname, search } = request.nextUrl;
@@ -28,6 +60,28 @@ export async function middleware(request) {
       legacyRedirectUrl,
       keepsMethod ? 308 : 301
     );
+  }
+
+  const requestHostname = (request.headers.get("host") || "")
+    .split(":")[0]
+    .toLowerCase();
+
+  const ecowarePath = ecowarePathRequestedOnShakti(requestHostname, pathname);
+
+  if (ecowarePath) {
+    const ecowareUrl = new URL(
+      getStorefrontPageUrl(ECOWARE_STOREFRONT, ecowarePath)
+    );
+
+    // Never redirect to ourselves (e.g. if the Ecoware URL is misconfigured).
+    if (!SHAKTI_PUBLIC_HOSTS.has(ecowareUrl.hostname)) {
+      ecowareUrl.search = search;
+
+      const keepsMethod =
+        request.method !== "GET" && request.method !== "HEAD";
+
+      return NextResponse.redirect(ecowareUrl, keepsMethod ? 308 : 301);
+    }
   }
 
   // Keep existing Supabase admin authentication behavior.
