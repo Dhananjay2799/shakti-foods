@@ -18,6 +18,10 @@ import {
   getStorefrontPath
 } from "@/lib/storefront-config";
 
+import {
+  trackPurchaseOnce
+} from "@/lib/analytics";
+
 /*
  * `storefront` keeps "Continue Shopping" / "Go Home" on the website the
  * customer bought from (Shakti Foods or Simpli Ecoware).
@@ -176,6 +180,20 @@ export default function CheckoutSuccessClient({
           console.error(
             "Unable to remove active Stripe checkout:",
             error
+          );
+        }
+
+        if (
+          result.orderId &&
+          result.analytics
+        ) {
+          trackPurchaseOnce(
+            result.orderId,
+            {
+              ...result.analytics,
+              payment_type:
+                "stripe"
+            }
           );
         }
 
