@@ -14,21 +14,45 @@ import {
 /*
  * One deployment serves two websites, so /sitemap.xml depends on the host:
  *   Simpli Ecoware hosts -> Ecoware pages only.
- *   Every other host     -> the Shakti Foods sitemap, unchanged.
+ *   Every other host     -> Shakti Foods pages only.
  */
 
-function shaktiSitemap() {
-  const routes = ["", "/products", "/about", "/contact", "/cart", "/checkout"].map((route) => ({
-    url: `${site.baseUrl}${route}`,
-    lastModified: new Date()
-  }));
+// Pages worth finding in Google. Cart and checkout are left out on purpose.
+const SHAKTI_PAGES = ["", "/products", "/about", "/contact"];
 
-  const productRoutes = products.map((product) => ({
-    url: `${site.baseUrl}/products/${product.slug}`,
-    lastModified: new Date()
-  }));
+/*
+ * Only Shakti Foods' own live products. (The old list also had the
+ * Simpli Ecoware products, which are not on this site: Google got a
+ * "not found" page for each and reported them as noindex / 404.)
+ */
+async function shaktiSitemap() {
+  const lastModified = new Date();
+  let productSlugs = [];
 
-  return [...routes, ...productRoutes];
+  try {
+    const shaktiProducts = await getStorefrontProducts(PUBLIC_STOREFRONTS.SHAKTI);
+    productSlugs = shaktiProducts.map((product) => product.slug).filter(Boolean);
+  } catch (error) {
+    console.error("Unable to load Shakti Foods products for sitemap:", error);
+  }
+
+  if (productSlugs.length === 0) {
+    // Catalog unavailable: fall back to the built-in Shakti Foods products.
+    productSlugs = products
+      .filter((product) => product.category === "Rice")
+      .map((product) => product.slug);
+  }
+
+  return [
+    ...SHAKTI_PAGES.map((route) => ({
+      url: `${site.baseUrl}${route}`,
+      lastModified
+    })),
+    ...[...new Set(productSlugs)].map((slug) => ({
+      url: `${site.baseUrl}/products/${encodeURIComponent(slug)}`,
+      lastModified
+    }))
+  ];
 }
 
 const ECOWARE_PAGES = [

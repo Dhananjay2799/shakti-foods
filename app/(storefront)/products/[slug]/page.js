@@ -1,10 +1,15 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   getStorefrontProductBySlug,
   getStorefrontProducts } from "@/lib/storefront-products";
 import { site } from "@/lib/site";
+import {
+  ECOWARE_STOREFRONT,
+  getStorefrontPageUrl
+} from "@/lib/storefront-config";
+import { PUBLIC_STOREFRONTS } from "@/lib/storefront-products";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +67,22 @@ export default async function ProductPage({ params }) {
     ) || null;
 
   if (!product) {
+    // Simpli Ecoware products used to be listed on this site. Send old links
+    // (and Google) to the product on the Ecoware site instead of a 404.
+    const ecowareProduct = await getStorefrontProductBySlug(
+      resolvedParams.slug,
+      PUBLIC_STOREFRONTS.ECOWARE
+    ).catch(() => null);
+
+    if (ecowareProduct?.slug) {
+      permanentRedirect(
+        getStorefrontPageUrl(
+          ECOWARE_STOREFRONT,
+          `/products/${encodeURIComponent(ecowareProduct.slug)}`
+        )
+      );
+    }
+
     notFound();
   }
 
