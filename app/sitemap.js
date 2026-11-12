@@ -18,7 +18,17 @@ import {
  */
 
 // Pages worth finding in Google. Cart and checkout are left out on purpose.
-const SHAKTI_PAGES = ["", "/products", "/about", "/contact"];
+const SHAKTI_PAGES = [
+  "",
+  "/products",
+  "/about",
+  "/contact",
+  "/shipping",
+  "/returns",
+  "/faq",
+  "/privacy",
+  "/terms"
+];
 
 /*
  * Only Shakti Foods' own live products. (The old list also had the
@@ -61,7 +71,12 @@ const ECOWARE_PAGES = [
   "/about",
   "/sustainability",
   "/sample-requests",
-  "/wholesale/quote"
+  "/wholesale/quote",
+  "/shipping",
+  "/returns",
+  "/faq",
+  "/privacy",
+  "/terms"
 ];
 
 async function ecowareSitemap(hostname) {

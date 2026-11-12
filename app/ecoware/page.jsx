@@ -5,6 +5,16 @@ import {
   PUBLIC_STOREFRONTS
 } from "@/lib/storefront-products";
 
+// Its own title: as the root page of this folder it would otherwise get the
+// Shakti Foods title template ("Simpli Ecoware | Shakti Foods").
+export const metadata = {
+  title: {
+    absolute: "Simpli Ecoware | Compostable Plates, Bowls & Trays"
+  },
+  description:
+    "Simpli Ecoware compostable plates, bowls, trays and food-service packaging made from sugarcane bagasse, for homes, restaurants, caterers and events across the US."
+};
+
 /* =========================================================
    HELPERS
 ========================================================= */
