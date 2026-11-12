@@ -1129,6 +1129,30 @@ export default function CheckoutPageContent() {
                       </p>
                     </>
                   )}
+
+                  <p className="mt-5 text-center text-xs leading-5 text-black/55">
+                    By placing your order, you agree to our{" "}
+                    <Link
+                      href={`${isEcoware ? "/ecoware" : ""}/terms`}
+                      className="font-semibold text-black underline underline-offset-2"
+                    >
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href={`${isEcoware ? "/ecoware" : ""}/privacy`}
+                      className="font-semibold text-black underline underline-offset-2"
+                    >
+                      Privacy Policy
+                    </Link>
+                    . Returns are accepted within 4 days of delivery.{" "}
+                    <Link
+                      href={`${isEcoware ? "/ecoware" : ""}/returns`}
+                      className="font-semibold text-black underline underline-offset-2"
+                    >
+                      Return policy
+                    </Link>
+                  </p>
                 </div>
               </div>
 

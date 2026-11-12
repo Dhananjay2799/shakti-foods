@@ -8,7 +8,9 @@ import {
   MessageCircle,
   Phone,
 } from "lucide-react";
+import Link from "next/link";
 import { site, whatsappLink } from "@/lib/site";
+import { POLICY_NAV } from "@/lib/policy-nav";
 
 const contactItems = [
   { icon: Phone, label: "Phone", valueKey: "phone", hrefKey: "phoneRaw" },
@@ -121,7 +123,22 @@ export default function Footer() {
           </section>
         </div>
 
-        <div className="mt-12 border-t border-[#e7b650]/55 pt-6 text-center text-[11px] text-[#fff3df]/80">
+        <nav
+          aria-label="Customer help"
+          className="mt-12 flex flex-wrap justify-center gap-x-6 gap-y-2 text-[13px] font-semibold text-[#fff8ec]/90"
+        >
+          {POLICY_NAV.map((item) => (
+            <Link
+              key={item.id}
+              href={`/${item.id}`}
+              className="transition hover:text-[#f4bd4c]"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="mt-6 border-t border-[#e7b650]/55 pt-6 text-center text-[11px] text-[#fff3df]/80">
           © {new Date().getFullYear()} {site.name}. All rights reserved.
         </div>
       </div>

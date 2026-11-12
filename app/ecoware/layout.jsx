@@ -4,6 +4,7 @@ import Link from "next/link";
 import EcowareCartButton from "@/components/ecoware/EcowareCartButton";
 import EcowareMobileMenu from "@/components/ecoware/EcowareMobileMenu";
 import { CartProvider } from "@/components/CartProvider";
+import { POLICY_NAV } from "@/lib/policy-nav";
 
 export const metadata = {
   title: {
@@ -214,7 +215,7 @@ export default function EcowareLayout({ children }) {
 
         <footer className="border-t border-black/10 bg-[#f8f6ef]">
           <div className="mx-auto max-w-[1536px] px-6 py-14 sm:px-8 lg:px-12 lg:py-16">
-            <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-[1.35fr_.65fr_.85fr] lg:gap-16">
+            <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-[1.3fr_.6fr_.7fr_.9fr] lg:gap-12">
               {/* BRAND */}
               <div>
                 <EcowareBrand footer />
@@ -267,6 +268,23 @@ export default function EcowareLayout({ children }) {
                   </Link>
                 </div>
               </div>
+
+              {/* CUSTOMER HELP */}
+              <nav aria-label="Customer help">
+                <h3 className="text-lg font-black">Help</h3>
+
+                <div className="mt-6 flex flex-col items-start gap-4 text-[16px] text-black/65">
+                  {POLICY_NAV.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/ecoware/${item.id}`}
+                      className="transition hover:text-black"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </nav>
 
               {/* SHAKTI FOODS */}
               <div>
