@@ -5,5 +5,5 @@ export const metadata = {
 };
 
 export default function EcowareCheckoutPage() {
-  return <CheckoutPageContent />;
+  return <CheckoutPageContent pageStorefront="ecoware" />;
 }

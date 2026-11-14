@@ -61,6 +61,12 @@ export default function CheckoutSuccessClient({
     setPaymentProvider
   ] = useState("");
 
+  // "Pay a custom amount": no cart to clear, and it's a payment, not an order.
+  const [
+    isCustomPayment,
+    setIsCustomPayment
+  ] = useState(false);
+
   useEffect(() => {
     if (processed.current) {
       return;
@@ -107,10 +113,15 @@ export default function CheckoutSuccessClient({
       }
     }
 
+    const customFromUrl =
+      searchParams.get("type") ===
+      "custom";
+
     function completeCheckout({
       completedOrderId,
       provider,
-      message
+      message,
+      customPayment = false
     }) {
       setOrderId(
         completedOrderId || ""
@@ -120,12 +131,19 @@ export default function CheckoutSuccessClient({
         provider || ""
       );
 
-      removeCart();
-
-      window.setTimeout(
-        removeCart,
-        500
+      setIsCustomPayment(
+        customPayment
       );
+
+      // A custom payment wasn't paid from the cart, so leave the cart alone.
+      if (!customPayment) {
+        removeCart();
+
+        window.setTimeout(
+          removeCart,
+          500
+        );
+      }
 
       setStatus(message);
 
@@ -205,8 +223,14 @@ export default function CheckoutSuccessClient({
           provider:
             "stripe",
 
+          customPayment:
+            result.customPayment ===
+            true,
+
           message:
-            "Your payment was completed successfully and your order has been confirmed."
+            result.customPayment
+              ? "Your card payment was received. A receipt is on its way to your email."
+              : "Your payment was completed successfully and your order has been confirmed."
         });
       } catch (error) {
         console.error(
@@ -249,8 +273,13 @@ export default function CheckoutSuccessClient({
         provider:
           "paypal",
 
+        customPayment:
+          customFromUrl,
+
         message:
-          "Your PayPal payment was completed successfully and your order has been confirmed."
+          customFromUrl
+            ? "Your PayPal payment was received. A receipt is on its way to your email."
+            : "Your PayPal payment was completed successfully and your order has been confirmed."
       });
     }
 
@@ -309,13 +338,17 @@ export default function CheckoutSuccessClient({
           <div className="max-w-3xl rounded-[2rem] bg-white p-6 shadow-lift md:p-10">
             <div className="text-sm font-bold uppercase tracking-[.22em] text-black">
               {isComplete
-                ? "Order Complete"
+                ? isCustomPayment
+                  ? "Payment Received"
+                  : "Order Complete"
                 : "Processing Order"}
             </div>
 
             <h1 className="mt-3 font-display text-4xl font-bold text-black md:text-6xl">
               {isComplete
-                ? "Thank you for your order."
+                ? isCustomPayment
+                  ? "Thank you for your payment."
+                  : "Thank you for your order."
                 : "Please wait a moment."}
             </h1>
 
@@ -327,7 +360,9 @@ export default function CheckoutSuccessClient({
             displayOrderNumber ? (
               <div className="mt-8 rounded-[1.5rem] bg-brand-sand p-5">
                 <div className="text-xs font-bold uppercase tracking-[.18em] text-black/60">
-                  Order Number
+                  {isCustomPayment
+                    ? "Payment Number"
+                    : "Order Number"}
                 </div>
 
                 <div className="mt-2 font-display text-3xl font-bold text-black">

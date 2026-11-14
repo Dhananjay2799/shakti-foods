@@ -6,6 +6,9 @@ import {
   fulfillCheckoutSession
 } from "@/lib/fulfill-checkout";
 
+import { CUSTOM_PAYMENT_ORDER_TYPE } from "@/lib/custom-payment";
+import { cancelPendingCustomPayment } from "@/lib/custom-payment-server";
+
 import {
   createSupabaseAdmin
 } from "@/lib/supabase-admin";
@@ -306,6 +309,22 @@ export async function POST(request) {
           await abandonPendingStripeSubscription(
             session
           );
+
+          break;
+        }
+
+        /*
+         * "Pay a custom amount" reserves no inventory;
+         * just mark the unpaid order cancelled.
+         */
+        if (
+          orderType ===
+          CUSTOM_PAYMENT_ORDER_TYPE
+        ) {
+          await cancelPendingCustomPayment({
+            stripeSessionId:
+              session.id
+          });
 
           break;
         }
