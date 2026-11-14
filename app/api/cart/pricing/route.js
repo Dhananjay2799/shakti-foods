@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { findActivePriceTier } from "@/lib/price-tiers";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
@@ -71,50 +72,6 @@ function normalizeItems(rawItems) {
       quantity
     })
   );
-}
-
-function findMatchingTier(
-  tiers,
-  quantity
-) {
-  const matchingTiers = (
-    Array.isArray(tiers)
-      ? tiers
-      : []
-  )
-    .filter((tier) => {
-      if (tier.is_active !== true) {
-        return false;
-      }
-
-      const minQuantity =
-        Number(tier.min_quantity);
-
-      const maxQuantity =
-        tier.max_quantity == null
-          ? null
-          : Number(
-              tier.max_quantity
-            );
-
-      return (
-        Number.isSafeInteger(
-          minQuantity
-        ) &&
-        quantity >= minQuantity &&
-        (
-          maxQuantity === null ||
-          quantity <= maxQuantity
-        )
-      );
-    })
-    .sort(
-      (a, b) =>
-        Number(b.min_quantity) -
-        Number(a.min_quantity)
-    );
-
-  return matchingTiers[0] || null;
 }
 
 export async function POST(request) {
@@ -364,7 +321,7 @@ export async function POST(request) {
           }
 
           const matchingTier =
-            findMatchingTier(
+            findActivePriceTier(
               tiersByProductId.get(
                 productId
               ) || [],

@@ -1341,19 +1341,6 @@ export default function CheckoutPageContent({
                     </span>
                   </div>
 
-                  <div className="flex justify-between">
-                    <span>
-                      Estimated Tax
-                    </span>
-
-                    <span>
-                      {pricingReady
-                        ? formatPrice(
-                            estimate.tax
-                          )
-                        : "—"}
-                    </span>
-                  </div>
 
                   <div className="flex justify-between border-t border-black/10 pt-3 text-lg font-bold">
                     <span>

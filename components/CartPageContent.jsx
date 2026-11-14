@@ -559,19 +559,6 @@ export default function CartPageContent() {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-black/55">
-                    Estimated Tax
-                  </span>
-
-                  <span className="font-bold">
-                    {pricingReady
-                      ? formatPrice(
-                          estimate.tax
-                        )
-                      : "—"}
-                  </span>
-                </div>
               </div>
 
               <div className="my-6 border-t border-black/10" />
