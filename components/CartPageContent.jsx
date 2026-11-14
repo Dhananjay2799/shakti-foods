@@ -19,7 +19,10 @@ import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/data";
 import { getCheckoutEstimate, commerce } from "@/lib/commerce";
 
-export default function CartPageContent() {
+export default function CartPageContent({
+  // The store whose cart page this is (used while the cart is empty).
+  pageStorefront = "shakti_foods"
+} = {}) {
   const {
     items,
     increase,
@@ -29,7 +32,7 @@ export default function CartPageContent() {
   } = useCart();
 
   const cartStorefront =
-    items[0]?.storefront || "shakti_foods";
+    items[0]?.storefront || pageStorefront;
 
   const isEcoware =
     cartStorefront === "ecoware";
@@ -48,6 +51,12 @@ export default function CartPageContent() {
     isEcoware
       ? "/ecoware/checkout"
       : "/checkout";
+
+  // Pay an invoice or agreed price without products in the cart.
+  const customAmountHref =
+    isEcoware
+      ? "/ecoware/checkout/custom-amount"
+      : "/checkout/custom-amount";
 
   const [pricing, setPricing] = useState(null);
   const [pricingLoading, setPricingLoading] = useState(false);
@@ -206,13 +215,27 @@ export default function CartPageContent() {
               and they will appear here.
             </p>
 
-            <Link
-              href={continueShoppingHref}
-              className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-black px-7 py-4 text-sm font-black text-white transition hover:bg-black/80"
-            >
-              Shop Products
-              <ArrowRight size={17} />
-            </Link>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href={continueShoppingHref}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-black px-7 py-4 text-sm font-black text-white transition hover:bg-black/80 sm:w-auto"
+              >
+                Shop Products
+                <ArrowRight size={17} />
+              </Link>
+
+              <Link
+                href={customAmountHref}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-black/15 px-7 py-4 text-sm font-black text-black transition hover:border-black sm:w-auto"
+              >
+                Pay a Custom Amount
+              </Link>
+            </div>
+
+            <p className="mx-auto mt-5 max-w-sm text-[13px] leading-6 text-black/50">
+              Paying an invoice or a price we agreed on? You can pay the
+              amount directly. No cart needed.
+            </p>
           </div>
         </section>
       </main>
