@@ -30,7 +30,10 @@ import {
   trackEvent
 } from "@/lib/analytics";
 
-export default function CheckoutPageContent() {
+export default function CheckoutPageContent({
+  // The store whose checkout page this is (the cart may be empty).
+  pageStorefront = "shakti_foods"
+} = {}) {
   const {
     items
   } = useCart();
@@ -57,6 +60,13 @@ export default function CheckoutPageContent() {
     isEcoware
       ? "/ecoware/products"
       : "/products";
+
+  // Pay an invoice or agreed price without products in the cart.
+  const customAmountHref =
+    isEcoware ||
+    pageStorefront === "ecoware"
+      ? "/ecoware/checkout/custom-amount"
+      : "/checkout/custom-amount";
 
   const [
     customerDetails,
@@ -734,12 +744,25 @@ export default function CheckoutPageContent() {
                 Your cart is empty.
               </p>
 
-              <Link
-                href={productsHref}
-                className="mt-6 inline-flex rounded-full bg-black px-6 py-3 font-bold text-white"
-              >
-                Shop Products
-              </Link>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href={productsHref}
+                  className="inline-flex rounded-full bg-black px-6 py-3 font-bold text-white"
+                >
+                  Shop Products
+                </Link>
+
+                <Link
+                  href={customAmountHref}
+                  className="inline-flex rounded-full border border-black/15 px-6 py-3 font-bold text-black transition hover:border-black"
+                >
+                  Pay a Custom Amount
+                </Link>
+              </div>
+
+              <p className="mt-4 text-sm leading-6 text-black/60">
+                Paying an invoice or a price we agreed on? Use Pay a Custom Amount. No cart needed.
+              </p>
             </div>
           ) : (
             <div className="mt-8 grid gap-6 md:mt-10 md:gap-8 lg:grid-cols-[1fr_420px]">
@@ -1345,6 +1368,16 @@ export default function CheckoutPageContent() {
                         : "—"}
                     </span>
                   </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl bg-[#faf7f1] px-4 py-3 text-sm leading-6 text-black/70">
+                  Paying an invoice or a price we agreed on?{" "}
+                  <Link
+                    href={customAmountHref}
+                    className="font-bold text-black underline underline-offset-2"
+                  >
+                    Pay a custom amount
+                  </Link>
                 </div>
               </aside>
             </div>
