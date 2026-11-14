@@ -5,5 +5,5 @@ export const metadata = {
 };
 
 export default function EcowareCartPage() {
-  return <CartPageContent />;
+  return <CartPageContent pageStorefront="ecoware" />;
 }
