@@ -89,9 +89,11 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   });
 
   const nameError = customer.name.trim() ? "" : "Enter your full name.";
-  const emailError = EMAIL_PATTERN.test(customer.email.trim())
-    ? ""
-    : "Enter a valid email address for your receipt.";
+  // Optional: Stripe/PayPal ask for an email when it's blank.
+  const emailError =
+    customer.email.trim() === "" || EMAIL_PATTERN.test(customer.email.trim())
+      ? ""
+      : "Enter a valid email address, or leave it blank.";
   const formValid = !amountError && !nameError && !emailError;
   const busy = cardLoading || paypalLoading;
 
@@ -398,8 +400,8 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                       autoComplete="email"
                       value={customer.email}
                       onChange={(event) => updateCustomer("email", event.target.value)}
-                      placeholder="Email address (for your receipt)"
-                      aria-label="Email address"
+                      placeholder="Email (optional, for your receipt)"
+                      aria-label="Email (optional)"
                       aria-invalid={emailInvalid}
                       className={`${INPUT} ${emailInvalid ? "border-red-500" : ""}`}
                     />
