@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/data";
 import { getCheckoutEstimate, shippingRateLines } from "@/lib/commerce";
+import { PICKUP_LOCATION } from "@/lib/delivery";
 
 export default function CartPageContent({
   // The store whose cart page this is (used while the cart is empty).
@@ -581,6 +582,10 @@ export default function CartPageContent({
                       : "—"}
                   </span>
                 </div>
+
+                <p className="text-right text-xs text-black/50">
+                  Or choose free local pickup ({PICKUP_LOCATION}) at checkout.
+                </p>
 
               </div>
 

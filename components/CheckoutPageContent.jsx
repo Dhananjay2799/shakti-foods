@@ -26,6 +26,12 @@ import {
 } from "@/lib/commerce";
 
 import {
+  DELIVERY_PICKUP,
+  DELIVERY_SHIPPING,
+  PICKUP_LOCATION
+} from "@/lib/delivery";
+
+import {
   productToGaItem,
   trackEvent
 } from "@/lib/analytics";
@@ -255,9 +261,25 @@ export default function CheckoutPageContent({
    * The customer-facing estimate now uses
    * the authoritative tier-adjusted subtotal.
    */
-  const estimate =
+  // Shipping or free local pickup, chosen below before paying.
+  const [
+    deliveryMethod,
+    setDeliveryMethod
+  ] = useState(DELIVERY_SHIPPING);
+
+  const isPickup =
+    deliveryMethod ===
+    DELIVERY_PICKUP;
+
+  const shippingOptionPrice =
     getCheckoutEstimate(
       subtotal
+    ).shipping;
+
+  const estimate =
+    getCheckoutEstimate(
+      subtotal,
+      { pickup: isPickup }
     );
 
   const pricingReady =
@@ -332,6 +354,8 @@ export default function CheckoutPageContent({
 
                 items:
                   checkoutItems,
+
+                deliveryMethod,
 
                 customer: {
                   name:
@@ -509,6 +533,8 @@ export default function CheckoutPageContent({
 
                 items:
                   checkoutItems,
+
+                deliveryMethod,
 
                 customer: {
                   name:
@@ -816,21 +842,23 @@ export default function CheckoutPageContent({
                     placeholder="Phone number (optional)"
                   />
 
-                  <input
-                    type="text"
-                    autoComplete="street-address"
-                    value={
-                      customerDetails.shippingAddress
-                    }
-                    onChange={(event) =>
-                      updateCustomerField(
-                        "shippingAddress",
-                        event.target.value
-                      )
-                    }
-                    className="rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black"
-                    placeholder="Shipping address"
-                  />
+                  {!isPickup ? (
+                    <input
+                      type="text"
+                      autoComplete="street-address"
+                      value={
+                        customerDetails.shippingAddress
+                      }
+                      onChange={(event) =>
+                        updateCustomerField(
+                          "shippingAddress",
+                          event.target.value
+                        )
+                      }
+                      className="rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black"
+                      placeholder="Shipping address"
+                    />
+                  ) : null}
 
                   <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
                     <input
@@ -855,6 +883,79 @@ export default function CheckoutPageContent({
                     </span>
                   </label>
                 </div>
+
+                <fieldset className="mt-8 min-w-0">
+                  <legend className="font-display text-2xl font-bold text-black">
+                    Delivery
+                  </legend>
+
+                  <p className="mt-1 text-sm leading-6 text-black/60">
+                    Choose shipping or free pickup. Card and PayPal charge for
+                    the option you pick.
+                  </p>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {[
+                      {
+                        value: DELIVERY_SHIPPING,
+                        title: "Ship to my address",
+                        price: !pricingReady
+                          ? "—"
+                          : shippingOptionPrice === 0
+                            ? "Free"
+                            : formatPrice(shippingOptionPrice),
+                        detail:
+                          "Ships within 3 business days. You'll enter your address when you pay."
+                      },
+                      {
+                        value: DELIVERY_PICKUP,
+                        title: "Local pickup",
+                        price: "Free",
+                        detail: `Pick up in ${PICKUP_LOCATION}. We'll contact you when it's ready.`
+                      }
+                    ].map((option) => {
+                      const selected =
+                        deliveryMethod === option.value;
+
+                      return (
+                        <label
+                          key={option.value}
+                          className={`flex min-w-0 cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
+                            selected
+                              ? "border-black bg-[#faf7f1]"
+                              : "border-black/10 hover:border-black/30"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="delivery-method"
+                            value={option.value}
+                            checked={selected}
+                            disabled={loading || paypalLoading}
+                            onChange={() =>
+                              setDeliveryMethod(option.value)
+                            }
+                            className="mt-1 h-4 w-4 shrink-0 accent-black"
+                          />
+
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-baseline justify-between gap-3">
+                              <span className="font-bold text-black">
+                                {option.title}
+                              </span>
+                              <span className="shrink-0 font-bold text-black">
+                                {option.price}
+                              </span>
+                            </span>
+                            <span className="mt-1 block text-sm leading-5 text-black/60">
+                              {option.detail}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
 
                 <div className="mt-8 rounded-[1.5rem] bg-brand-sand p-5">
                   <div className="flex items-center gap-2 font-bold text-black">
@@ -966,6 +1067,7 @@ export default function CheckoutPageContent({
 
                       forceReRender={[
                         subtotal,
+                        deliveryMethod,
                         estimate.shipping,
                         estimate.tax,
                         estimate.total
@@ -1322,7 +1424,9 @@ export default function CheckoutPageContent({
 
                   <div className="flex justify-between">
                     <span>
-                      Estimated Shipping
+                      {isPickup
+                        ? "Local pickup"
+                        : "Shipping"}
                     </span>
 
                     <span>
@@ -1340,7 +1444,7 @@ export default function CheckoutPageContent({
 
                   <div className="flex justify-between border-t border-black/10 pt-3 text-lg font-bold">
                     <span>
-                      Estimated Total
+                      Total
                     </span>
 
                     <span>
