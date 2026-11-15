@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isInventoryProductId } from "@/lib/checkout-adjustment";
 import {
   createShipment,
   purchaseLabel,
@@ -21,7 +22,7 @@ async function calculateOrderParcel(
   orderId
 ) {
   const {
-    data: orderItems,
+    data: allOrderItems,
     error: orderItemsError,
   } = await supabase
     .from("order_items")
@@ -38,7 +39,12 @@ async function calculateOrderParcel(
     );
   }
 
-  if (!orderItems?.length) {
+  // Fee lines and custom payments have nothing to put in a box.
+  const orderItems = (allOrderItems || []).filter((item) =>
+    isInventoryProductId(item.product_id)
+  );
+
+  if (!orderItems.length) {
     throw new Error(
       "This order does not contain any products."
     );

@@ -1,4 +1,8 @@
 import Stripe from "stripe";
+import {
+  applyCheckoutAdjustment,
+  readAdjustmentRequest
+} from "@/lib/checkout-adjustment-server";
 import { DELIVERY_PICKUP } from "@/lib/delivery";
 import { stripeKeyForStorefront } from "@/lib/stripe-storefront";
 import { NextResponse } from "next/server";
@@ -160,19 +164,53 @@ export async function POST(request) {
       );
     }
 
-    const checkout =
+    // "Adjust amount" (admin code): check it before reserving stock.
+    let adjustment = null;
+
+    try {
+      adjustment =
+        readAdjustmentRequest(
+          body?.adjustment
+        );
+    } catch (adjustmentError) {
+      return NextResponse.json(
+        {
+          message:
+            adjustmentError.message,
+          adjustmentRejected: true
+        },
+        {
+          status:
+            adjustmentError.status ||
+            400
+        }
+      );
+    }
+
+    const prepared =
       await prepareCheckout(
         rawCartItems,
         storefront,
         body?.deliveryMethod
       );
 
+    reservationId =
+      prepared.reservationId;
+
+    supabase = createSupabaseAdmin();
+
+    const checkout =
+      applyCheckoutAdjustment(
+        prepared,
+        adjustment
+      );
+
     const isPickup =
       checkout.deliveryMethod ===
       DELIVERY_PICKUP;
 
-    reservationId =
-      checkout.reservationId;
+    const discountCents =
+      checkout.discountCents;
 
     const subtotalCents =
       checkout.subtotalCents;
@@ -189,7 +227,18 @@ export async function POST(request) {
     const lineItems =
       checkout.stripeLineItems;
 
-    supabase = createSupabaseAdmin();
+    // A discount is a one-time Stripe coupon for this session only.
+    const discountCoupon =
+      discountCents > 0
+        ? await stripe.coupons.create({
+            amount_off: discountCents,
+            currency:
+              CHECKOUT_CURRENCY.toLowerCase(),
+            duration: "once",
+            max_redemptions: 1,
+            name: checkout.adjustment.label
+          })
+        : null;
 
     const stripeSessionExpiresAt =
       Math.floor(
@@ -218,7 +267,14 @@ export async function POST(request) {
             line_items: lineItems,
             expires_at: stripeSessionExpiresAt,
 
-            allow_promotion_codes: true,
+            // Stripe allows either our discount or customer promo codes.
+            ...(discountCoupon
+              ? {
+                  discounts: [
+                    { coupon: discountCoupon.id }
+                  ]
+                }
+              : { allow_promotion_codes: true }),
 
             phone_number_collection: {
               enabled: true
@@ -285,6 +341,16 @@ export async function POST(request) {
                 "online-order",
               delivery_method:
                 checkout.deliveryMethod,
+              ...(checkout.adjustment
+                ? {
+                    adjustment_label:
+                      checkout.adjustment.label,
+                    adjustment_fee_cents:
+                      String(checkout.adjustment.feeCents),
+                    adjustment_discount_cents:
+                      String(checkout.adjustment.discountCents)
+                  }
+                : {}),
 
               reservation_id:
                 String(reservationId)
@@ -410,6 +476,9 @@ export async function POST(request) {
 
         tax_amount:
           taxAmountCents,
+
+        discount_amount:
+          discountCents,
 
         total_amount:
           totalAmountCents,
