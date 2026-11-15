@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 
-import SectionHeading from "@/components/SectionHeading";
 import AdjustAmountPanel, { useCheckoutAdjustment } from "@/components/AdjustAmountPanel";
 import { formatPrice } from "@/lib/data";
 import { commerce, shippingRateLines } from "@/lib/commerce";
@@ -24,7 +23,7 @@ import {
 } from "@/lib/custom-payment";
 
 const INPUT =
-  "w-full rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black";
+  "w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-black outline-none transition placeholder:text-black/40 focus:border-black";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function money(cents) {
@@ -36,12 +35,11 @@ function money(cents) {
  * adding products to the cart. Linked from the checkout page.
  *
  * The page can be pre-filled from its link, e.g.
- *   /checkout/custom-amount?amount=250&note=Invoice%201042&shipping=0&tax=0
+ *   /checkout/custom-amount?amount=250&note=Invoice%201042&shipping=1&tax=0
  */
 export default function CustomPaymentPageContent({ storefront = "shakti_foods" }) {
   const isEcoware = storefront === "ecoware";
   const prefix = isEcoware ? "/ecoware" : "";
-  const brandName = isEcoware ? "Simpli Ecoware" : "Shakti Foods";
   // Same rule as the cart checkout (see CheckoutPageContent).
   const showPayPal = !isEcoware && isPayPalCheckoutVisible();
   // Shakti Foods charges no sales tax; only Ecoware offers "Add sales tax".
@@ -51,7 +49,8 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
 
   const [amountInput, setAmountInput] = useState("");
   const [note, setNote] = useState("");
-  const [includeShipping, setIncludeShipping] = useState(true);
+  // Off until the customer ticks it (or the link says shipping=1).
+  const [includeShipping, setIncludeShipping] = useState(false);
   const [includeTax, setIncludeTax] = useState(true);
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
   const [showErrors, setShowErrors] = useState(false);
@@ -60,6 +59,9 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   const [cardLoading, setCardLoading] = useState(false);
   const [paypalLoading, setPayPalLoading] = useState(false);
   const paypalOrderRef = useRef("");
+  // Phone: the summary starts folded into one line.
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [ratesOpen, setRatesOpen] = useState(false);
 
   // Pre-fill from the link, once.
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
     }
 
     if (presetNote) setNote(cleanCustomPaymentNote(presetNote));
-    if (searchParams.get("shipping") === "0") setIncludeShipping(false);
+    if (searchParams.get("shipping") === "1") setIncludeShipping(true);
     if (searchParams.get("tax") === "0") setIncludeTax(false);
 
     if (searchParams.get("cancelled") === "1") {
@@ -281,6 +283,20 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   const nameInvalid = showErrors && Boolean(nameError);
   const emailInvalid = showErrors && Boolean(emailError);
   const totalLabel = amountError ? "—" : money(totalCents);
+  const cleanNote = cleanCustomPaymentNote(note);
+
+  // Same look as the checkout page.
+  const theme = isEcoware
+    ? {
+        button: "bg-[#27802f] hover:bg-[#1f6a26]",
+        check: "accent-[#27802f]",
+        stickyTop: "lg:top-40"
+      }
+    : {
+        button: "bg-[#d71920] hover:bg-[#b8141a]",
+        check: "accent-[#d71920]",
+        stickyTop: "lg:top-28"
+      };
 
   // The Ecoware layout already provides the page's <main>.
   const Wrapper = isEcoware ? "div" : "main";
@@ -291,39 +307,56 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
         isEcoware ? "bg-brand-radial pt-36 sm:pt-40 lg:pt-44" : "bg-white pt-24 md:pt-28"
       }`}
     >
-      <section className="section-pad py-14 md:py-20">
+      <section className="section-pad py-8 md:py-10">
         <div className="container-brand">
-          <Link
-            href={`${prefix}/checkout`}
-            className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-black/70 transition hover:text-black"
-          >
-            <ArrowLeft size={16} aria-hidden="true" />
-            Back to checkout
-          </Link>
+          <h1 className="font-display text-[2rem] font-bold leading-tight text-black sm:text-4xl md:text-5xl">
+            Pay a Custom Amount
+          </h1>
+          <p className="mt-2 text-base text-black/75 md:text-lg">
+            Pay an invoice or an agreed amount by {showPayPal ? "card or PayPal" : "card"}.
+          </p>
 
-          <SectionHeading
-            eyebrow={brandName}
-            title="Pay a Custom Amount"
-            text={`Paying an invoice or a price we agreed on? Enter the amount below and pay securely by ${
-              showPayPal ? "card or PayPal" : "card"
-            }. No cart needed.`}
-          />
+          {notice ? (
+            <div
+              role="status"
+              className="mt-4 rounded-xl bg-[#faf7f1] px-4 py-3 text-sm text-black"
+            >
+              {notice}
+            </div>
+          ) : null}
 
-          <div className="mt-8 grid grid-cols-1 gap-6 md:mt-10 md:gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
-            <div className="min-w-0 rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
-              <div className="font-display text-3xl font-bold text-black">Payment Details</div>
+          {/*
+           * Desktop: payment details on the left; one sticky card on the
+           * right with the summary and the payment buttons.
+           * Phone: the right card becomes "display: contents", so its parts
+           * stack as summary (folded) → details → pay.
+           */}
+          <div className="mt-5 flex flex-col gap-4 md:mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-6">
+            <section
+              aria-labelledby="custom-details-heading"
+              className="order-2 min-w-0 rounded-[1.5rem] border border-black/10 bg-white p-4 md:p-6 lg:order-none"
+            >
+              <h2
+                id="custom-details-heading"
+                className="font-display text-2xl font-bold text-black md:text-3xl"
+              >
+                Payment Details
+              </h2>
 
-              <div className="mt-6 grid grid-cols-1 gap-5">
-                <div>
-                  <label htmlFor="custom-amount" className="text-sm font-bold text-black">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-5">
+                <div className="min-w-0">
+                  <label
+                    htmlFor="custom-amount"
+                    className="mb-1.5 block text-sm font-bold text-black md:text-base"
+                  >
                     Amount (USD)
                   </label>
                   <div
-                    className={`mt-2 flex items-center rounded-2xl border bg-white focus-within:border-black ${
-                      amountInvalid ? "border-red-500" : "border-black/10"
+                    className={`flex items-center rounded-xl border bg-white transition focus-within:border-black ${
+                      amountInvalid ? "border-red-500" : "border-black/15"
                     }`}
                   >
-                    <span aria-hidden="true" className="pl-4 text-2xl font-bold text-black/50">
+                    <span aria-hidden="true" className="pl-4 text-lg font-bold leading-6 text-black/60">
                       $
                     </span>
                     <input
@@ -338,21 +371,23 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                       }}
                       placeholder="0.00"
                       aria-invalid={amountInvalid}
-                      aria-describedby="custom-amount-help"
-                      className="w-full min-w-0 flex-1 rounded-2xl bg-transparent px-2 py-4 text-2xl font-bold text-black outline-none"
+                      aria-describedby={amountInvalid ? "custom-amount-error" : undefined}
+                      className="w-full min-w-0 flex-1 rounded-xl bg-transparent py-3 pl-1.5 pr-4 text-lg font-bold leading-6 text-black outline-none placeholder:text-black/30"
                     />
                   </div>
-                  <p
-                    id="custom-amount-help"
-                    className={`mt-2 text-sm ${amountInvalid ? "font-semibold text-red-600" : "text-black/55"}`}
-                  >
-                    {amountInvalid ? amountError : "The amount before shipping and tax."}
-                  </p>
+                  {amountInvalid ? (
+                    <p id="custom-amount-error" className="mt-1.5 text-sm font-semibold text-red-600">
+                      {amountError}
+                    </p>
+                  ) : null}
                 </div>
 
-                <div>
-                  <label htmlFor="custom-note" className="text-sm font-bold text-black">
-                    What is this payment for? <span className="font-normal text-black/50">(optional)</span>
+                <div className="min-w-0">
+                  <label
+                    htmlFor="custom-note"
+                    className="mb-1.5 block text-sm font-bold text-black md:text-base"
+                  >
+                    Payment note <span className="font-normal text-black/60">(optional)</span>
                   </label>
                   <input
                     id="custom-note"
@@ -360,50 +395,72 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                     value={note}
                     maxLength={CUSTOM_PAYMENT_NOTE_MAX_LENGTH}
                     onChange={(event) => setNote(event.target.value)}
-                    placeholder="e.g. Invoice #1042 or 5 cases of plates"
-                    className={`mt-2 ${INPUT}`}
+                    placeholder="e.g. Invoice #1042"
+                    className={INPUT}
                   />
                 </div>
+              </div>
 
-                <fieldset className="grid min-w-0 grid-cols-1 gap-3">
-                  <legend className="text-sm font-bold text-black">
-                    {taxOption ? "Shipping and tax" : "Shipping"}
-                  </legend>
-
-                  <label className="mt-2 flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
+              <div className="mt-5 border-t border-black/10 pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <label className="flex cursor-pointer items-center gap-3 font-bold text-black md:text-lg">
                     <input
                       type="checkbox"
                       checked={includeShipping}
                       onChange={(event) => setIncludeShipping(event.target.checked)}
-                      className="mt-1 h-4 w-4 shrink-0"
+                      className={`h-5 w-5 shrink-0 rounded ${theme.check}`}
                     />
-                    <span className="text-sm leading-6 text-black/70">
-                      <span className="block font-bold text-black">Add shipping</span>
-                      {shippingRateLines().join(". ")}. You&apos;ll enter your address on
-                      the next step.
-                    </span>
+                    Add shipping
                   </label>
 
-                  {taxOption ? (
-                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
-                      <input
-                        type="checkbox"
-                        checked={includeTax}
-                        onChange={(event) => setIncludeTax(event.target.checked)}
-                        className="mt-1 h-4 w-4 shrink-0"
-                      />
-                      <span className="text-sm leading-6 text-black/70">
-                        <span className="block font-bold text-black">Add sales tax</span>
-                        {CUSTOM_PAYMENT_TAX_PERCENT}% sales tax on the amount and shipping.
-                      </span>
-                    </label>
-                  ) : null}
-                </fieldset>
+                  <button
+                    type="button"
+                    onClick={() => setRatesOpen((open) => !open)}
+                    aria-expanded={ratesOpen}
+                    aria-controls="custom-shipping-rates"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-black underline underline-offset-4 md:text-base"
+                  >
+                    <ChevronDown
+                      size={16}
+                      aria-hidden="true"
+                      className={`transition ${ratesOpen ? "rotate-180" : ""}`}
+                    />
+                    Shipping rates
+                  </button>
+                </div>
 
-                <div className="grid grid-cols-1 gap-4 border-t border-black/10 pt-5">
-                  <div className="text-sm font-bold text-black">Your details</div>
+                {ratesOpen ? (
+                  <ul id="custom-shipping-rates" className="mt-2 grid gap-1 pl-8 text-sm text-black/70">
+                    {shippingRateLines().map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                ) : null}
 
-                  <div>
+                {includeShipping ? (
+                  <p className="mt-2 pl-8 text-sm text-black/60">
+                    You&apos;ll enter the shipping address on the payment page.
+                  </p>
+                ) : null}
+
+                {taxOption ? (
+                  <label className="mt-3 flex cursor-pointer items-center gap-3 font-bold text-black md:text-lg">
+                    <input
+                      type="checkbox"
+                      checked={includeTax}
+                      onChange={(event) => setIncludeTax(event.target.checked)}
+                      className={`h-5 w-5 shrink-0 rounded ${theme.check}`}
+                    />
+                    Add sales tax ({CUSTOM_PAYMENT_TAX_PERCENT}%)
+                  </label>
+                ) : null}
+              </div>
+
+              <div className="mt-5 border-t border-black/10 pt-4">
+                <h3 className="font-display text-xl font-bold text-black md:text-2xl">Your details</h3>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-5">
+                  <div className="min-w-0">
                     <input
                       type="text"
                       autoComplete="name"
@@ -415,23 +472,23 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                       className={`${INPUT} ${nameInvalid ? "border-red-500" : ""}`}
                     />
                     {nameInvalid ? (
-                      <p className="mt-2 text-sm font-semibold text-red-600">{nameError}</p>
+                      <p className="mt-1.5 text-sm font-semibold text-red-600">{nameError}</p>
                     ) : null}
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <input
                       type="email"
                       autoComplete="email"
                       value={customer.email}
                       onChange={(event) => updateCustomer("email", event.target.value)}
-                      placeholder="Email (optional, for your receipt)"
+                      placeholder="Email (optional)"
                       aria-label="Email (optional)"
                       aria-invalid={emailInvalid}
                       className={`${INPUT} ${emailInvalid ? "border-red-500" : ""}`}
                     />
                     {emailInvalid ? (
-                      <p className="mt-2 text-sm font-semibold text-red-600">{emailError}</p>
+                      <p className="mt-1.5 text-sm font-semibold text-red-600">{emailError}</p>
                     ) : null}
                   </div>
 
@@ -440,31 +497,105 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                     autoComplete="tel"
                     value={customer.phone}
                     onChange={(event) => updateCustomer("phone", event.target.value)}
-                    placeholder="Phone number (optional)"
-                    aria-label="Phone number (optional)"
-                    className={INPUT}
+                    placeholder="Phone (optional)"
+                    aria-label="Phone (optional)"
+                    className={`${INPUT} sm:col-span-2`}
                   />
                 </div>
               </div>
+            </section>
 
-              <div className="mt-8 rounded-[1.5rem] bg-brand-sand p-5">
-                <div className="flex items-center gap-2 font-bold text-black">
-                  <Lock size={18} aria-hidden="true" />
-                  Secure Payment
+            <div
+              className={`contents lg:sticky lg:block lg:rounded-[1.5rem] lg:border lg:border-black/10 lg:bg-white lg:p-6 ${theme.stickyTop}`}
+            >
+              <section aria-label="Payment summary" className="order-1 min-w-0 lg:order-none">
+                <button
+                  type="button"
+                  onClick={() => setSummaryOpen((open) => !open)}
+                  aria-expanded={summaryOpen}
+                  aria-controls="custom-summary-details"
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-black/10 bg-[#faf7f1] px-4 py-3 text-left lg:hidden"
+                >
+                  <span className="font-bold text-black">Payment Summary</span>
+                  <span className="flex items-center gap-2 font-bold text-black">
+                    {totalLabel}
+                    <ChevronDown
+                      size={18}
+                      aria-hidden="true"
+                      className={`transition ${summaryOpen ? "rotate-180" : ""}`}
+                    />
+                  </span>
+                </button>
+
+                <h2 className="hidden font-display text-3xl font-bold text-black lg:block">
+                  Payment Summary
+                </h2>
+
+                <div
+                  id="custom-summary-details"
+                  className={`${
+                    summaryOpen ? "block" : "hidden"
+                  } mt-2 rounded-xl border border-black/10 bg-white p-4 lg:mt-5 lg:block lg:rounded-none lg:border-0 lg:p-0`}
+                >
+                  {cleanNote ? (
+                    <p className="mb-4 break-words rounded-xl bg-[#faf7f1] px-4 py-2.5 text-sm text-black/70">
+                      {cleanNote}
+                    </p>
+                  ) : null}
+
+                  <dl className="grid gap-2.5 text-black md:text-lg">
+                    <div className="flex justify-between gap-4">
+                      <dt>Amount</dt>
+                      <dd>{amountError ? "—" : money(totals.amountCents)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Shipping</dt>
+                      <dd className={includeShipping ? "" : "text-black/55"}>
+                        {!includeShipping
+                          ? "Not added"
+                          : amountError
+                            ? "—"
+                            : totals.shippingCents === 0
+                              ? "Free"
+                              : money(totals.shippingCents)}
+                      </dd>
+                    </div>
+                    {taxOption ? (
+                      <div className="flex justify-between gap-4">
+                        <dt>Sales tax ({CUSTOM_PAYMENT_TAX_PERCENT}%)</dt>
+                        <dd className={includeTax ? "" : "text-black/55"}>
+                          {!includeTax ? "Not added" : amountError ? "—" : money(totals.taxCents)}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {!amountError && adjust.feeCents > 0 ? (
+                      <div className="flex justify-between gap-4">
+                        <dt>{adjust.label}</dt>
+                        <dd>{money(adjust.feeCents)}</dd>
+                      </div>
+                    ) : null}
+                    {!amountError && adjust.discountCents > 0 ? (
+                      <div className="flex justify-between gap-4 font-bold text-green-700">
+                        <dt>{adjust.label}</dt>
+                        <dd>-{money(adjust.discountCents)}</dd>
+                      </div>
+                    ) : null}
+                    {!amountError && adjust.error ? (
+                      <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        Adjustment not applied: {adjust.error}
+                      </div>
+                    ) : null}
+                    <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-black/10 pt-3">
+                      <dt className="text-xl font-bold md:text-2xl">Total</dt>
+                      <dd className="text-xl font-bold md:text-2xl">{totalLabel}</dd>
+                    </div>
+                  </dl>
                 </div>
+              </section>
 
-                <p className="mt-2 text-sm leading-6 text-black">
-                  Card payments go through Stripe. We never see or store your card details.
-                </p>
-
-                {notice ? (
-                  <div role="status" className="mt-4 rounded-2xl bg-white/70 px-4 py-3 text-sm text-black">
-                    {notice}
-                  </div>
-                ) : null}
-
+              <section aria-label="Payment" className="order-3 min-w-0 lg:order-none lg:mt-5">
                 {error ? (
-                  <div role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-black">
+                  <div role="alert" className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-black">
                     {error}
                   </div>
                 ) : null}
@@ -473,7 +604,7 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                   type="button"
                   onClick={payByCard}
                   disabled={busy}
-                  className="mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`w-full rounded-xl px-6 py-3.5 text-lg font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${theme.button}`}
                 >
                   {cardLoading
                     ? "Opening secure payment..."
@@ -482,16 +613,8 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                       : `Pay ${totalLabel} with Card`}
                 </button>
 
-                {showPayPal ? (
-                  <>
-                    <div className="my-5 flex items-center gap-3">
-                      <div className="h-px flex-1 bg-black/10" />
-                      <span className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">
-                        Or pay with
-                      </span>
-                      <div className="h-px flex-1 bg-black/10" />
-                    </div>
-
+                <div className="mt-3">
+                  {showPayPal ? (
                     <PayPalScriptProvider
                       options={{
                         clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "",
@@ -502,7 +625,14 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                       }}
                     >
                       <PayPalButtons
-                        style={{ layout: "horizontal", shape: "pill", label: "paypal", height: 48, tagline: false }}
+                        style={{
+                          layout: "horizontal",
+                          shape: "rect",
+                          color: "gold",
+                          label: "paypal",
+                          height: 48,
+                          tagline: false
+                        }}
                         disabled={busy}
                         forceReRender={[
                           totalCents,
@@ -522,25 +652,40 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                         onError={(err) => {
                           setPayPalLoading(false);
                           setError(
-                            err instanceof Error ? `PayPal error: ${err.message}` : "PayPal error. Please try again or pay by card."
+                            err instanceof Error
+                              ? `PayPal error: ${err.message}`
+                              : "PayPal error. Please try again or pay by card."
                           );
                         }}
                       />
                     </PayPalScriptProvider>
-                  </>
-                ) : null}
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      aria-label="PayPal payments coming soon"
+                      className="w-full cursor-not-allowed rounded-xl bg-[#FFC439] px-6 py-2.5 text-center text-[#003087] opacity-85"
+                    >
+                      <span className="block text-xl font-extrabold italic">PayPal</span>
+                      <span className="block text-xs font-semibold not-italic">
+                        Coming soon. Please pay by card.
+                      </span>
+                    </button>
+                  )}
+                </div>
 
-                <p className="mt-5 text-center text-xs leading-5 text-black/55">
-                  By paying, you agree to our{" "}
-                  <Link href={`${prefix}/terms`} className="font-semibold text-black underline underline-offset-2">
+                <nav
+                  aria-label="Store policies"
+                  className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-black/10 pt-4 text-sm text-black/80"
+                >
+                  <Link href={`${prefix}/terms`} className="underline underline-offset-2 hover:text-black">
                     Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href={`${prefix}/privacy`} className="font-semibold text-black underline underline-offset-2">
+                  </Link>
+                  <span aria-hidden="true">|</span>
+                  <Link href={`${prefix}/privacy`} className="underline underline-offset-2 hover:text-black">
                     Privacy Policy
                   </Link>
-                  .
-                </p>
+                </nav>
 
                 <AdjustAmountPanel
                   token={adjust.token}
@@ -559,66 +704,8 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                   totalCents={totalCents}
                   disabled={busy || Boolean(amountError)}
                 />
-              </div>
+              </section>
             </div>
-
-            <aside className="h-fit min-w-0 rounded-[2rem] bg-white p-5 shadow-soft md:p-6 lg:sticky lg:top-32">
-              <div className="font-display text-3xl font-bold text-black">Payment Summary</div>
-
-              {cleanCustomPaymentNote(note) ? (
-                <p className="mt-4 break-words rounded-2xl bg-[#faf7f1] px-4 py-3 text-sm text-black/70">
-                  {cleanCustomPaymentNote(note)}
-                </p>
-              ) : null}
-
-              <dl className="mt-6 grid gap-3 text-black">
-                <div className="flex justify-between gap-4">
-                  <dt>Amount</dt>
-                  <dd>{amountError ? "—" : money(totals.amountCents)}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Shipping</dt>
-                  <dd className={includeShipping ? "" : "text-black/45"}>
-                    {!includeShipping
-                      ? "Not added"
-                      : amountError
-                        ? "—"
-                        : totals.shippingCents === 0
-                          ? "Free"
-                          : money(totals.shippingCents)}
-                  </dd>
-                </div>
-                {taxOption ? (
-                  <div className="flex justify-between gap-4">
-                    <dt>Sales tax ({CUSTOM_PAYMENT_TAX_PERCENT}%)</dt>
-                    <dd className={includeTax ? "" : "text-black/45"}>
-                      {!includeTax ? "Not added" : amountError ? "—" : money(totals.taxCents)}
-                    </dd>
-                  </div>
-                ) : null}
-                {!amountError && adjust.feeCents > 0 ? (
-                  <div className="flex justify-between gap-4">
-                    <dt>{adjust.label}</dt>
-                    <dd>{money(adjust.feeCents)}</dd>
-                  </div>
-                ) : null}
-                {!amountError && adjust.discountCents > 0 ? (
-                  <div className="flex justify-between gap-4 font-bold text-green-700">
-                    <dt>{adjust.label}</dt>
-                    <dd>-{money(adjust.discountCents)}</dd>
-                  </div>
-                ) : null}
-                {!amountError && adjust.error ? (
-                  <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Adjustment not applied: {adjust.error}
-                  </div>
-                ) : null}
-                <div className="flex justify-between gap-4 border-t border-black/10 pt-3 text-lg font-bold">
-                  <dt>Total</dt>
-                  <dd>{totalLabel}</dd>
-                </div>
-              </dl>
-            </aside>
           </div>
         </div>
       </section>
