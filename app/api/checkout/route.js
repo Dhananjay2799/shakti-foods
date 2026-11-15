@@ -219,10 +219,13 @@ export async function POST(request) {
               allowed_countries: ["US"]
             },
 
+            // Shakti Foods charges no sales tax.
             automatic_tax: {
               enabled:
+                storefront !==
+                  "shakti_foods" &&
                 process.env.STRIPE_AUTOMATIC_TAX ===
-                "true"
+                  "true"
             },
 
             shipping_options: [

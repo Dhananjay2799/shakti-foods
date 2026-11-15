@@ -8,7 +8,7 @@ import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 import SectionHeading from "@/components/SectionHeading";
 import { formatPrice } from "@/lib/data";
-import { commerce } from "@/lib/commerce";
+import { commerce, shippingRateLines } from "@/lib/commerce";
 import { isPayPalCheckoutVisible } from "@/lib/paypal-availability";
 import { trackEvent, trackPurchaseOnce } from "@/lib/analytics";
 import {
@@ -16,6 +16,7 @@ import {
   CUSTOM_PAYMENT_PRODUCT_ID,
   CUSTOM_PAYMENT_TAX_PERCENT,
   calculateCustomPayment,
+  customPaymentAllowsTax,
   cleanCustomPaymentNote,
   customAmountError,
   parseAmountToCents
@@ -42,6 +43,8 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   const brandName = isEcoware ? "Simpli Ecoware" : "Shakti Foods";
   // Same rule as the cart checkout (see CheckoutPageContent).
   const showPayPal = !isEcoware && isPayPalCheckoutVisible();
+  // Shakti Foods charges no sales tax; only Ecoware offers "Add sales tax".
+  const taxOption = customPaymentAllowsTax(storefront);
 
   const searchParams = useSearchParams();
 
@@ -81,7 +84,8 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   const totals = calculateCustomPayment({
     amountCents: amountError ? 0 : amountCents,
     includeShipping,
-    includeTax
+    includeTax: taxOption && includeTax,
+    storefront
   });
 
   const nameError = customer.name.trim() ? "" : "Enter your full name.";
@@ -101,7 +105,7 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
       amount: amountInput,
       note: cleanCustomPaymentNote(note),
       includeShipping,
-      includeTax,
+      includeTax: taxOption && includeTax,
       customer: {
         name: customer.name.trim(),
         email: customer.email.trim().toLowerCase(),
@@ -335,7 +339,9 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                 </div>
 
                 <fieldset className="grid min-w-0 grid-cols-1 gap-3">
-                  <legend className="text-sm font-bold text-black">Shipping and tax</legend>
+                  <legend className="text-sm font-bold text-black">
+                    {taxOption ? "Shipping and tax" : "Shipping"}
+                  </legend>
 
                   <label className="mt-2 flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
                     <input
@@ -346,24 +352,25 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                     />
                     <span className="text-sm leading-6 text-black/70">
                       <span className="block font-bold text-black">Add shipping</span>
-                      {formatPrice(commerce.standardShipping)} standard shipping, free on{" "}
-                      {formatPrice(commerce.freeShippingThreshold)} or more. You&apos;ll enter your
-                      address on the next step.
+                      {shippingRateLines().join(". ")}. You&apos;ll enter your address on
+                      the next step.
                     </span>
                   </label>
 
-                  <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
-                    <input
-                      type="checkbox"
-                      checked={includeTax}
-                      onChange={(event) => setIncludeTax(event.target.checked)}
-                      className="mt-1 h-4 w-4 shrink-0"
-                    />
-                    <span className="text-sm leading-6 text-black/70">
-                      <span className="block font-bold text-black">Add sales tax</span>
-                      {CUSTOM_PAYMENT_TAX_PERCENT}% sales tax on the amount and shipping.
-                    </span>
-                  </label>
+                  {taxOption ? (
+                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
+                      <input
+                        type="checkbox"
+                        checked={includeTax}
+                        onChange={(event) => setIncludeTax(event.target.checked)}
+                        className="mt-1 h-4 w-4 shrink-0"
+                      />
+                      <span className="text-sm leading-6 text-black/70">
+                        <span className="block font-bold text-black">Add sales tax</span>
+                        {CUSTOM_PAYMENT_TAX_PERCENT}% sales tax on the amount and shipping.
+                      </span>
+                    </label>
+                  ) : null}
                 </fieldset>
 
                 <div className="grid grid-cols-1 gap-4 border-t border-black/10 pt-5">
@@ -528,12 +535,14 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                           : money(totals.shippingCents)}
                   </dd>
                 </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Sales tax ({CUSTOM_PAYMENT_TAX_PERCENT}%)</dt>
-                  <dd className={includeTax ? "" : "text-black/45"}>
-                    {!includeTax ? "Not added" : amountError ? "—" : money(totals.taxCents)}
-                  </dd>
-                </div>
+                {taxOption ? (
+                  <div className="flex justify-between gap-4">
+                    <dt>Sales tax ({CUSTOM_PAYMENT_TAX_PERCENT}%)</dt>
+                    <dd className={includeTax ? "" : "text-black/45"}>
+                      {!includeTax ? "Not added" : amountError ? "—" : money(totals.taxCents)}
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="flex justify-between gap-4 border-t border-black/10 pt-3 text-lg font-bold">
                   <dt>Total</dt>
                   <dd>{totalLabel}</dd>

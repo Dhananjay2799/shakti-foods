@@ -333,10 +333,10 @@ export async function POST(request) {
             },
 
 
-            // Match retail Stripe Checkout behavior. The invoicing
-            // fulfillment must reconcile tax from each paid invoice.
+            // Subscribe & Save is Shakti Foods rice, and Shakti Foods
+            // charges no sales tax (same as retail checkout).
             automatic_tax: {
-              enabled: process.env.STRIPE_AUTOMATIC_TAX === "true"
+              enabled: false
             },
 
             success_url:
