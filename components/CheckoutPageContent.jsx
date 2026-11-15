@@ -7,7 +7,7 @@ import {
   useMemo,
   useState
 } from "react";
-import { Lock } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import {
   PayPalButtons,
@@ -16,7 +16,6 @@ import {
 import { isPayPalCheckoutVisible } from "@/lib/paypal-availability";
 
 import { useCart } from "@/components/CartProvider";
-import SectionHeading from "@/components/SectionHeading";
 
 import { formatPrice } from "@/lib/data";
 
@@ -56,11 +55,6 @@ export default function CheckoutPageContent({
   // PayPal Live launches for Shakti Foods only; preserve Ecoware checkout.
   const showPayPal =
     !isEcoware && isPayPalCheckoutVisible();
-
-  const brandName =
-    isEcoware
-      ? "Simpli Ecoware"
-      : "Shakti Foods";
 
   const productsHref =
     isEcoware
@@ -748,6 +742,144 @@ export default function CheckoutPageContent({
     }
   }
 
+
+  async function handleCancelPayPalOrder() {
+    setPayPalLoading(true);
+    setError("");
+
+    try {
+      const rawCheckout =
+        sessionStorage.getItem(
+          "activePayPalCheckout"
+        );
+
+      const checkout = rawCheckout
+        ? JSON.parse(rawCheckout)
+        : null;
+
+      const reservationId = String(
+        checkout?.reservationId || ""
+      ).trim();
+
+      const paypalOrderId = String(
+        checkout?.paypalOrderId || ""
+      ).trim();
+
+      if (reservationId) {
+        const response = await fetch(
+          "/api/paypal/cancel-order",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+            body: JSON.stringify({
+              reservationId,
+              paypalOrderId
+            })
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              "Unable to release inventory reservation."
+          );
+        }
+      }
+
+      sessionStorage.removeItem(
+        "activePayPalCheckout"
+      );
+
+      setError(
+        "PayPal checkout was cancelled. Your inventory reservation has been released."
+      );
+    } catch (err) {
+      console.error(
+        "Unable to cancel PayPal checkout:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "PayPal checkout was cancelled, but inventory could not be released."
+      );
+    } finally {
+      setPayPalLoading(false);
+    }
+  }
+
+  // Phone: the order summary starts folded into one line.
+  const [summaryOpen, setSummaryOpen] =
+    useState(false);
+
+  const [ratesOpen, setRatesOpen] =
+    useState(false);
+
+  const theme = isEcoware
+    ? {
+        button:
+          "bg-[#27802f] hover:bg-[#1f6a26]",
+        selected:
+          "border-[#27802f] bg-[#f1f8f1]",
+        radio: "accent-[#27802f]",
+        stickyTop: "lg:top-40"
+      }
+    : {
+        button:
+          "bg-[#d71920] hover:bg-[#b8141a]",
+        selected:
+          "border-[#d71920] bg-[#fff5f5]",
+        radio: "accent-[#d71920]",
+        stickyTop: "lg:top-28"
+      };
+
+  const policyPrefix =
+    isEcoware ? "/ecoware" : "";
+
+  const busy =
+    loading || paypalLoading;
+
+  const payDisabled =
+    busy ||
+    !pricingReady ||
+    items.length === 0;
+
+  const totalText = pricingReady
+    ? formatPrice(estimate.total)
+    : "—";
+
+  const shippingText = !pricingReady
+    ? "—"
+    : estimate.shipping === 0
+      ? "Free"
+      : formatPrice(estimate.shipping);
+
+  const deliveryOptions = [
+    {
+      value: DELIVERY_SHIPPING,
+      title: "Ship to my address",
+      price: !pricingReady
+        ? "—"
+        : shippingOptionPrice === 0
+          ? "Free"
+          : formatPrice(shippingOptionPrice),
+      detail: "Ships within 3 business days"
+    },
+    {
+      value: DELIVERY_PICKUP,
+      title: "Local pickup",
+      price: "Free",
+      detail: PICKUP_LOCATION
+    }
+  ];
+
   return (
     <main
       className={`text-black ${
@@ -756,16 +888,14 @@ export default function CheckoutPageContent({
           : "bg-white pt-24 md:pt-28"
       }`}
     >
-      <section className="section-pad py-14 md:py-20">
+      <section className="section-pad py-8 md:py-10">
         <div className="container-brand">
-          <SectionHeading
-            eyebrow={brandName}
-            title="Secure Checkout"
-            text={`Review your ${brandName} order and choose your preferred payment method.`}
-          />
+          <h1 className="font-display text-[2rem] font-bold leading-tight text-black sm:text-4xl md:text-5xl">
+            Secure Checkout
+          </h1>
 
           {items.length === 0 ? (
-            <div className="mt-8 rounded-[2rem] bg-white p-5 shadow-soft md:mt-10 md:p-8">
+            <div className="mt-6 rounded-[1.5rem] border border-black/10 bg-white p-5 md:p-8">
               <p className="text-lg text-black">
                 Your cart is empty.
               </p>
@@ -791,81 +921,84 @@ export default function CheckoutPageContent({
               </p>
             </div>
           ) : (
-            <div className="mt-8 grid gap-6 md:mt-10 md:gap-8 lg:grid-cols-[1fr_420px]">
-              <div className="rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
-                <div className="font-display text-3xl font-bold text-black">
-                  Customer Details
-                </div>
+            /*
+             * Desktop: details and delivery on the left; one sticky card on
+             * the right with the summary and the payment buttons.
+             * Phone: the two wrappers become "display: contents", so their
+             * parts stack as summary (folded) → details → delivery → pay.
+             */
+            <div className="mt-5 flex flex-col gap-6 md:mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-8">
+              <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-8">
+                <section
+                  aria-labelledby="checkout-customer"
+                  className="order-2 min-w-0 lg:order-none lg:rounded-[1.5rem] lg:border lg:border-black/10 lg:bg-white lg:p-6"
+                >
+                  <h2
+                    id="checkout-customer"
+                    className="font-display text-2xl font-bold text-black md:text-3xl"
+                  >
+                    Customer Details
+                  </h2>
 
-                <div className="mt-6 grid gap-4 md:gap-5">
-                  <input
-                    type="text"
-                    autoComplete="name"
-                    value={customerDetails.name}
-                    onChange={(event) =>
-                      updateCustomerField(
-                        "name",
-                        event.target.value
-                      )
-                    }
-                    className="rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black"
-                    placeholder="Full name"
-                    required
-                  />
-
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    value={customerDetails.email}
-                    onChange={(event) =>
-                      updateCustomerField(
-                        "email",
-                        event.target.value
-                      )
-                    }
-                    className="rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black"
-                    placeholder="Email address"
-                    required
-                  />
-
-                  <input
-                    type="tel"
-                    autoComplete="tel"
-                    value={customerDetails.phone}
-                    onChange={(event) =>
-                      updateCustomerField(
-                        "phone",
-                        event.target.value
-                      )
-                    }
-                    className="rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black"
-                    placeholder="Phone number (optional)"
-                  />
-
-                  {!isPickup ? (
-                    <input
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-5">
+                    <CheckoutField
+                      id="checkout-name"
+                      label="Full name"
                       type="text"
-                      autoComplete="street-address"
-                      value={
-                        customerDetails.shippingAddress
+                      autoComplete="name"
+                      value={customerDetails.name}
+                      onChange={(value) =>
+                        updateCustomerField("name", value)
                       }
-                      onChange={(event) =>
-                        updateCustomerField(
-                          "shippingAddress",
-                          event.target.value
-                        )
-                      }
-                      className="rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black"
-                      placeholder="Shipping address"
+                      required
                     />
-                  ) : null}
 
-                  <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
+                    <CheckoutField
+                      id="checkout-email"
+                      label="Email address"
+                      type="email"
+                      autoComplete="email"
+                      value={customerDetails.email}
+                      onChange={(value) =>
+                        updateCustomerField("email", value)
+                      }
+                      required
+                    />
+
+                    <CheckoutField
+                      id="checkout-phone"
+                      label="Phone (optional)"
+                      placeholder="Phone number"
+                      type="tel"
+                      autoComplete="tel"
+                      value={customerDetails.phone}
+                      onChange={(value) =>
+                        updateCustomerField("phone", value)
+                      }
+                    />
+
+                    {!isPickup ? (
+                      <CheckoutField
+                        id="checkout-address"
+                        label="Shipping address"
+                        type="text"
+                        autoComplete="street-address"
+                        value={customerDetails.shippingAddress}
+                        onChange={(value) =>
+                          updateCustomerField(
+                            "shippingAddress",
+                            value
+                          )
+                        }
+                      />
+                    ) : null}
+                  </div>
+
+                  <label className="mt-4 flex cursor-pointer items-center gap-3 text-sm text-black/80 md:text-base">
                     <input
                       type="checkbox"
                       checked={
-                        customerDetails
-                          .marketingEmailConsent
+                        customerDetails.marketingEmailConsent
                       }
                       onChange={(event) =>
                         updateCustomerField(
@@ -873,57 +1006,29 @@ export default function CheckoutPageContent({
                           event.target.checked
                         )
                       }
-                      className="mt-1 h-4 w-4"
+                      className={`h-5 w-5 shrink-0 rounded ${theme.radio}`}
                     />
-
-                    <span className="text-sm leading-6 text-black/70">
-                      Email me product updates,
-                      special offers and news from
-                      {" "}{brandName}.
-                    </span>
+                    Email me offers and updates
                   </label>
-                </div>
+                </section>
 
-                <fieldset className="mt-8 min-w-0">
-                  <legend className="font-display text-2xl font-bold text-black">
+                <fieldset className="order-3 min-w-0 lg:order-none">
+                  <legend className="font-display text-2xl font-bold text-black md:text-3xl">
                     Delivery
                   </legend>
 
-                  <p className="mt-1 text-sm leading-6 text-black/60">
-                    Choose shipping or free pickup. Card and PayPal charge for
-                    the option you pick.
-                  </p>
-
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {[
-                      {
-                        value: DELIVERY_SHIPPING,
-                        title: "Ship to my address",
-                        price: !pricingReady
-                          ? "—"
-                          : shippingOptionPrice === 0
-                            ? "Free"
-                            : formatPrice(shippingOptionPrice),
-                        detail:
-                          "Ships within 3 business days. You'll enter your address when you pay."
-                      },
-                      {
-                        value: DELIVERY_PICKUP,
-                        title: "Local pickup",
-                        price: "Free",
-                        detail: `Pick up in ${PICKUP_LOCATION}. We'll contact you when it's ready.`
-                      }
-                    ].map((option) => {
+                    {deliveryOptions.map((option) => {
                       const selected =
                         deliveryMethod === option.value;
 
                       return (
                         <label
                           key={option.value}
-                          className={`flex min-w-0 cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
+                          className={`flex min-w-0 cursor-pointer items-start gap-3 rounded-2xl border-2 px-4 py-3.5 transition ${
                             selected
-                              ? "border-black bg-[#faf7f1]"
-                              : "border-black/10 hover:border-black/30"
+                              ? theme.selected
+                              : "border-black/10 bg-white hover:border-black/25"
                           }`}
                         >
                           <input
@@ -931,11 +1036,11 @@ export default function CheckoutPageContent({
                             name="delivery-method"
                             value={option.value}
                             checked={selected}
-                            disabled={loading || paypalLoading}
+                            disabled={busy}
                             onChange={() =>
                               setDeliveryMethod(option.value)
                             }
-                            className="mt-1 h-4 w-4 shrink-0 accent-black"
+                            className={`mt-1 h-4 w-4 shrink-0 ${theme.radio}`}
                           />
 
                           <span className="min-w-0 flex-1">
@@ -947,7 +1052,7 @@ export default function CheckoutPageContent({
                                 {option.price}
                               </span>
                             </span>
-                            <span className="mt-1 block text-sm leading-5 text-black/60">
+                            <span className="mt-0.5 block text-sm text-black/60">
                               {option.detail}
                             </span>
                           </span>
@@ -955,522 +1060,347 @@ export default function CheckoutPageContent({
                       );
                     })}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRatesOpen((open) => !open)
+                    }
+                    aria-expanded={ratesOpen}
+                    aria-controls="checkout-shipping-rates"
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-black underline underline-offset-4"
+                  >
+                    <ChevronDown
+                      size={16}
+                      aria-hidden="true"
+                      className={`transition ${
+                        ratesOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                    Shipping rates
+                  </button>
+
+                  {ratesOpen ? (
+                    <ul
+                      id="checkout-shipping-rates"
+                      className="mt-2 grid gap-1 pl-6 text-sm text-black/70"
+                    >
+                      {shippingRateLines().map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                      <li>Local pickup ({PICKUP_LOCATION}): free</li>
+                    </ul>
+                  ) : null}
                 </fieldset>
+              </div>
 
-                <div className="mt-8 rounded-[1.5rem] bg-brand-sand p-5">
-                  <div className="flex items-center gap-2 font-bold text-black">
-                    <Lock size={18} />
-                    Payment Module
+              <div
+                className={`contents lg:sticky lg:block lg:rounded-[1.5rem] lg:border lg:border-black/10 lg:bg-white lg:p-6 ${theme.stickyTop}`}
+              >
+                <section
+                  aria-label="Order summary"
+                  className="order-1 min-w-0 lg:order-none"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSummaryOpen((open) => !open)
+                    }
+                    aria-expanded={summaryOpen}
+                    aria-controls="checkout-summary-details"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-black/10 bg-[#faf7f1] px-4 py-3 text-left lg:hidden"
+                  >
+                    <span className="font-bold text-black">
+                      Order Summary
+                    </span>
+                    <span className="flex items-center gap-2 font-bold text-black">
+                      {totalText}
+                      <ChevronDown
+                        size={18}
+                        aria-hidden="true"
+                        className={`transition ${
+                          summaryOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </span>
+                  </button>
+
+                  <h2 className="hidden font-display text-3xl font-bold text-black lg:block">
+                    Order Summary
+                  </h2>
+
+                  <div
+                    id="checkout-summary-details"
+                    className={`${
+                      summaryOpen ? "block" : "hidden"
+                    } mt-2 rounded-xl border border-black/10 p-4 lg:mt-5 lg:block lg:rounded-none lg:border-0 lg:p-0`}
+                  >
+                    <div className="grid gap-4">
+                      {items.map((item) => {
+                        const pricedItem =
+                          pricedItemsById.get(item.id);
+
+                        const lineTotal = pricedItem
+                          ? pricedItem.lineTotalCents / 100
+                          : null;
+
+                        const regularPrice = pricedItem
+                          ? pricedItem.regularUnitPriceCents / 100
+                          : null;
+
+                        const hasDiscount =
+                          pricedItem?.hasQuantityDiscount === true;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3"
+                          >
+                            <div className="relative h-16 overflow-hidden rounded-xl bg-[#faf6ee]">
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                fill
+                                className="object-contain p-1.5"
+                                sizes="64px"
+                              />
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="font-bold leading-snug text-black">
+                                {item.name}
+                              </div>
+
+                              <div className="mt-0.5 text-sm text-black/70">
+                                Qty {item.quantity}
+                              </div>
+
+                              {hasDiscount ? (
+                                <div className="mt-0.5 text-xs font-bold text-green-700">
+                                  {pricedItem.tier?.name}
+                                  {" · "}
+                                  Regular{" "}
+                                  <span className="line-through">
+                                    {formatPrice(regularPrice)}
+                                  </span>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <div className="font-bold text-black">
+                              {pricedItem
+                                ? formatPrice(lineTotal)
+                                : "—"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <dl className="mt-5 grid gap-2.5 border-t border-black/10 pt-4 text-black">
+                      <div className="flex justify-between gap-4">
+                        <dt>Subtotal</dt>
+                        <dd>
+                          {pricingReady
+                            ? formatPrice(subtotal)
+                            : "Calculating..."}
+                        </dd>
+                      </div>
+
+                      {savings > 0 ? (
+                        <div className="flex justify-between gap-4 font-bold text-green-700">
+                          <dt>Quantity Savings</dt>
+                          <dd>-{formatPrice(savings)}</dd>
+                        </div>
+                      ) : null}
+
+                      <div className="flex justify-between gap-4">
+                        <dt>
+                          {isPickup
+                            ? "Local pickup"
+                            : "Shipping"}
+                        </dt>
+                        <dd>{shippingText}</dd>
+                      </div>
+
+                      <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-black/10 pt-3">
+                        <dt className="text-xl font-bold md:text-2xl">
+                          Total
+                        </dt>
+                        <dd className="text-xl font-bold md:text-2xl">
+                          {totalText}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
+                </section>
 
-                  <p className="mt-2 text-sm leading-6 text-black">
-                    Shipping: {shippingRateLines().join(" · ")}.
-                    Payment totals are calculated securely
-                    on the server.
-                  </p>
-
+                <section
+                  aria-label="Payment"
+                  className="order-4 min-w-0 lg:order-none lg:mt-5"
+                >
                   {error ? (
                     <div
                       role="alert"
-                      className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-black"
+                      className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-black"
                     >
                       {error}
                     </div>
                   ) : null}
 
                   {pricingLoading ? (
-                    <div className="mt-4 rounded-2xl bg-white/60 px-4 py-3 text-sm text-black">
+                    <div className="mb-3 rounded-xl bg-[#faf7f1] px-4 py-3 text-sm text-black">
                       Updating checkout pricing...
                     </div>
                   ) : null}
 
                   <button
                     type="button"
-                    onClick={
-                      handleStripeCheckout
-                    }
-                    disabled={
-                      loading ||
-                      paypalLoading ||
-                      !pricingReady ||
-                      items.length ===
-                        0
-                    }
-                    className="mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleStripeCheckout}
+                    disabled={payDisabled}
+                    className={`w-full rounded-xl px-6 py-3.5 text-lg font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${theme.button}`}
                   >
                     {loading
-                      ? "Starting Checkout..."
+                      ? "Starting checkout..."
                       : pricingReady
-                        ? `Pay with Card ${formatPrice(
-                            estimate.total
-                          )}`
-                        : "Calculating Price..."}
+                        ? `Pay ${totalText} by card`
+                        : "Calculating price..."}
                   </button>
 
-                  {showPayPal ? (
-                  <>
-                  <div className="my-5 flex items-center gap-3">
-                    <div className="h-px flex-1 bg-black/10" />
-
-                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">
-                      Or pay with
-                    </span>
-
-                    <div className="h-px flex-1 bg-black/10" />
-                  </div>
-
-                  <PayPalScriptProvider
-                    options={{
-                      clientId:
-                        process.env
-                          .NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
-                        "",
-
-                      currency:
-                        "USD",
-
-                      intent:
-                        "capture",
-
-                      components:
-                        "buttons",
-
-                      disableFunding:
-                        "paylater,card"
-                    }}
-                  >
-                    <PayPalButtons
-                      style={{
-                        layout:
-                          "horizontal",
-
-                        shape:
-                          "pill",
-
-                        label:
-                          "paypal",
-
-                        height:
-                          48,
-
-                        tagline:
-                          false
-                      }}
-
-                      disabled={
-                        loading ||
-                        paypalLoading ||
-                        !pricingReady ||
-                        items.length ===
-                          0
-                      }
-
-                      forceReRender={[
-                        subtotal,
-                        deliveryMethod,
-                        estimate.shipping,
-                        estimate.tax,
-                        estimate.total
-                      ]}
-
-                      createOrder={async () => {
-                        console.log(
-                          "[PayPal] createOrder callback started",
-                          {
-                            storefront,
-                            itemCount: items.length,
-                            customerDetails
+                  <div className="mt-3">
+                    {showPayPal ? (
+                      <PayPalScriptProvider
+                        options={{
+                          clientId:
+                            process.env
+                              .NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
+                            "",
+                          currency: "USD",
+                          intent: "capture",
+                          components: "buttons",
+                          disableFunding: "paylater,card"
+                        }}
+                      >
+                        <PayPalButtons
+                          style={{
+                            layout: "horizontal",
+                            shape: "rect",
+                            color: "gold",
+                            label: "paypal",
+                            height: 48,
+                            tagline: false
+                          }}
+                          disabled={payDisabled}
+                          forceReRender={[
+                            subtotal,
+                            deliveryMethod,
+                            estimate.shipping,
+                            estimate.tax,
+                            estimate.total
+                          ]}
+                          createOrder={() =>
+                            handleCreatePayPalOrder()
                           }
-                        );
-
-                        try {
-                          const paypalOrderId =
-                            await handleCreatePayPalOrder();
-
-                          console.log(
-                            "[PayPal] createOrder succeeded:",
-                            paypalOrderId
-                          );
-
-                          return paypalOrderId;
-                        } catch (error) {
-                          console.error(
-                            "[PayPal] createOrder FAILED:",
-                            error
-                          );
-
-                          throw error;
-                        }
-                      }}
-
-                      onApprove={
-                        handleApprovePayPalOrder
-                      }
-
-                      onCancel={async () => {
-                        setPayPalLoading(
-                          true
-                        );
-
-                        setError("");
-
-                        try {
-                          const rawCheckout =
-                            sessionStorage.getItem(
-                              "activePayPalCheckout"
+                          onApprove={handleApprovePayPalOrder}
+                          onCancel={handleCancelPayPalOrder}
+                          onError={(paypalError) => {
+                            console.error(
+                              "[PayPal] BUTTON ERROR:",
+                              paypalError
                             );
 
-                          const checkout =
-                            rawCheckout
-                              ? JSON.parse(
-                                  rawCheckout
-                                )
-                              : null;
-
-                          const reservationId =
-                            String(
-                              checkout
-                                ?.reservationId ||
-                                ""
-                            ).trim();
-
-                          const paypalOrderId =
-                            String(
-                              checkout
-                                ?.paypalOrderId ||
-                                ""
-                            ).trim();
-
-                          if (
-                            reservationId
-                          ) {
-                            const response =
-                              await fetch(
-                                "/api/paypal/cancel-order",
-                                {
-                                  method:
-                                    "POST",
-
-                                  headers: {
-                                    "Content-Type":
-                                      "application/json"
-                                  },
-
-                                  body:
-                                    JSON.stringify(
-                                      {
-                                        reservationId,
-                                        paypalOrderId
-                                      }
-                                    )
-                                }
-                              );
-
-                            const result =
-                              await response.json();
-
-                            if (
-                              !response.ok
-                            ) {
-                              throw new Error(
-                                result.error ||
-                                  "Unable to release inventory reservation."
-                              );
-                            }
-                          }
-
-                          sessionStorage.removeItem(
-                            "activePayPalCheckout"
-                          );
-
-                          setError(
-                            "PayPal checkout was cancelled. Your inventory reservation has been released."
-                          );
-                        } catch (err) {
-                          console.error(
-                            "Unable to cancel PayPal checkout:",
-                            err
-                          );
-
-                          setError(
-                            err instanceof
-                              Error
-                              ? err.message
-                              : "PayPal checkout was cancelled, but inventory could not be released."
-                          );
-                        } finally {
-                          setPayPalLoading(
-                            false
-                          );
-                        }
-                      }}
-
-                      onError={(error) => {
-                        console.error(
-                          "[PayPal] BUTTON ERROR:",
-                          error
-                        );
-
-                        setError(
-                          error instanceof Error
-                            ? `PayPal error: ${error.message}`
-                            : `PayPal error: ${String(error)}`
-                        );
-                      }}
-                    />
-                  </PayPalScriptProvider>
-                  </>
-                                    ) : (
-                    <>
-                      <div className="my-5 flex items-center gap-3">
-                        <div className="h-px flex-1 bg-black/10" />
-                        <span className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">
-                          Or pay with
-                        </span>
-                        <div className="h-px flex-1 bg-black/10" />
-                      </div>
-
+                            setError(
+                              paypalError instanceof Error
+                                ? `PayPal error: ${paypalError.message}`
+                                : `PayPal error: ${String(paypalError)}`
+                            );
+                          }}
+                        />
+                      </PayPalScriptProvider>
+                    ) : (
                       <button
                         type="button"
                         disabled
                         aria-label="PayPal payments coming soon"
-                        className="w-full cursor-not-allowed rounded-full bg-[#FFC439] px-6 py-3 text-center text-[#003087] opacity-85"
+                        className="w-full cursor-not-allowed rounded-xl bg-[#FFC439] px-6 py-2.5 text-center text-[#003087] opacity-85"
                       >
                         <span className="block text-xl font-extrabold italic">
                           PayPal
                         </span>
                         <span className="block text-xs font-semibold not-italic">
-                          Coming Soon
+                          Coming soon. Please pay by card.
                         </span>
                       </button>
+                    )}
+                  </div>
 
-                      <p className="mt-3 text-center text-sm text-black/65">
-                        PayPal payments are temporarily unavailable.
-                        Please pay by card.
-                      </p>
-                    </>
-                  )}
-
-                  <p className="mt-5 text-center text-xs leading-5 text-black/55">
-                    By placing your order, you agree to our{" "}
+                  <div className="mt-4 text-center">
                     <Link
-                      href={`${isEcoware ? "/ecoware" : ""}/terms`}
-                      className="font-semibold text-black underline underline-offset-2"
+                      href={customAmountHref}
+                      className="font-medium text-black underline underline-offset-4"
+                    >
+                      Pay a custom amount
+                    </Link>
+                  </div>
+
+                  <nav
+                    aria-label="Store policies"
+                    className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-black/10 pt-4 text-xs text-black/80 sm:gap-x-3 sm:text-sm"
+                  >
+                    <Link
+                      href={`${policyPrefix}/terms`}
+                      className="underline underline-offset-2 hover:text-black"
                     >
                       Terms of Service
-                    </Link>{" "}
-                    and{" "}
+                    </Link>
+                    <span aria-hidden="true">|</span>
                     <Link
-                      href={`${isEcoware ? "/ecoware" : ""}/privacy`}
-                      className="font-semibold text-black underline underline-offset-2"
+                      href={`${policyPrefix}/privacy`}
+                      className="underline underline-offset-2 hover:text-black"
                     >
                       Privacy Policy
                     </Link>
-                    . Returns are accepted within 4 days of delivery.{" "}
+                    <span aria-hidden="true">|</span>
                     <Link
-                      href={`${isEcoware ? "/ecoware" : ""}/returns`}
-                      className="font-semibold text-black underline underline-offset-2"
+                      href={`${policyPrefix}/returns`}
+                      className="underline underline-offset-2 hover:text-black"
                     >
-                      Return policy
+                      Return Policy
                     </Link>
-                  </p>
-                </div>
+                  </nav>
+                </section>
               </div>
-
-              <aside className="h-fit rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
-                <div className="font-display text-3xl font-bold text-black">
-                  Order Summary
-                </div>
-
-                <div className="mt-6 grid gap-4">
-                  {items.map(
-                    (item) => {
-                      const pricedItem =
-                        pricedItemsById.get(
-                          item.id
-                        );
-
-                      const unitPrice =
-                        pricedItem
-                          ? pricedItem
-                              .unitPriceCents /
-                            100
-                          : null;
-
-                      const regularPrice =
-                        pricedItem
-                          ? pricedItem
-                              .regularUnitPriceCents /
-                            100
-                          : null;
-
-                      const lineTotal =
-                        pricedItem
-                          ? pricedItem
-                              .lineTotalCents /
-                            100
-                          : null;
-
-                      const hasDiscount =
-                        pricedItem
-                          ?.hasQuantityDiscount ===
-                        true;
-
-                      return (
-                        <div
-                          key={item.id}
-                          className="grid grid-cols-[64px_1fr_auto] items-center gap-3 md:grid-cols-[70px_1fr_auto]"
-                        >
-                          <div className="relative h-16 overflow-hidden rounded-2xl bg-[#faf6ee]">
-                            <Image
-                              src={
-                                item.image
-                              }
-                              alt={
-                                item.name
-                              }
-                              fill
-                              className="object-contain p-2"
-                              sizes="70px"
-                            />
-                          </div>
-
-                          <div>
-                            <div className="text-sm font-bold text-black">
-                              {
-                                item.name
-                              }
-                            </div>
-
-                            <div className="text-xs text-black">
-                              Qty{" "}
-                              {
-                                item.quantity
-                              }
-                            </div>
-
-                            {pricedItem ? (
-                              <div className="mt-1 text-xs text-black/60">
-                                {formatPrice(
-                                  unitPrice
-                                )}{" "}
-                                each
-                              </div>
-                            ) : null}
-
-                            {hasDiscount ? (
-                              <div className="mt-1 text-xs font-bold text-green-700">
-                                {
-                                  pricedItem
-                                    .tier
-                                    ?.name
-                                }
-
-                                {" · "}
-
-                                Regular{" "}
-
-                                <span className="line-through">
-                                  {formatPrice(
-                                    regularPrice
-                                  )}
-                                </span>
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <div className="text-sm font-bold text-black">
-                            {pricedItem
-                              ? formatPrice(
-                                  lineTotal
-                                )
-                              : "—"}
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-
-                <div className="mt-6 grid gap-3 border-t border-black/10 pt-5 text-black">
-                  <div className="flex justify-between">
-                    <span>
-                      Subtotal
-                    </span>
-
-                    <span>
-                      {pricingReady
-                        ? formatPrice(
-                            subtotal
-                          )
-                        : "Calculating..."}
-                    </span>
-                  </div>
-
-                  {savings > 0 ? (
-                    <div className="flex justify-between font-bold text-green-700">
-                      <span>
-                        Quantity Savings
-                      </span>
-
-                      <span>
-                        -
-                        {formatPrice(
-                          savings
-                        )}
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <div className="flex justify-between">
-                    <span>
-                      {isPickup
-                        ? "Local pickup"
-                        : "Shipping"}
-                    </span>
-
-                    <span>
-                      {pricingReady
-                        ? estimate.shipping ===
-                          0
-                          ? "Free"
-                          : formatPrice(
-                              estimate.shipping
-                            )
-                        : "—"}
-                    </span>
-                  </div>
-
-
-                  <div className="flex justify-between border-t border-black/10 pt-3 text-lg font-bold">
-                    <span>
-                      Total
-                    </span>
-
-                    <span>
-                      {pricingReady
-                        ? formatPrice(
-                            estimate.total
-                          )
-                        : "—"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 rounded-2xl bg-[#faf7f1] px-4 py-3 text-sm leading-6 text-black/70">
-                  Paying an invoice or a price we agreed on?{" "}
-                  <Link
-                    href={customAmountHref}
-                    className="font-bold text-black underline underline-offset-2"
-                  >
-                    Pay a custom amount
-                  </Link>
-                </div>
-              </aside>
             </div>
           )}
         </div>
       </section>
     </main>
+  );
+}
+
+/** Label above an input, as on the checkout mockup. */
+function CheckoutField({
+  id,
+  label,
+  placeholder,
+  onChange,
+  ...inputProps
+}) {
+  return (
+    <div className="min-w-0">
+      <label
+        htmlFor={id}
+        className="mb-1.5 block text-sm font-bold text-black md:text-base"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        placeholder={placeholder || label}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-black outline-none transition placeholder:text-black/40 focus:border-black"
+        {...inputProps}
+      />
+    </div>
   );
 }
