@@ -1451,16 +1451,19 @@ export default function CheckoutPageContent({
 
                   <AdjustAmountPanel
                     token={adjust.token}
+                    locked={adjust.locked}
                     onToken={adjust.saveToken}
-                    onLock={() =>
-                      handleAdjustmentRejected("")
-                    }
+                    onLock={() => {
+                      setError("");
+                      adjust.lock();
+                    }}
                     applied={adjust.applied}
                     onApply={(next) => {
                       setError("");
                       adjust.setApplied(next);
                     }}
                     baseTotalCents={baseTotalCents}
+                    totalCents={adjust.totalCents}
                     disabled={busy || !pricingReady}
                   />
                 </section>

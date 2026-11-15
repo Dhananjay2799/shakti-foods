@@ -544,10 +544,11 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
 
                 <AdjustAmountPanel
                   token={adjust.token}
+                  locked={adjust.locked}
                   onToken={adjust.saveToken}
                   onLock={() => {
-                    adjust.clear();
                     setError("");
+                    adjust.lock();
                   }}
                   applied={adjust.applied}
                   onApply={(next) => {
@@ -555,6 +556,7 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                     adjust.setApplied(next);
                   }}
                   baseTotalCents={amountError ? 0 : totals.totalCents}
+                  totalCents={totalCents}
                   disabled={busy || Boolean(amountError)}
                 />
               </div>

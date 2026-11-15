@@ -27,6 +27,9 @@ const TOKEN_HOURS = 4;
 export function useCheckoutAdjustment(baseTotalCents) {
   const [token, setToken] = useState("");
   const [applied, setApplied] = useState(null);
+  // Locked: the applied amount stays for this order, but changing it
+  // needs the admin code again (e.g. before handing the phone over).
+  const [locked, setLocked] = useState(false);
 
   // A code entered earlier in this browser tab stays valid for a while.
   useEffect(() => {
@@ -49,6 +52,7 @@ export function useCheckoutAdjustment(baseTotalCents) {
 
   function saveToken(nextToken, exp) {
     setToken(nextToken);
+    setLocked(false);
 
     try {
       sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ token: nextToken, exp }));
@@ -57,10 +61,31 @@ export function useCheckoutAdjustment(baseTotalCents) {
     }
   }
 
-  /** Forgets the code and the adjustment (Lock, or the server said no). */
+  /**
+   * Keeps the applied amount and forgets the code on this device: the
+   * controls ask for the code again, and so does any other page. The
+   * token stays in memory only so this order can still be paid at the
+   * locked amount.
+   */
+  function lock() {
+    setLocked(true);
+
+    if (!applied) {
+      setToken("");
+    }
+
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch {
+      // Nothing saved.
+    }
+  }
+
+  /** Forgets the code and the adjustment (the server said no). */
   function clear() {
     setToken("");
     setApplied(null);
+    setLocked(false);
 
     try {
       sessionStorage.removeItem(TOKEN_KEY);
@@ -74,6 +99,8 @@ export function useCheckoutAdjustment(baseTotalCents) {
     applied,
     setApplied,
     saveToken,
+    lock,
+    locked,
     clear,
     feeCents,
     discountCents,
@@ -92,23 +119,23 @@ export function useCheckoutAdjustment(baseTotalCents) {
 /*
  * "Adjust amount": under the policy links. Asks for the admin code
  * (checked by the server), then lets the owner add a fee, give a
- * discount or set the total for this order.
+ * discount or set the total for this order, and Lock it at that amount.
  */
 export default function AdjustAmountPanel({
   token,
+  locked = false,
   onToken,
   onLock,
   applied,
   onApply,
   baseTotalCents,
+  totalCents = baseTotalCents,
   disabled
 }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [checking, setChecking] = useState(false);
   const [codeError, setCodeError] = useState("");
-  // Shown after Lock, so it's clear the amount went back.
-  const [notice, setNotice] = useState("");
   const [mode, setMode] = useState(applied?.mode || ADJUSTMENT_MODES.FEE);
   const [unit, setUnit] = useState(applied?.unit || "percent");
   const [value, setValue] = useState(applied?.value || "");
@@ -135,7 +162,6 @@ export default function AdjustAmountPanel({
       }
 
       setCode("");
-      setNotice("");
       onToken(result.token, Date.now() + TOKEN_HOURS * 60 * 60 * 1000);
     } catch (err) {
       setCodeError(err instanceof Error ? err.message : "That code isn't correct.");
@@ -177,10 +203,7 @@ export default function AdjustAmountPanel({
     <div className="mt-3 text-center">
       <button
         type="button"
-        onClick={() => {
-          setOpen((current) => !current);
-          setNotice("");
-        }}
+        onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-controls="checkout-adjust-panel"
         className="text-xs font-medium text-black/50 underline underline-offset-2 hover:text-black sm:text-sm"
@@ -193,14 +216,16 @@ export default function AdjustAmountPanel({
           id="checkout-adjust-panel"
           className="mt-3 rounded-xl border border-black/10 bg-[#faf7f1] p-4 text-left"
         >
-          {!token ? (
+          {!token || locked ? (
             <form onSubmit={verifyCode}>
-              {notice ? (
+              {locked ? (
                 <p
                   role="status"
                   className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800"
                 >
-                  {notice}
+                  {applied
+                    ? `Locked at ${formatPrice(totalCents / 100)}. Enter the admin code to change it.`
+                    : `Locked. Total: ${formatPrice(totalCents / 100)}`}
                 </p>
               ) : null}
               <label htmlFor="checkout-adjust-code" className="block text-sm font-bold text-black">
@@ -320,17 +345,9 @@ export default function AdjustAmountPanel({
                 <button
                   type="button"
                   onClick={() => {
-                    // Stay open: closing would move the page, and the
-                    // owner wouldn't see the total go back.
-                    onLock();
-                    setValue("");
-                    setLabel("");
+                    // Stays open, showing the locked total.
                     setCodeError("");
-                    setNotice(
-                      `Locked. ${applied ? "Adjustment removed. " : ""}Total: ${formatPrice(
-                        baseTotalCents / 100
-                      )}`
-                    );
+                    onLock();
                   }}
                   className="ml-auto text-sm font-semibold text-black/60 underline underline-offset-2"
                 >
