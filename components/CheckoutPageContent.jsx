@@ -21,8 +21,8 @@ import SectionHeading from "@/components/SectionHeading";
 import { formatPrice } from "@/lib/data";
 
 import {
-  commerce,
-  getCheckoutEstimate
+  getCheckoutEstimate,
+  shippingRateLines
 } from "@/lib/commerce";
 
 import {
@@ -863,11 +863,7 @@ export default function CheckoutPageContent({
                   </div>
 
                   <p className="mt-2 text-sm leading-6 text-black">
-                    Orders over{" "}
-                    {formatPrice(
-                      commerce.freeShippingThreshold
-                    )}{" "}
-                    receive free standard shipping.
+                    Shipping: {shippingRateLines().join(" · ")}.
                     Payment totals are calculated securely
                     on the server.
                   </p>

@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/data";
-import { getCheckoutEstimate, commerce } from "@/lib/commerce";
+import { getCheckoutEstimate, shippingRateLines } from "@/lib/commerce";
 
 export default function CartPageContent({
   // The store whose cart page this is (used while the cart is empty).
@@ -646,12 +646,7 @@ export default function CartPageContent({
               </Link>
 
               <p className="mt-5 text-center text-[11px] leading-5 text-black/40">
-                Free shipping on orders over{" "}
-                <span className="font-bold text-black/60">
-                  {formatPrice(
-                    commerce.freeShippingThreshold
-                  )}
-                </span>
+                {shippingRateLines().join(" · ")}
               </p>
             </div>
 
