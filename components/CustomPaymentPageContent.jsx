@@ -7,6 +7,7 @@ import { ArrowLeft, Lock } from "lucide-react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 import SectionHeading from "@/components/SectionHeading";
+import AdjustAmountPanel, { useCheckoutAdjustment } from "@/components/AdjustAmountPanel";
 import { formatPrice } from "@/lib/data";
 import { commerce, shippingRateLines } from "@/lib/commerce";
 import { isPayPalCheckoutVisible } from "@/lib/paypal-availability";
@@ -88,6 +89,10 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
     storefront
   });
 
+  // Admin-only "Adjust amount" (a fee, a discount or a new total).
+  const adjust = useCheckoutAdjustment(amountError ? 0 : totals.totalCents);
+  const totalCents = amountError ? 0 : adjust.totalCents;
+
   const nameError = customer.name.trim() ? "" : "Enter your full name.";
   // Optional: Stripe/PayPal ask for an email when it's blank.
   const emailError =
@@ -112,14 +117,24 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
         name: customer.name.trim(),
         email: customer.email.trim().toLowerCase(),
         phone: customer.phone.trim()
-      }
+      },
+      adjustment: adjust.request
     };
+  }
+
+  /** The server refused the admin adjustment (e.g. the code expired). */
+  function adjustmentRejected(result) {
+    if (!result?.adjustmentRejected) return false;
+
+    adjust.clear();
+    setError(result.message || "The amount adjustment was removed. Please check the total.");
+    return true;
   }
 
   function trackBeginCheckout(paymentType) {
     trackEvent("begin_checkout", {
       currency: commerce.currency,
-      value: totals.totalCents / 100,
+      value: totalCents / 100,
       shipping: totals.shippingCents / 100,
       tax: totals.taxCents / 100,
       payment_type: paymentType,
@@ -162,6 +177,11 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
       });
       const result = await response.json().catch(() => ({}));
 
+      if (adjustmentRejected(result)) {
+        setCardLoading(false);
+        return;
+      }
+
       if (!response.ok || !result.url) {
         throw new Error(result.message || "Unable to start the card payment.");
       }
@@ -185,6 +205,11 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
         body: JSON.stringify(requestBody())
       });
       const result = await response.json().catch(() => ({}));
+
+      if (adjustmentRejected(result)) {
+        setPayPalLoading(false);
+        throw new Error(result.message);
+      }
 
       if (!response.ok || !result.orderId) {
         throw new Error(result.message || "Unable to start the PayPal payment.");
@@ -255,7 +280,7 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   const amountInvalid = showErrors && Boolean(amountError);
   const nameInvalid = showErrors && Boolean(nameError);
   const emailInvalid = showErrors && Boolean(emailError);
-  const totalLabel = amountError ? "—" : money(totals.totalCents);
+  const totalLabel = amountError ? "—" : money(totalCents);
 
   // The Ecoware layout already provides the page's <main>.
   const Wrapper = isEcoware ? "div" : "main";
@@ -479,7 +504,15 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                       <PayPalButtons
                         style={{ layout: "horizontal", shape: "pill", label: "paypal", height: 48, tagline: false }}
                         disabled={busy}
-                        forceReRender={[totals.totalCents, includeShipping, includeTax]}
+                        forceReRender={[
+                          totalCents,
+                          includeShipping,
+                          includeTax,
+                          adjust.feeCents,
+                          adjust.discountCents,
+                          adjust.label,
+                          adjust.token
+                        ]}
                         onClick={(data, actions) =>
                           latest.current.checkForm() ? actions.resolve() : actions.reject()
                         }
@@ -508,6 +541,22 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                   </Link>
                   .
                 </p>
+
+                <AdjustAmountPanel
+                  token={adjust.token}
+                  onToken={adjust.saveToken}
+                  onLock={() => {
+                    adjust.clear();
+                    setError("");
+                  }}
+                  applied={adjust.applied}
+                  onApply={(next) => {
+                    setError("");
+                    adjust.setApplied(next);
+                  }}
+                  baseTotalCents={amountError ? 0 : totals.totalCents}
+                  disabled={busy || Boolean(amountError)}
+                />
               </div>
             </div>
 
@@ -543,6 +592,23 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
                     <dd className={includeTax ? "" : "text-black/45"}>
                       {!includeTax ? "Not added" : amountError ? "—" : money(totals.taxCents)}
                     </dd>
+                  </div>
+                ) : null}
+                {!amountError && adjust.feeCents > 0 ? (
+                  <div className="flex justify-between gap-4">
+                    <dt>{adjust.label}</dt>
+                    <dd>{money(adjust.feeCents)}</dd>
+                  </div>
+                ) : null}
+                {!amountError && adjust.discountCents > 0 ? (
+                  <div className="flex justify-between gap-4 font-bold text-green-700">
+                    <dt>{adjust.label}</dt>
+                    <dd>-{money(adjust.discountCents)}</dd>
+                  </div>
+                ) : null}
+                {!amountError && adjust.error ? (
+                  <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    Adjustment not applied: {adjust.error}
                   </div>
                 ) : null}
                 <div className="flex justify-between gap-4 border-t border-black/10 pt-3 text-lg font-bold">

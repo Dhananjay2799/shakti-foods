@@ -35,16 +35,9 @@ import {
   trackEvent
 } from "@/lib/analytics";
 
-import {
-  ADJUSTMENT_MODES,
-  adjustmentFromInput,
-  cleanAdjustmentLabel,
-  defaultAdjustmentLabel
-} from "@/lib/checkout-adjustment";
-
-const ADJUST_TOKEN_KEY = "checkoutAdjustToken";
-// Matches the server's token lifetime (lib/checkout-adjustment-server.js).
-const ADJUST_TOKEN_HOURS = 4;
+import AdjustAmountPanel, {
+  useCheckoutAdjustment
+} from "@/components/AdjustAmountPanel";
 
 export default function CheckoutPageContent({
   // The store whose checkout page this is (the cart may be empty).
@@ -297,83 +290,26 @@ export default function CheckoutPageContent({
    * a fee, a discount or a new total for this order. Recomputed from the
    * current order, so changing delivery keeps it right.
    */
-  const [adjustToken, setAdjustToken] =
-    useState("");
-
-  const [appliedAdjustment, setAppliedAdjustment] =
-    useState(null);
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(
-        sessionStorage.getItem(ADJUST_TOKEN_KEY) || "null"
-      );
-
-      if (saved?.token && Number(saved.exp) > Date.now()) {
-        setAdjustToken(saved.token);
-      }
-    } catch {
-      // No saved admin code on this device.
-    }
-  }, []);
-
   const baseTotalCents =
     Math.round(baseEstimate.total * 100);
 
-  const adjustmentResult =
-    appliedAdjustment
-      ? adjustmentFromInput({
-          ...appliedAdjustment,
-          baseTotalCents
-        })
-      : null;
+  const adjust =
+    useCheckoutAdjustment(baseTotalCents);
 
-  const adjustmentValid =
-    Boolean(adjustmentResult) &&
-    !adjustmentResult.error;
-
-  const feeCents = adjustmentValid
-    ? adjustmentResult.feeCents
-    : 0;
-
-  const discountCents = adjustmentValid
-    ? adjustmentResult.discountCents
-    : 0;
-
-  const adjustmentLabel = appliedAdjustment
-    ? cleanAdjustmentLabel(
-        appliedAdjustment.label,
-        feeCents > 0 ? "fee" : "discount"
-      )
-    : "";
+  const {
+    feeCents,
+    discountCents,
+    label: adjustmentLabel,
+    request: adjustmentRequest
+  } = adjust;
 
   const estimate = {
     ...baseEstimate,
-    total:
-      (baseTotalCents + feeCents - discountCents) / 100
+    total: adjust.totalCents / 100
   };
 
-  // Sent with the payment request; the server re-checks everything.
-  const adjustmentRequest =
-    feeCents > 0 || discountCents > 0
-      ? {
-          token: adjustToken,
-          feeCents,
-          discountCents,
-          label: adjustmentLabel
-        }
-      : null;
-
   function handleAdjustmentRejected(message) {
-    setAdjustToken("");
-    setAppliedAdjustment(null);
-
-    try {
-      sessionStorage.removeItem(ADJUST_TOKEN_KEY);
-    } catch {
-      // Nothing saved.
-    }
-
+    adjust.clear();
     setError(message);
   }
 
@@ -1357,9 +1293,9 @@ export default function CheckoutPageContent({
                         </div>
                       ) : null}
 
-                      {appliedAdjustment && !adjustmentValid ? (
+                      {adjust.error ? (
                         <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                          Adjustment not applied: {adjustmentResult?.error}
+                          Adjustment not applied: {adjust.error}
                         </div>
                       ) : null}
 
@@ -1437,7 +1373,7 @@ export default function CheckoutPageContent({
                             feeCents,
                             discountCents,
                             adjustmentLabel,
-                            adjustToken,
+                            adjust.token,
                             estimate.shipping,
                             estimate.tax,
                             estimate.total
@@ -1514,26 +1450,15 @@ export default function CheckoutPageContent({
                   </nav>
 
                   <AdjustAmountPanel
-                    token={adjustToken}
-                    onToken={(token, exp) => {
-                      setAdjustToken(token);
-
-                      try {
-                        sessionStorage.setItem(
-                          ADJUST_TOKEN_KEY,
-                          JSON.stringify({ token, exp })
-                        );
-                      } catch {
-                        // Private mode: the code works until the page closes.
-                      }
-                    }}
+                    token={adjust.token}
+                    onToken={adjust.saveToken}
                     onLock={() =>
                       handleAdjustmentRejected("")
                     }
-                    applied={appliedAdjustment}
+                    applied={adjust.applied}
                     onApply={(next) => {
                       setError("");
-                      setAppliedAdjustment(next);
+                      adjust.setApplied(next);
                     }}
                     baseTotalCents={baseTotalCents}
                     disabled={busy || !pricingReady}
@@ -1571,241 +1496,6 @@ function CheckoutField({
         className="w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-black outline-none transition placeholder:text-black/40 focus:border-black"
         {...inputProps}
       />
-    </div>
-  );
-}
-
-/*
- * "Adjust amount": under the policy links. Asks for the admin code
- * (checked by the server), then lets the owner add a fee, give a
- * discount or set the total for this order.
- */
-function AdjustAmountPanel({
-  token,
-  onToken,
-  onLock,
-  applied,
-  onApply,
-  baseTotalCents,
-  disabled
-}) {
-  const [open, setOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [codeError, setCodeError] = useState("");
-  const [mode, setMode] = useState(applied?.mode || ADJUSTMENT_MODES.FEE);
-  const [unit, setUnit] = useState(applied?.unit || "percent");
-  const [value, setValue] = useState(applied?.value || "");
-  const [label, setLabel] = useState(applied?.label || "");
-
-  async function verifyCode(event) {
-    event.preventDefault();
-
-    if (!code.trim() || checking) return;
-
-    setChecking(true);
-    setCodeError("");
-
-    try {
-      const response = await fetch("/api/checkout/adjust-access", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
-      });
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || !result.token) {
-        throw new Error(result.message || "That code isn't correct.");
-      }
-
-      setCode("");
-      onToken(result.token, Date.now() + ADJUST_TOKEN_HOURS * 60 * 60 * 1000);
-    } catch (err) {
-      setCodeError(err instanceof Error ? err.message : "That code isn't correct.");
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  const preview =
-    String(value).trim() === ""
-      ? null
-      : adjustmentFromInput({ mode, unit, value, baseTotalCents });
-
-  const previewTotal = preview && !preview.error
-    ? (baseTotalCents + preview.feeCents - preview.discountCents) / 100
-    : null;
-
-  const labelKind =
-    mode === ADJUSTMENT_MODES.DISCOUNT ||
-    (mode === ADJUSTMENT_MODES.TOTAL && preview?.discountCents > 0)
-      ? "discount"
-      : "fee";
-
-  const modeButton = (value_, text) => (
-    <button
-      key={value_}
-      type="button"
-      onClick={() => setMode(value_)}
-      aria-pressed={mode === value_}
-      className={`flex-1 rounded-lg px-2 py-2 text-sm font-semibold transition ${
-        mode === value_ ? "bg-black text-white" : "text-black/70 hover:text-black"
-      }`}
-    >
-      {text}
-    </button>
-  );
-
-  return (
-    <div className="mt-3 text-center">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        aria-controls="checkout-adjust-panel"
-        className="text-xs font-medium text-black/50 underline underline-offset-2 hover:text-black sm:text-sm"
-      >
-        {applied ? "Adjust amount (applied)" : "Adjust amount"}
-      </button>
-
-      {open ? (
-        <div
-          id="checkout-adjust-panel"
-          className="mt-3 rounded-xl border border-black/10 bg-[#faf7f1] p-4 text-left"
-        >
-          {!token ? (
-            <form onSubmit={verifyCode}>
-              <label htmlFor="checkout-adjust-code" className="block text-sm font-bold text-black">
-                Admin code
-              </label>
-              <div className="mt-2 flex gap-2">
-                <input
-                  id="checkout-adjust-code"
-                  type="password"
-                  autoComplete="off"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-black/15 bg-white px-3 py-2 text-black outline-none focus:border-black"
-                />
-                <button
-                  type="submit"
-                  disabled={checking || !code.trim()}
-                  className="shrink-0 rounded-lg bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  {checking ? "Checking..." : "Verify"}
-                </button>
-              </div>
-              {codeError ? (
-                <p role="alert" className="mt-2 text-sm font-semibold text-red-600">
-                  {codeError}
-                </p>
-              ) : null}
-            </form>
-          ) : (
-            <div>
-              <div className="flex rounded-lg border border-black/10 bg-white p-1">
-                {modeButton(ADJUSTMENT_MODES.FEE, "Add fee")}
-                {modeButton(ADJUSTMENT_MODES.DISCOUNT, "Discount")}
-                {modeButton(ADJUSTMENT_MODES.TOTAL, "Set total")}
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                {mode !== ADJUSTMENT_MODES.TOTAL ? (
-                  <select
-                    aria-label="Amount type"
-                    value={unit}
-                    onChange={(event) => setUnit(event.target.value)}
-                    className="rounded-lg border border-black/15 bg-white px-2 py-2 text-sm text-black"
-                  >
-                    <option value="percent">%</option>
-                    <option value="amount">$</option>
-                  </select>
-                ) : null}
-                <input
-                  aria-label={
-                    mode === ADJUSTMENT_MODES.TOTAL
-                      ? "New total in dollars"
-                      : unit === "percent"
-                        ? "Percent"
-                        : "Amount in dollars"
-                  }
-                  inputMode="decimal"
-                  value={value}
-                  onChange={(event) => setValue(event.target.value)}
-                  placeholder={
-                    mode === ADJUSTMENT_MODES.TOTAL
-                      ? "New total, e.g. 25.00"
-                      : unit === "percent"
-                        ? "e.g. 3"
-                        : "e.g. 1.50"
-                  }
-                  className="min-w-0 flex-1 rounded-lg border border-black/15 bg-white px-3 py-2 text-black outline-none focus:border-black"
-                />
-              </div>
-
-              <input
-                aria-label="Name shown to the customer"
-                value={label}
-                maxLength={40}
-                onChange={(event) => setLabel(event.target.value)}
-                placeholder={`Shown as "${defaultAdjustmentLabel(labelKind)}"`}
-                className="mt-2 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm text-black outline-none focus:border-black"
-              />
-
-              <p className="mt-2 text-sm text-black/70" aria-live="polite">
-                {preview?.error
-                  ? preview.error
-                  : previewTotal !== null
-                    ? `New total: ${formatPrice(previewTotal)}`
-                    : `Current total: ${formatPrice(baseTotalCents / 100)}`}
-              </p>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={disabled || !preview || Boolean(preview.error)}
-                  onClick={() =>
-                    onApply({
-                      mode,
-                      unit,
-                      value,
-                      label: cleanAdjustmentLabel(label, labelKind)
-                    })
-                  }
-                  className="rounded-lg bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  Apply
-                </button>
-                {applied ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onApply(null);
-                      setValue("");
-                      setLabel("");
-                    }}
-                    className="rounded-lg border border-black/15 bg-white px-4 py-2 text-sm font-semibold text-black"
-                  >
-                    Remove
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onLock();
-                    setOpen(false);
-                    setValue("");
-                    setLabel("");
-                  }}
-                  className="ml-auto text-sm font-semibold text-black/60 underline underline-offset-2"
-                >
-                  Lock
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }

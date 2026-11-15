@@ -5,10 +5,15 @@ import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { CUSTOM_PAYMENT_PAYPAL_CUSTOM_ID } from "@/lib/custom-payment";
 import {
   CustomPaymentInputError,
+  applyCustomPaymentAdjustment,
   createPendingCustomOrder,
   deleteUnpaidCustomOrder,
   readCustomPaymentRequest
 } from "@/lib/custom-payment-server";
+import {
+  CheckoutAdjustmentError,
+  readAdjustmentRequest
+} from "@/lib/checkout-adjustment-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,7 +54,8 @@ export async function POST(request) {
       return NextResponse.json({ message: "Invalid payment request." }, { status: 400 });
     }
 
-    const payment = readCustomPaymentRequest(body);
+    const adjustment = readAdjustmentRequest(body?.adjustment);
+    const payment = applyCustomPaymentAdjustment(readCustomPaymentRequest(body), adjustment);
 
     if (payment.storefront === "ecoware" && isProductionDeployment()) {
       return NextResponse.json(
@@ -98,6 +104,13 @@ export async function POST(request) {
 
     if (error instanceof CustomPaymentInputError) {
       return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
+    if (error instanceof CheckoutAdjustmentError) {
+      return NextResponse.json(
+        { message: error.message, adjustmentRejected: true },
+        { status: error.status }
+      );
     }
 
     console.error("Custom payment (PayPal) error:", error);
