@@ -73,7 +73,8 @@ export async function POST(request) {
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
-        customer_email: payment.customer.email,
+        // Without an email, Stripe asks for one on its page.
+        ...(payment.customer.email ? { customer_email: payment.customer.email } : {}),
         line_items: lineItems,
         expires_at: Math.floor(Date.now() / 1000) + SESSION_MINUTES * 60,
         phone_number_collection: { enabled: true },
