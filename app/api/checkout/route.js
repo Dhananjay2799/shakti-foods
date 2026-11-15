@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { DELIVERY_PICKUP } from "@/lib/delivery";
 import { stripeKeyForStorefront } from "@/lib/stripe-storefront";
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
@@ -160,8 +161,13 @@ export async function POST(request) {
     const checkout =
       await prepareCheckout(
         rawCartItems,
-        storefront
+        storefront,
+        body?.deliveryMethod
       );
+
+    const isPickup =
+      checkout.deliveryMethod ===
+      DELIVERY_PICKUP;
 
     reservationId =
       checkout.reservationId;
@@ -215,9 +221,14 @@ export async function POST(request) {
 
             billing_address_collection: "auto",
 
-            shipping_address_collection: {
-              allowed_countries: ["US"]
-            },
+            // Local pickup needs no shipping address.
+            ...(isPickup
+              ? {}
+              : {
+                  shipping_address_collection: {
+                    allowed_countries: ["US"]
+                  }
+                }),
 
             // Shakti Foods charges no sales tax.
             automatic_tax: {
@@ -228,6 +239,8 @@ export async function POST(request) {
                   "true"
             },
 
+            // Only the delivery the customer chose on the checkout page,
+            // so Stripe charges exactly the total shown there.
             shipping_options: [
               {
                 shipping_rate_data: {
@@ -238,31 +251,21 @@ export async function POST(request) {
                       CHECKOUT_CURRENCY.toLowerCase()
                   },
                   display_name:
-                    shippingAmountCents === 0
-                      ? "Free Standard Shipping"
-                      : "Standard Shipping",
-                  delivery_estimate: {
-                    minimum: {
-                      unit: "business_day",
-                      value: 3
-                    },
-                    maximum: {
-                      unit: "business_day",
-                      value: 7
-                    }
-                  }
-                }
-              },
-              {
-                shipping_rate_data: {
-                  type: "fixed_amount",
-                  fixed_amount: {
-                    amount: 0,
-                    currency:
-                      CHECKOUT_CURRENCY.toLowerCase()
-                  },
-                  display_name:
-                    "Local Pickup - Weston, Florida"
+                    checkout.deliveryMethodName,
+                  ...(isPickup
+                    ? {}
+                    : {
+                        delivery_estimate: {
+                          minimum: {
+                            unit: "business_day",
+                            value: 3
+                          },
+                          maximum: {
+                            unit: "business_day",
+                            value: 7
+                          }
+                        }
+                      })
                 }
               }
             ],
@@ -275,6 +278,8 @@ export async function POST(request) {
 
               order_type:
                 "online-order",
+              delivery_method:
+                checkout.deliveryMethod,
 
               reservation_id:
                 String(reservationId)
@@ -395,6 +400,8 @@ export async function POST(request) {
 
         shipping_amount:
           shippingAmountCents,
+        shipping_method:
+          checkout.deliveryMethodName,
 
         tax_amount:
           taxAmountCents,

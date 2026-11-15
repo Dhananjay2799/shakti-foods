@@ -181,7 +181,8 @@ export async function POST(request) {
     const checkout =
       await prepareCheckout(
         rawCartItems,
-        storefront
+        storefront,
+        body?.deliveryMethod
       );
 
     reservationId =
@@ -211,6 +212,9 @@ export async function POST(request) {
 
         shipping_amount:
           checkout.shippingAmountCents,
+
+        shipping_method:
+          checkout.deliveryMethodName,
 
         tax_amount:
           checkout.taxAmountCents,
@@ -368,7 +372,14 @@ export async function POST(request) {
           `${businessName} Order`,
 
         brandName:
-          businessName
+          businessName,
+
+        // Local pickup: PayPal doesn't ask for a shipping address.
+        shippingPreference:
+          checkout.deliveryMethod ===
+          "pickup"
+            ? "NO_SHIPPING"
+            : "GET_FROM_FILE"
       });
 
     console.log(
