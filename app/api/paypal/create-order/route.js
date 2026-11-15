@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  applyCheckoutAdjustment,
+  readAdjustmentRequest
+} from "@/lib/checkout-adjustment-server";
 import { createPayPalOrder } from "@/lib/paypal";
 import { getPayPalCheckoutAvailability } from "@/lib/paypal-availability";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
@@ -180,7 +184,30 @@ export async function POST(request) {
      * inventory validation, shipping calculation
      * and inventory reservation.
      */
-    const checkout =
+    // "Adjust amount" (admin code): check it before reserving stock.
+    let adjustment = null;
+
+    try {
+      adjustment =
+        readAdjustmentRequest(
+          body?.adjustment
+        );
+    } catch (adjustmentError) {
+      return NextResponse.json(
+        {
+          message:
+            adjustmentError.message,
+          adjustmentRejected: true
+        },
+        {
+          status:
+            adjustmentError.status ||
+            400
+        }
+      );
+    }
+
+    const prepared =
       await prepareCheckout(
         rawCartItems,
         storefront,
@@ -188,10 +215,16 @@ export async function POST(request) {
       );
 
     reservationId =
-      checkout.reservationId;
+      prepared.reservationId;
 
     supabase =
       createSupabaseAdmin();
+
+    const checkout =
+      applyCheckoutAdjustment(
+        prepared,
+        adjustment
+      );
 
     /*
      * Create the pending database order first.
@@ -220,6 +253,9 @@ export async function POST(request) {
 
         tax_amount:
           checkout.taxAmountCents,
+
+        discount_amount:
+          checkout.discountCents,
 
         total_amount:
           checkout.totalAmountCents,

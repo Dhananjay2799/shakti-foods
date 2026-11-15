@@ -35,6 +35,10 @@ import {
   trackEvent
 } from "@/lib/analytics";
 
+import AdjustAmountPanel, {
+  useCheckoutAdjustment
+} from "@/components/AdjustAmountPanel";
+
 export default function CheckoutPageContent({
   // The store whose checkout page this is (the cart may be empty).
   pageStorefront = "shakti_foods"
@@ -275,11 +279,39 @@ export default function CheckoutPageContent({
       subtotal
     ).shipping;
 
-  const estimate =
+  const baseEstimate =
     getCheckoutEstimate(
       subtotal,
       { pickup: isPickup }
     );
+
+  /*
+   * "Adjust amount" (admin only, after the admin code is accepted):
+   * a fee, a discount or a new total for this order. Recomputed from the
+   * current order, so changing delivery keeps it right.
+   */
+  const baseTotalCents =
+    Math.round(baseEstimate.total * 100);
+
+  const adjust =
+    useCheckoutAdjustment(baseTotalCents);
+
+  const {
+    feeCents,
+    discountCents,
+    label: adjustmentLabel,
+    request: adjustmentRequest
+  } = adjust;
+
+  const estimate = {
+    ...baseEstimate,
+    total: adjust.totalCents / 100
+  };
+
+  function handleAdjustmentRejected(message) {
+    adjust.clear();
+    setError(message);
+  }
 
   const pricingReady =
     Boolean(pricing) &&
@@ -356,6 +388,9 @@ export default function CheckoutPageContent({
 
                 deliveryMethod,
 
+                adjustment:
+                  adjustmentRequest,
+
                 customer: {
                   name:
                     customerDetails.name
@@ -378,6 +413,12 @@ export default function CheckoutPageContent({
 
       const data =
         await response.json();
+
+      if (data?.adjustmentRejected) {
+        handleAdjustmentRejected(data.message);
+        setLoading(false);
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -537,6 +578,9 @@ export default function CheckoutPageContent({
 
                 deliveryMethod,
 
+                adjustment:
+                  adjustmentRequest,
+
                 customer: {
                   name:
                     customerDetails.name
@@ -569,6 +613,11 @@ export default function CheckoutPageContent({
         "[PayPal] create-order response:",
         data
       );
+
+      if (data?.adjustmentRejected) {
+        handleAdjustmentRejected(data.message);
+        throw new Error(data.message);
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -1230,6 +1279,26 @@ export default function CheckoutPageContent({
                         <dd>{shippingText}</dd>
                       </div>
 
+                      {feeCents > 0 ? (
+                        <div className="flex justify-between gap-4">
+                          <dt>{adjustmentLabel}</dt>
+                          <dd>{formatPrice(feeCents / 100)}</dd>
+                        </div>
+                      ) : null}
+
+                      {discountCents > 0 ? (
+                        <div className="flex justify-between gap-4 font-bold text-green-700">
+                          <dt>{adjustmentLabel}</dt>
+                          <dd>-{formatPrice(discountCents / 100)}</dd>
+                        </div>
+                      ) : null}
+
+                      {adjust.error ? (
+                        <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                          Adjustment not applied: {adjust.error}
+                        </div>
+                      ) : null}
+
                       <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-black/10 pt-3">
                         <dt className="text-xl font-bold md:text-2xl">
                           Total
@@ -1301,6 +1370,10 @@ export default function CheckoutPageContent({
                           forceReRender={[
                             subtotal,
                             deliveryMethod,
+                            feeCents,
+                            discountCents,
+                            adjustmentLabel,
+                            adjust.token,
                             estimate.shipping,
                             estimate.tax,
                             estimate.total
@@ -1375,6 +1448,24 @@ export default function CheckoutPageContent({
                       Return Policy
                     </Link>
                   </nav>
+
+                  <AdjustAmountPanel
+                    token={adjust.token}
+                    locked={adjust.locked}
+                    onToken={adjust.saveToken}
+                    onLock={() => {
+                      setError("");
+                      adjust.lock();
+                    }}
+                    applied={adjust.applied}
+                    onApply={(next) => {
+                      setError("");
+                      adjust.setApplied(next);
+                    }}
+                    baseTotalCents={baseTotalCents}
+                    totalCents={adjust.totalCents}
+                    disabled={busy || !pricingReady}
+                  />
                 </section>
               </div>
             </div>
