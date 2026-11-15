@@ -107,6 +107,8 @@ export default function AdjustAmountPanel({
   const [code, setCode] = useState("");
   const [checking, setChecking] = useState(false);
   const [codeError, setCodeError] = useState("");
+  // Shown after Lock, so it's clear the amount went back.
+  const [notice, setNotice] = useState("");
   const [mode, setMode] = useState(applied?.mode || ADJUSTMENT_MODES.FEE);
   const [unit, setUnit] = useState(applied?.unit || "percent");
   const [value, setValue] = useState(applied?.value || "");
@@ -133,6 +135,7 @@ export default function AdjustAmountPanel({
       }
 
       setCode("");
+      setNotice("");
       onToken(result.token, Date.now() + TOKEN_HOURS * 60 * 60 * 1000);
     } catch (err) {
       setCodeError(err instanceof Error ? err.message : "That code isn't correct.");
@@ -174,7 +177,10 @@ export default function AdjustAmountPanel({
     <div className="mt-3 text-center">
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          setOpen((current) => !current);
+          setNotice("");
+        }}
         aria-expanded={open}
         aria-controls="checkout-adjust-panel"
         className="text-xs font-medium text-black/50 underline underline-offset-2 hover:text-black sm:text-sm"
@@ -189,6 +195,14 @@ export default function AdjustAmountPanel({
         >
           {!token ? (
             <form onSubmit={verifyCode}>
+              {notice ? (
+                <p
+                  role="status"
+                  className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800"
+                >
+                  {notice}
+                </p>
+              ) : null}
               <label htmlFor="checkout-adjust-code" className="block text-sm font-bold text-black">
                 Admin code
               </label>
@@ -306,10 +320,17 @@ export default function AdjustAmountPanel({
                 <button
                   type="button"
                   onClick={() => {
+                    // Stay open: closing would move the page, and the
+                    // owner wouldn't see the total go back.
                     onLock();
-                    setOpen(false);
                     setValue("");
                     setLabel("");
+                    setCodeError("");
+                    setNotice(
+                      `Locked. ${applied ? "Adjustment removed. " : ""}Total: ${formatPrice(
+                        baseTotalCents / 100
+                      )}`
+                    );
                   }}
                   className="ml-auto text-sm font-semibold text-black/60 underline underline-offset-2"
                 >
