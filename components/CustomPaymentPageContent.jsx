@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, ChevronDown, Lock } from "lucide-react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 import SectionHeading from "@/components/SectionHeading";
@@ -25,6 +25,8 @@ import {
 
 const INPUT =
   "w-full rounded-2xl border border-black/10 px-4 py-4 text-black outline-none focus:border-black";
+const COMPACT_INPUT =
+  "block h-11 w-full min-w-0 scroll-mt-24 rounded-lg border bg-white px-3 text-base text-neutral-950 placeholder:text-neutral-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--shakti-red)]";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function money(cents) {
@@ -53,6 +55,8 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   const [note, setNote] = useState("");
   const [includeShipping, setIncludeShipping] = useState(true);
   const [includeTax, setIncludeTax] = useState(true);
+  const [shippingRatesOpen, setShippingRatesOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
   const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState("");
@@ -156,6 +160,10 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
 
     if (!formValid) {
       setError("Please fix the highlighted fields.");
+      if (!isEcoware) {
+        const fieldId = amountError ? "custom-amount" : nameError ? "custom-name" : "custom-email";
+        document.getElementById(fieldId)?.focus();
+      }
       return false;
     }
 
@@ -282,346 +290,482 @@ export default function CustomPaymentPageContent({ storefront = "shakti_foods" }
   const emailInvalid = showErrors && Boolean(emailError);
   const totalLabel = amountError ? "—" : money(totalCents);
 
-  // The Ecoware layout already provides the page's <main>.
-  const Wrapper = isEcoware ? "div" : "main";
+  const notePreview = cleanCustomPaymentNote(note);
+  const labelClass = isEcoware
+    ? "text-sm font-bold text-black"
+    : "mb-1 block text-sm font-semibold text-neutral-950";
+  const optionalClass = isEcoware ? "font-normal text-black/50" : "font-normal text-neutral-600";
+  const inputClass = isEcoware ? INPUT : COMPACT_INPUT;
+  const fieldErrorClass = isEcoware
+    ? "mt-2 text-sm font-semibold text-red-600"
+    : "mt-1.5 text-sm font-semibold text-red-700";
+  const fieldBorder = (invalid) => {
+    if (invalid) return isEcoware ? "border-red-500" : "border-red-600";
+    return isEcoware ? "" : "border-[#938a82]";
+  };
+
+  const paymentDetails = (
+    <div className={isEcoware ? "mt-6 grid gap-5" : "mt-3 grid gap-3 sm:mt-4 sm:grid-cols-2 sm:gap-x-4"}>
+      <div className="min-w-0">
+        <label htmlFor="custom-amount" className={labelClass}>Amount (USD)</label>
+        <div
+          className={isEcoware
+            ? `mt-2 flex items-center rounded-2xl border bg-white focus-within:border-black ${amountInvalid ? "border-red-500" : "border-black/10"}`
+            : "relative"}
+        >
+          <span aria-hidden="true" className={isEcoware
+            ? "pl-4 text-2xl font-bold text-black/50"
+            : "pointer-events-none absolute inset-y-0 left-3 flex items-center font-semibold text-neutral-600"}
+          >
+            $
+          </span>
+          <input
+            id="custom-amount"
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            value={amountInput}
+            onChange={(event) => setAmountInput(event.target.value)}
+            onBlur={() => {
+              if (amountCents !== null) setAmountInput((amountCents / 100).toFixed(2));
+            }}
+            placeholder="0.00"
+            aria-invalid={amountInvalid}
+            aria-describedby={isEcoware || amountInvalid ? "custom-amount-help" : undefined}
+            className={isEcoware
+              ? "w-full min-w-0 flex-1 rounded-2xl bg-transparent px-2 py-4 text-2xl font-bold text-black outline-none"
+              : `${inputClass} ${fieldBorder(amountInvalid)} pl-8 font-bold tabular-nums`}
+          />
+        </div>
+        {isEcoware || amountInvalid ? (
+          <p id="custom-amount-help" className={amountInvalid ? fieldErrorClass : "mt-2 text-sm text-black/55"}>
+            {amountInvalid ? amountError : "The amount before shipping and tax."}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="min-w-0">
+        <label htmlFor="custom-note" className={labelClass}>
+          {isEcoware ? "What is this payment for?" : "Payment note"}{" "}
+          <span className={optionalClass}>(optional)</span>
+        </label>
+        <input
+          id="custom-note"
+          type="text"
+          value={note}
+          maxLength={CUSTOM_PAYMENT_NOTE_MAX_LENGTH}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder={isEcoware ? "e.g. Invoice #1042 or 5 cases of plates" : "e.g. Invoice #1042"}
+          className={`${inputClass} ${isEcoware ? "mt-2" : fieldBorder(false)}`}
+        />
+      </div>
+
+      {isEcoware ? (
+        <fieldset className="grid min-w-0 grid-cols-1 gap-3">
+          <legend className="text-sm font-bold text-black">
+            {taxOption ? "Shipping and tax" : "Shipping"}
+          </legend>
+          <label className="mt-2 flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
+            <input
+              type="checkbox"
+              checked={includeShipping}
+              onChange={(event) => setIncludeShipping(event.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0"
+            />
+            <span className="text-sm leading-6 text-black/70">
+              <span className="block font-bold text-black">Add shipping</span>
+              {shippingRateLines().join(". ")}. You&apos;ll enter your address on the next step.
+            </span>
+          </label>
+          {taxOption ? (
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
+              <input
+                type="checkbox"
+                checked={includeTax}
+                onChange={(event) => setIncludeTax(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0"
+              />
+              <span className="text-sm leading-6 text-black/70">
+                <span className="block font-bold text-black">Add sales tax</span>
+                {CUSTOM_PAYMENT_TAX_PERCENT}% sales tax on the amount and shipping.
+              </span>
+            </label>
+          ) : null}
+        </fieldset>
+      ) : (
+        <div className="rounded-lg border border-[#e7ded4] bg-[#faf7f2] px-3 sm:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-x-2">
+            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={includeShipping}
+                onChange={(event) => setIncludeShipping(event.target.checked)}
+                aria-describedby={includeShipping ? "custom-shipping-help" : undefined}
+                className="h-4 w-4 shrink-0 accent-[var(--shakti-red)]"
+              />
+              Add shipping
+            </label>
+            <button
+              type="button"
+              aria-expanded={shippingRatesOpen}
+              aria-controls="custom-shipping-rates"
+              onClick={() => setShippingRatesOpen((open) => !open)}
+              className="group inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-neutral-700 underline underline-offset-2 hover:text-neutral-950"
+            >
+              Shipping rates
+              <ChevronDown size={14} aria-hidden="true" className="group-aria-expanded:rotate-180" />
+            </button>
+          </div>
+          <ul id="custom-shipping-rates" hidden={!shippingRatesOpen} className="space-y-1 pb-2 text-xs leading-5 text-neutral-700">
+            {shippingRateLines().map((line) => <li key={line}>{line}</li>)}
+          </ul>
+          {includeShipping ? (
+            <p id="custom-shipping-help" className="pb-2.5 text-xs leading-5 text-neutral-600">
+              Enter your shipping address when you pay.
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      <div className={isEcoware
+        ? "grid grid-cols-1 gap-4 border-t border-black/10 pt-5"
+        : "grid gap-2.5 border-t border-[#e7ded4] pt-3 sm:col-span-2 sm:grid-cols-2 sm:gap-x-4"}
+      >
+        <h3 className={isEcoware ? "text-sm font-bold text-black" : "text-base font-bold sm:col-span-2"}>
+          Your details
+        </h3>
+
+        <div className="min-w-0">
+          <label htmlFor="custom-name" className={isEcoware ? "sr-only" : labelClass}>Full name</label>
+          <input
+            id="custom-name"
+            type="text"
+            autoComplete="name"
+            value={customer.name}
+            onChange={(event) => updateCustomer("name", event.target.value)}
+            placeholder={isEcoware ? "Full name" : undefined}
+            aria-invalid={nameInvalid}
+            aria-describedby={nameInvalid ? "custom-name-error" : undefined}
+            className={`${inputClass} ${fieldBorder(nameInvalid)}`}
+          />
+          {nameInvalid ? (
+            <p id="custom-name-error" className={fieldErrorClass}>{nameError}</p>
+          ) : null}
+        </div>
+
+        <div className="min-w-0">
+          <label htmlFor="custom-email" className={isEcoware ? "sr-only" : labelClass}>
+            Email <span className={optionalClass}>(optional)</span>
+          </label>
+          <input
+            id="custom-email"
+            type="email"
+            autoComplete="email"
+            value={customer.email}
+            onChange={(event) => updateCustomer("email", event.target.value)}
+            placeholder={isEcoware ? "Email (optional, for your receipt)" : undefined}
+            aria-invalid={emailInvalid}
+            aria-describedby={emailInvalid ? "custom-email-error" : undefined}
+            className={`${inputClass} ${fieldBorder(emailInvalid)}`}
+          />
+          {emailInvalid ? (
+            <p id="custom-email-error" className={fieldErrorClass}>{emailError}</p>
+          ) : null}
+        </div>
+
+        <div className={isEcoware ? undefined : "min-w-0 sm:col-span-2"}>
+          <label htmlFor="custom-phone" className={isEcoware ? "sr-only" : labelClass}>
+            Phone number <span className={optionalClass}>(optional)</span>
+          </label>
+          <input
+            id="custom-phone"
+            type="tel"
+            autoComplete="tel"
+            value={customer.phone}
+            onChange={(event) => updateCustomer("phone", event.target.value)}
+            placeholder={isEcoware ? "Phone number (optional)" : undefined}
+            className={`${inputClass} ${fieldBorder(false)}`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const summary = (
+    <>
+      {notePreview ? (
+        <p className={isEcoware
+          ? "mt-4 break-words rounded-2xl bg-[#faf7f1] px-4 py-3 text-sm text-black/70"
+          : "mb-3 break-words rounded-lg bg-[#faf7f2] px-3 py-2 text-sm text-neutral-700"}
+        >
+          {notePreview}
+        </p>
+      ) : null}
+      <dl className={isEcoware ? "mt-6 grid gap-3 text-black" : "grid gap-2 text-sm text-neutral-800"}>
+        <div className="flex justify-between gap-3">
+          <dt>Amount</dt>
+          <dd className={isEcoware ? undefined : "tabular-nums"}>{amountError ? "—" : money(totals.amountCents)}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt>Shipping</dt>
+          <dd className={isEcoware ? (includeShipping ? "" : "text-black/45") : "tabular-nums text-neutral-600"}>
+            {!includeShipping
+              ? "Not added"
+              : amountError
+                ? "—"
+                : totals.shippingCents === 0
+                  ? "Free"
+                  : money(totals.shippingCents)}
+          </dd>
+        </div>
+        {taxOption ? (
+          <div className="flex justify-between gap-4">
+            <dt>Sales tax ({CUSTOM_PAYMENT_TAX_PERCENT}%)</dt>
+            <dd className={includeTax ? "" : "text-black/45"}>
+              {!includeTax ? "Not added" : amountError ? "—" : money(totals.taxCents)}
+            </dd>
+          </div>
+        ) : null}
+        {!amountError && adjust.feeCents > 0 ? (
+          <div className="flex justify-between gap-4">
+            <dt className="min-w-0 break-words">{adjust.label}</dt>
+            <dd className="shrink-0">{money(adjust.feeCents)}</dd>
+          </div>
+        ) : null}
+        {!amountError && adjust.discountCents > 0 ? (
+          <div className="flex justify-between gap-4 font-bold text-green-700">
+            <dt className="min-w-0 break-words">{adjust.label}</dt>
+            <dd className="shrink-0">-{money(adjust.discountCents)}</dd>
+          </div>
+        ) : null}
+        <div className={isEcoware
+          ? "flex justify-between gap-4 border-t border-black/10 pt-3 text-lg font-bold"
+          : "flex justify-between gap-3 border-t border-[#e7ded4] pt-2 text-base font-bold text-neutral-950"}
+        >
+          <dt>Total</dt>
+          <dd className={isEcoware ? undefined : "tabular-nums"}>{totalLabel}</dd>
+        </div>
+      </dl>
+      {!amountError && adjust.error ? (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Adjustment not applied: {adjust.error}
+        </p>
+      ) : null}
+    </>
+  );
+
+  const paymentActions = (
+    <div className={isEcoware
+      ? "mt-8 rounded-[1.5rem] bg-brand-sand p-5"
+      : "min-w-0 lg:col-start-2 lg:row-start-2 lg:self-start lg:rounded-b-2xl lg:border lg:border-t-0 lg:border-[#e7ded4] lg:px-5 lg:pb-5"}
+    >
+      {isEcoware ? (
+        <>
+          <div className="flex items-center gap-2 font-bold text-black">
+            <Lock size={18} aria-hidden="true" />
+            Secure Payment
+          </div>
+          <p className="mt-2 text-sm leading-6 text-black">
+            Card payments go through Stripe. We never see or store your card details.
+          </p>
+        </>
+      ) : null}
+
+      {notice ? (
+        <div role="status" className={isEcoware
+          ? "mt-4 rounded-2xl bg-white/70 px-4 py-3 text-sm text-black"
+          : "mb-3 rounded-lg border border-[#e7ded4] bg-[#faf7f2] px-3 py-2.5 text-sm text-neutral-800"}
+        >
+          {notice}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div role="alert" className={isEcoware
+          ? "mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-black"
+          : "mb-3 rounded-lg bg-red-50 px-3 py-2.5 text-sm font-medium text-red-800"}
+        >
+          {error}
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={payByCard}
+        disabled={busy}
+        className={isEcoware
+          ? "mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-60"
+          : "min-h-11 w-full rounded-lg bg-[var(--shakti-red)] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c51620] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--shakti-red)] disabled:cursor-not-allowed disabled:opacity-60"}
+      >
+        {cardLoading ? "Opening secure payment..." : amountError ? "Pay with Card" : `Pay ${totalLabel} with Card`}
+      </button>
+
+      {showPayPal ? (
+        <div className="mt-2">
+          <PayPalScriptProvider
+            options={{
+              clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "",
+              currency: "USD",
+              intent: "capture",
+              components: "buttons",
+              disableFunding: "paylater,card"
+            }}
+          >
+            <PayPalButtons
+              style={{ layout: "horizontal", shape: "rect", label: "paypal", height: 44, tagline: false }}
+              disabled={busy}
+              forceReRender={[
+                totalCents,
+                includeShipping,
+                includeTax,
+                adjust.feeCents,
+                adjust.discountCents,
+                adjust.label,
+                adjust.token
+              ]}
+              onClick={(data, actions) =>
+                latest.current.checkForm() ? actions.resolve() : actions.reject()
+              }
+              createOrder={() => latest.current.createPayPalOrder()}
+              onApprove={(data) => latest.current.approvePayPalOrder(data)}
+              onCancel={() => latest.current.cancelPayPalOrder()}
+              onError={(err) => {
+                setPayPalLoading(false);
+                setError(
+                  err instanceof Error ? `PayPal error: ${err.message}` : "PayPal error. Please try again or pay by card."
+                );
+              }}
+            />
+          </PayPalScriptProvider>
+        </div>
+      ) : null}
+
+      {isEcoware ? null : (
+        <p className="mt-2 flex items-center justify-center gap-1.5 text-xs leading-5 text-neutral-600">
+          <Lock size={13} aria-hidden="true" />
+          Secure card payments by Stripe
+        </p>
+      )}
+
+      <p className={isEcoware
+        ? "mt-5 text-center text-xs leading-5 text-black/55"
+        : "mt-3 border-t border-[#e7ded4] pt-3 text-center text-xs leading-5 text-neutral-600"}
+      >
+        By paying, you agree to our{" "}
+        <Link href={`${prefix}/terms`} className="whitespace-nowrap font-semibold text-black underline underline-offset-2">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href={`${prefix}/privacy`} className="whitespace-nowrap font-semibold text-black underline underline-offset-2">
+          Privacy Policy
+        </Link>
+        .
+      </p>
+
+      <AdjustAmountPanel
+        token={adjust.token}
+        locked={adjust.locked}
+        onToken={adjust.saveToken}
+        onLock={() => {
+          setError("");
+          adjust.lock();
+        }}
+        applied={adjust.applied}
+        onApply={(next) => {
+          setError("");
+          adjust.setApplied(next);
+        }}
+        baseTotalCents={amountError ? 0 : totals.totalCents}
+        totalCents={totalCents}
+        disabled={busy || Boolean(amountError)}
+      />
+    </div>
+  );
+
+  if (isEcoware) {
+    return (
+      <div className="bg-brand-radial pt-36 text-black sm:pt-40 lg:pt-44">
+        <section className="section-pad py-14 md:py-20">
+          <div className="container-brand">
+            <Link
+              href={`${prefix}/checkout`}
+              className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-black/70 transition hover:text-black"
+            >
+              <ArrowLeft size={16} aria-hidden="true" />
+              Back to checkout
+            </Link>
+            <SectionHeading
+              eyebrow={brandName}
+              title="Pay a Custom Amount"
+              text="Paying an invoice or a price we agreed on? Enter the amount below and pay securely by card. No cart needed."
+            />
+            <div className="mt-8 grid grid-cols-1 gap-6 md:mt-10 md:gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
+              <div className="min-w-0 rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
+                <div className="font-display text-3xl font-bold text-black">Payment Details</div>
+                {paymentDetails}
+                {paymentActions}
+              </div>
+              <aside className="h-fit min-w-0 rounded-[2rem] bg-white p-5 shadow-soft md:p-6 lg:sticky lg:top-32">
+                <div className="font-display text-3xl font-bold text-black">Payment Summary</div>
+                {summary}
+              </aside>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
-    <Wrapper
-      className={`text-black ${
-        isEcoware ? "bg-brand-radial pt-36 sm:pt-40 lg:pt-44" : "bg-white pt-24 md:pt-28"
-      }`}
-    >
-      <section className="section-pad py-14 md:py-20">
-        <div className="container-brand">
-          <Link
-            href={`${prefix}/checkout`}
-            className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-black/70 transition hover:text-black"
+    <main className="mx-auto max-w-[968px] bg-white px-4 pb-10 pt-[88px] text-neutral-950 sm:px-6 sm:pt-[94px] lg:pt-24">
+      <header className="mb-4 sm:mb-5">
+        <Link
+          href="/checkout"
+          className="mb-1.5 inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:text-neutral-950"
+        >
+          <ArrowLeft size={15} aria-hidden="true" />
+          Back to checkout
+        </Link>
+        <h1 className="text-[1.625rem] font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
+          Pay a Custom Amount
+        </h1>
+        <p className="mt-1.5 text-sm leading-5 text-neutral-600">
+          Pay an invoice or an agreed amount.
+        </p>
+      </header>
+
+      <div className="grid gap-y-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.61fr)] lg:grid-rows-[auto_1fr] lg:gap-x-5 lg:gap-y-0">
+        <section
+          aria-label="Payment Summary"
+          className="min-w-0 rounded-xl border border-[#e7ded4] bg-[#faf7f2] lg:col-start-2 lg:row-start-1 lg:rounded-b-none lg:rounded-t-2xl lg:border-b-0 lg:bg-white lg:p-5 lg:pb-4"
+        >
+          <h2 className="mb-4 hidden text-xl font-bold lg:block">Payment Summary</h2>
+          <button
+            type="button"
+            aria-expanded={summaryOpen}
+            aria-controls="custom-payment-summary"
+            onClick={() => setSummaryOpen((open) => !open)}
+            className="group flex min-h-11 w-full items-center gap-2 rounded-xl px-3.5 py-2 text-left text-sm font-bold lg:hidden"
           >
-            <ArrowLeft size={16} aria-hidden="true" />
-            Back to checkout
-          </Link>
-
-          <SectionHeading
-            eyebrow={brandName}
-            title="Pay a Custom Amount"
-            text={`Paying an invoice or a price we agreed on? Enter the amount below and pay securely by ${
-              showPayPal ? "card or PayPal" : "card"
-            }. No cart needed.`}
-          />
-
-          <div className="mt-8 grid grid-cols-1 gap-6 md:mt-10 md:gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
-            <div className="min-w-0 rounded-[2rem] bg-white p-5 shadow-soft md:p-6">
-              <div className="font-display text-3xl font-bold text-black">Payment Details</div>
-
-              <div className="mt-6 grid grid-cols-1 gap-5">
-                <div>
-                  <label htmlFor="custom-amount" className="text-sm font-bold text-black">
-                    Amount (USD)
-                  </label>
-                  <div
-                    className={`mt-2 flex items-center rounded-2xl border bg-white focus-within:border-black ${
-                      amountInvalid ? "border-red-500" : "border-black/10"
-                    }`}
-                  >
-                    <span aria-hidden="true" className="pl-4 text-2xl font-bold text-black/50">
-                      $
-                    </span>
-                    <input
-                      id="custom-amount"
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={amountInput}
-                      onChange={(event) => setAmountInput(event.target.value)}
-                      onBlur={() => {
-                        if (amountCents !== null) setAmountInput((amountCents / 100).toFixed(2));
-                      }}
-                      placeholder="0.00"
-                      aria-invalid={amountInvalid}
-                      aria-describedby="custom-amount-help"
-                      className="w-full min-w-0 flex-1 rounded-2xl bg-transparent px-2 py-4 text-2xl font-bold text-black outline-none"
-                    />
-                  </div>
-                  <p
-                    id="custom-amount-help"
-                    className={`mt-2 text-sm ${amountInvalid ? "font-semibold text-red-600" : "text-black/55"}`}
-                  >
-                    {amountInvalid ? amountError : "The amount before shipping and tax."}
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="custom-note" className="text-sm font-bold text-black">
-                    What is this payment for? <span className="font-normal text-black/50">(optional)</span>
-                  </label>
-                  <input
-                    id="custom-note"
-                    type="text"
-                    value={note}
-                    maxLength={CUSTOM_PAYMENT_NOTE_MAX_LENGTH}
-                    onChange={(event) => setNote(event.target.value)}
-                    placeholder="e.g. Invoice #1042 or 5 cases of plates"
-                    className={`mt-2 ${INPUT}`}
-                  />
-                </div>
-
-                <fieldset className="grid min-w-0 grid-cols-1 gap-3">
-                  <legend className="text-sm font-bold text-black">
-                    {taxOption ? "Shipping and tax" : "Shipping"}
-                  </legend>
-
-                  <label className="mt-2 flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
-                    <input
-                      type="checkbox"
-                      checked={includeShipping}
-                      onChange={(event) => setIncludeShipping(event.target.checked)}
-                      className="mt-1 h-4 w-4 shrink-0"
-                    />
-                    <span className="text-sm leading-6 text-black/70">
-                      <span className="block font-bold text-black">Add shipping</span>
-                      {shippingRateLines().join(". ")}. You&apos;ll enter your address on
-                      the next step.
-                    </span>
-                  </label>
-
-                  {taxOption ? (
-                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#faf7f1] p-4">
-                      <input
-                        type="checkbox"
-                        checked={includeTax}
-                        onChange={(event) => setIncludeTax(event.target.checked)}
-                        className="mt-1 h-4 w-4 shrink-0"
-                      />
-                      <span className="text-sm leading-6 text-black/70">
-                        <span className="block font-bold text-black">Add sales tax</span>
-                        {CUSTOM_PAYMENT_TAX_PERCENT}% sales tax on the amount and shipping.
-                      </span>
-                    </label>
-                  ) : null}
-                </fieldset>
-
-                <div className="grid grid-cols-1 gap-4 border-t border-black/10 pt-5">
-                  <div className="text-sm font-bold text-black">Your details</div>
-
-                  <div>
-                    <input
-                      type="text"
-                      autoComplete="name"
-                      value={customer.name}
-                      onChange={(event) => updateCustomer("name", event.target.value)}
-                      placeholder="Full name"
-                      aria-label="Full name"
-                      aria-invalid={nameInvalid}
-                      className={`${INPUT} ${nameInvalid ? "border-red-500" : ""}`}
-                    />
-                    {nameInvalid ? (
-                      <p className="mt-2 text-sm font-semibold text-red-600">{nameError}</p>
-                    ) : null}
-                  </div>
-
-                  <div>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      value={customer.email}
-                      onChange={(event) => updateCustomer("email", event.target.value)}
-                      placeholder="Email (optional, for your receipt)"
-                      aria-label="Email (optional)"
-                      aria-invalid={emailInvalid}
-                      className={`${INPUT} ${emailInvalid ? "border-red-500" : ""}`}
-                    />
-                    {emailInvalid ? (
-                      <p className="mt-2 text-sm font-semibold text-red-600">{emailError}</p>
-                    ) : null}
-                  </div>
-
-                  <input
-                    type="tel"
-                    autoComplete="tel"
-                    value={customer.phone}
-                    onChange={(event) => updateCustomer("phone", event.target.value)}
-                    placeholder="Phone number (optional)"
-                    aria-label="Phone number (optional)"
-                    className={INPUT}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-8 rounded-[1.5rem] bg-brand-sand p-5">
-                <div className="flex items-center gap-2 font-bold text-black">
-                  <Lock size={18} aria-hidden="true" />
-                  Secure Payment
-                </div>
-
-                <p className="mt-2 text-sm leading-6 text-black">
-                  Card payments go through Stripe. We never see or store your card details.
-                </p>
-
-                {notice ? (
-                  <div role="status" className="mt-4 rounded-2xl bg-white/70 px-4 py-3 text-sm text-black">
-                    {notice}
-                  </div>
-                ) : null}
-
-                {error ? (
-                  <div role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-black">
-                    {error}
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={payByCard}
-                  disabled={busy}
-                  className="mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {cardLoading
-                    ? "Opening secure payment..."
-                    : amountError
-                      ? "Pay with Card"
-                      : `Pay ${totalLabel} with Card`}
-                </button>
-
-                {showPayPal ? (
-                  <>
-                    <div className="my-5 flex items-center gap-3">
-                      <div className="h-px flex-1 bg-black/10" />
-                      <span className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">
-                        Or pay with
-                      </span>
-                      <div className="h-px flex-1 bg-black/10" />
-                    </div>
-
-                    <PayPalScriptProvider
-                      options={{
-                        clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "",
-                        currency: "USD",
-                        intent: "capture",
-                        components: "buttons",
-                        disableFunding: "paylater,card"
-                      }}
-                    >
-                      <PayPalButtons
-                        style={{ layout: "horizontal", shape: "pill", label: "paypal", height: 48, tagline: false }}
-                        disabled={busy}
-                        forceReRender={[
-                          totalCents,
-                          includeShipping,
-                          includeTax,
-                          adjust.feeCents,
-                          adjust.discountCents,
-                          adjust.label,
-                          adjust.token
-                        ]}
-                        onClick={(data, actions) =>
-                          latest.current.checkForm() ? actions.resolve() : actions.reject()
-                        }
-                        createOrder={() => latest.current.createPayPalOrder()}
-                        onApprove={(data) => latest.current.approvePayPalOrder(data)}
-                        onCancel={() => latest.current.cancelPayPalOrder()}
-                        onError={(err) => {
-                          setPayPalLoading(false);
-                          setError(
-                            err instanceof Error ? `PayPal error: ${err.message}` : "PayPal error. Please try again or pay by card."
-                          );
-                        }}
-                      />
-                    </PayPalScriptProvider>
-                  </>
-                ) : null}
-
-                <p className="mt-5 text-center text-xs leading-5 text-black/55">
-                  By paying, you agree to our{" "}
-                  <Link href={`${prefix}/terms`} className="font-semibold text-black underline underline-offset-2">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href={`${prefix}/privacy`} className="font-semibold text-black underline underline-offset-2">
-                    Privacy Policy
-                  </Link>
-                  .
-                </p>
-
-                <AdjustAmountPanel
-                  token={adjust.token}
-                  locked={adjust.locked}
-                  onToken={adjust.saveToken}
-                  onLock={() => {
-                    setError("");
-                    adjust.lock();
-                  }}
-                  applied={adjust.applied}
-                  onApply={(next) => {
-                    setError("");
-                    adjust.setApplied(next);
-                  }}
-                  baseTotalCents={amountError ? 0 : totals.totalCents}
-                  totalCents={totalCents}
-                  disabled={busy || Boolean(amountError)}
-                />
-              </div>
-            </div>
-
-            <aside className="h-fit min-w-0 rounded-[2rem] bg-white p-5 shadow-soft md:p-6 lg:sticky lg:top-32">
-              <div className="font-display text-3xl font-bold text-black">Payment Summary</div>
-
-              {cleanCustomPaymentNote(note) ? (
-                <p className="mt-4 break-words rounded-2xl bg-[#faf7f1] px-4 py-3 text-sm text-black/70">
-                  {cleanCustomPaymentNote(note)}
-                </p>
-              ) : null}
-
-              <dl className="mt-6 grid gap-3 text-black">
-                <div className="flex justify-between gap-4">
-                  <dt>Amount</dt>
-                  <dd>{amountError ? "—" : money(totals.amountCents)}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Shipping</dt>
-                  <dd className={includeShipping ? "" : "text-black/45"}>
-                    {!includeShipping
-                      ? "Not added"
-                      : amountError
-                        ? "—"
-                        : totals.shippingCents === 0
-                          ? "Free"
-                          : money(totals.shippingCents)}
-                  </dd>
-                </div>
-                {taxOption ? (
-                  <div className="flex justify-between gap-4">
-                    <dt>Sales tax ({CUSTOM_PAYMENT_TAX_PERCENT}%)</dt>
-                    <dd className={includeTax ? "" : "text-black/45"}>
-                      {!includeTax ? "Not added" : amountError ? "—" : money(totals.taxCents)}
-                    </dd>
-                  </div>
-                ) : null}
-                {!amountError && adjust.feeCents > 0 ? (
-                  <div className="flex justify-between gap-4">
-                    <dt>{adjust.label}</dt>
-                    <dd>{money(adjust.feeCents)}</dd>
-                  </div>
-                ) : null}
-                {!amountError && adjust.discountCents > 0 ? (
-                  <div className="flex justify-between gap-4 font-bold text-green-700">
-                    <dt>{adjust.label}</dt>
-                    <dd>-{money(adjust.discountCents)}</dd>
-                  </div>
-                ) : null}
-                {!amountError && adjust.error ? (
-                  <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Adjustment not applied: {adjust.error}
-                  </div>
-                ) : null}
-                <div className="flex justify-between gap-4 border-t border-black/10 pt-3 text-lg font-bold">
-                  <dt>Total</dt>
-                  <dd>{totalLabel}</dd>
-                </div>
-              </dl>
-            </aside>
+            <span className="flex-1">Payment Summary</span>
+            <span className="tabular-nums">{totalLabel}</span>
+            <ChevronDown size={16} aria-hidden="true" className="shrink-0 group-aria-expanded:rotate-180" />
+          </button>
+          <div id="custom-payment-summary" className={`${summaryOpen ? "block" : "hidden"} px-3.5 pb-3 lg:block lg:p-0`}>
+            {summary}
           </div>
-        </div>
-      </section>
-    </Wrapper>
+        </section>
+
+        <section
+          aria-labelledby="custom-payment-details"
+          className="min-w-0 rounded-xl border border-[#e7ded4] p-3.5 sm:p-5 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-start lg:rounded-2xl"
+        >
+          <h2 id="custom-payment-details" className="text-lg font-bold sm:text-xl">Payment Details</h2>
+          {paymentDetails}
+        </section>
+
+        {paymentActions}
+      </div>
+    </main>
   );
 }
