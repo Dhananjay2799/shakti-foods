@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import {
-  site,
   whatsappLink,
   mailtoLink
 } from "@/lib/site";
@@ -27,8 +27,62 @@ const initialForm = {
   message: ""
 };
 
+const BUSINESS_TYPES = [
+  ["restaurant", "Restaurant"],
+  ["caterer", "Caterer"],
+  ["event", "Event / Wedding"],
+  ["school", "School / Institution"],
+  ["food-truck", "Food Truck"],
+  ["distributor", "Distributor / Wholesaler"],
+  ["retailer", "Retailer"],
+  ["other", "Other"]
+];
+
+const PURCHASE_FREQUENCIES = [
+  ["one-time", "One-time order"],
+  ["weekly", "Weekly"],
+  ["biweekly", "Every 2 weeks"],
+  ["monthly", "Monthly"],
+  ["quarterly", "Quarterly"],
+  ["ongoing", "Ongoing / Variable"]
+];
+
+// Same look as the checkout page fields.
 const FIELD_CLASS =
-  "h-12 w-full min-w-0 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black";
+  "h-10 w-full min-w-0 rounded-lg border border-black/15 bg-white px-3.5 text-sm text-black outline-none transition placeholder:text-black/40 focus:border-black sm:h-11 sm:text-base";
+
+const LABEL_CLASS =
+  "mb-1 block text-sm font-bold text-black";
+
+function Field({ label, required = false, className = "", children }) {
+  return (
+    <label className={`block min-w-0 ${className}`}>
+      <span className={LABEL_CLASS}>
+        {label}
+        {required ? <span aria-hidden="true"> *</span> : null}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function Select({ children, ...props }) {
+  return (
+    <span className="relative block">
+      <select
+        {...props}
+        className={`${FIELD_CLASS} cursor-pointer appearance-none pr-10`}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        size={18}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black"
+      />
+    </span>
+  );
+}
 
 /*
  * products: [{ id, name }] for the store, shown in the Product dropdown.
@@ -38,7 +92,10 @@ export default function WholesaleInquiryForm({
   productId = "",
   productName = "",
   products = [],
-  storefront = "shakti_foods"
+  storefront = "shakti_foods",
+  // "card": always a bordered card (product pages).
+  // "page": no card on phones, a card from desktop width (contact page).
+  frame = "card"
 }) {
   const units = getWholesaleUnits(storefront);
 
@@ -234,269 +291,166 @@ export default function WholesaleInquiryForm({
     }
   }
 
+  const frameClass =
+    frame === "page"
+      ? "lg:rounded-[1.5rem] lg:border lg:border-black/10 lg:bg-white lg:p-6"
+      : "rounded-[1.5rem] border border-black/10 bg-white p-4 sm:p-6";
+
   return (
     <form
+      id="wholesale-inquiry"
       onSubmit={handleSubmit}
-      className="rounded-[2rem] bg-white p-5 text-black shadow-soft ring-1 ring-black/5 md:p-6"
+      className={`min-w-0 scroll-mt-28 text-black ${frameClass}`}
     >
-      <div className="text-xs font-bold uppercase tracking-[.18em] text-black/45">
-        B2B / Wholesale
-      </div>
-
-      <div className="mt-2 font-display text-3xl font-bold text-black">
+      <h2 className="font-display text-2xl font-bold text-black md:text-3xl">
         Wholesale Inquiry
-      </div>
-
-      <p className="mt-2 text-sm leading-6 text-black/65">
-        Request pricing for bulk orders,
-        restaurant supply, catering,
-        institutional purchasing, or
-        distribution.
-      </p>
+      </h2>
 
       {productName && productOptions.length === 0 ? (
-        <div className="mt-5 rounded-2xl bg-[#f8f6f1] p-4">
-          <div className="text-xs font-bold uppercase tracking-[.14em] text-black/40">
-            Product
-          </div>
-
-          <div className="mt-2 font-bold text-black">
-            {productName}
-          </div>
-        </div>
+        <p className="mt-2 text-sm text-black/70">
+          Product: <span className="font-bold text-black">{productName}</span>
+        </p>
       ) : null}
 
-      <div className="mt-6 grid gap-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">
-              Your Name *
-            </span>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-4">
+        <Field label="Your name" required>
+          <input
+            name="customerName"
+            value={form.customerName}
+            onChange={handleChange}
+            required
+            autoComplete="name"
+            className={FIELD_CLASS}
+            placeholder="Full name"
+          />
+        </Field>
 
-            <input
-              name="customerName"
-              value={form.customerName}
-              onChange={handleChange}
-              required
-              autoComplete="name"
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
-              placeholder="Full name"
-            />
-          </label>
+        <Field label="Business name">
+          <input
+            name="businessName"
+            value={form.businessName}
+            onChange={handleChange}
+            autoComplete="organization"
+            className={FIELD_CLASS}
+            placeholder="Company / restaurant / store"
+          />
+        </Field>
 
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">
-              Business Name
-            </span>
+        <Field label="Email" required>
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            required
+            autoComplete="email"
+            className={FIELD_CLASS}
+            placeholder="you@business.com"
+          />
+        </Field>
 
-            <input
-              name="businessName"
-              value={form.businessName}
-              onChange={handleChange}
-              autoComplete="organization"
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
-              placeholder="Company / restaurant / store"
-            />
-          </label>
-        </div>
+        <Field label="Phone">
+          <input
+            type="tel"
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            autoComplete="tel"
+            className={FIELD_CLASS}
+            placeholder="Phone number"
+          />
+        </Field>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">
-              Business Type
-            </span>
+        <Field label="Business type">
+          <Select
+            name="businessType"
+            value={form.businessType}
+            onChange={handleChange}
+          >
+            <option value="">Select business type</option>
+            {BUSINESS_TYPES.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
+        </Field>
 
-            <select
-              name="businessType"
-              value={form.businessType}
-              onChange={handleChange}
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
-            >
-              <option value="">
-                Select business type
-              </option>
-              <option value="restaurant">
-                Restaurant
-              </option>
-              <option value="caterer">
-                Caterer
-              </option>
-              <option value="event">
-                Event / Wedding
-              </option>
-              <option value="school">
-                School / Institution
-              </option>
-              <option value="food-truck">
-                Food Truck
-              </option>
-              <option value="distributor">
-                Distributor / Wholesaler
-              </option>
-              <option value="retailer">
-                Retailer
-              </option>
-              <option value="other">
-                Other
-              </option>
-            </select>
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">
-              Purchase Frequency
-            </span>
-
-            <select
-              name="purchaseFrequency"
-              value={form.purchaseFrequency}
-              onChange={handleChange}
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
-            >
-              <option value="">
-                Select frequency
-              </option>
-              <option value="one-time">
-                One-time order
-              </option>
-              <option value="weekly">
-                Weekly
-              </option>
-              <option value="biweekly">
-                Every 2 weeks
-              </option>
-              <option value="monthly">
-                Monthly
-              </option>
-              <option value="quarterly">
-                Quarterly
-              </option>
-              <option value="ongoing">
-                Ongoing / Variable
-              </option>
-            </select>
-          </label>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">
-              Email *
-            </span>
-
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              autoComplete="email"
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
-              placeholder="you@business.com"
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">
-              Phone
-            </span>
-
-            <input
-              type="tel"
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              autoComplete="tel"
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
-              placeholder="Phone number"
-            />
-          </label>
-        </div>
+        <Field label="Purchase frequency">
+          <Select
+            name="purchaseFrequency"
+            value={form.purchaseFrequency}
+            onChange={handleChange}
+          >
+            <option value="">Select frequency</option>
+            {PURCHASE_FREQUENCIES.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
+        </Field>
 
         {/* Product, quantity and unit on one line (product on its own
             line on phones). */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,1fr)] sm:gap-x-5">
           {productOptions.length ? (
-            <label className="col-span-2 grid min-w-0 gap-2 md:col-span-1">
-              <span className="text-sm font-bold">
-                Product
-              </span>
-
-              <select
+            <Field label="Product" className="col-span-2 sm:col-span-1">
+              <Select
                 name="productId"
                 value={form.productId}
                 onChange={handleChange}
-                className={FIELD_CLASS}
               >
-                <option value="">
-                  Any / multiple products
-                </option>
-
+                <option value="">Any / multiple products</option>
                 {productOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </Field>
           ) : null}
 
-          <label
-            className={[
-              "grid min-w-0 gap-2",
-              productOptions.length ? "" : "md:col-span-2"
-            ].join(" ")}
+          <Field
+            label="Quantity"
+            className={productOptions.length ? "" : "sm:col-span-2"}
           >
-            <span className="text-sm font-bold">
-              Quantity
-            </span>
-
             <input
               type="number"
               min="1"
               step="1"
               inputMode="numeric"
               name="estimatedQuantity"
-              value={
-                form.estimatedQuantity
-              }
+              value={form.estimatedQuantity}
               onChange={handleChange}
               className={FIELD_CLASS}
               placeholder="e.g. 50"
             />
-          </label>
+          </Field>
 
-          <label className="grid min-w-0 gap-2">
-            <span className="text-sm font-bold">
-              Unit
-            </span>
-
-            <select
+          <Field label="Unit">
+            <Select
               name="quantityUnit"
               value={form.quantityUnit}
               onChange={handleChange}
-              className={FIELD_CLASS}
             >
               {units.map((unit) => (
                 <option key={unit} value={unit}>
                   {QUANTITY_UNIT_LABELS[unit] || unit}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
         </div>
 
-        <div className="border-t border-black/10 pt-5">
-          <div className="text-sm font-bold uppercase tracking-[.14em]">
-            Delivery Location
-          </div>
+        <fieldset className="min-w-0 sm:col-span-2">
+          <legend className={LABEL_CLASS}>Delivery location</legend>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {/* City on its own line on phones; State and ZIP share one. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-x-5">
             <input
               name="deliveryCity"
               value={form.deliveryCity}
               onChange={handleChange}
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
+              autoComplete="address-level2"
+              aria-label="City"
+              className={`${FIELD_CLASS} col-span-2 sm:col-span-1`}
               placeholder="City"
             />
 
@@ -504,42 +458,42 @@ export default function WholesaleInquiryForm({
               name="deliveryState"
               value={form.deliveryState}
               onChange={handleChange}
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
+              autoComplete="address-level1"
+              aria-label="State"
+              className={FIELD_CLASS}
               placeholder="State"
             />
 
             <input
               name="deliveryPostalCode"
-              value={
-                form.deliveryPostalCode
-              }
+              value={form.deliveryPostalCode}
               onChange={handleChange}
-              className="h-12 rounded-2xl border border-black/10 bg-[#faf8f4] px-4 outline-none focus:border-black"
+              autoComplete="postal-code"
+              inputMode="numeric"
+              aria-label="ZIP code"
+              className={FIELD_CLASS}
               placeholder="ZIP code"
             />
           </div>
-        </div>
+        </fieldset>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-bold">
-            Message
-          </span>
-
+        <Field label="Message" className="sm:col-span-2">
           <textarea
             name="message"
             value={form.message}
             onChange={handleChange}
-            rows={5}
-            className="rounded-2xl border border-black/10 bg-[#faf8f4] px-4 py-4 outline-none focus:border-black"
+            rows={4}
+            className="block w-full min-w-0 rounded-lg border border-black/15 bg-white px-3.5 py-2.5 text-sm text-black outline-none transition placeholder:text-black/40 focus:border-black sm:text-base"
             placeholder="Tell us about your requirements, expected volume, delivery schedule, or other details."
           />
-        </label>
+        </Field>
       </div>
 
       {status ? (
         <div
+          role={status.type === "success" ? "status" : "alert"}
           className={[
-            "mt-5 rounded-2xl px-4 py-4 text-sm",
+            "mt-4 rounded-xl px-4 py-3 text-sm",
             status.type === "success"
               ? "bg-green-50 text-green-900"
               : "bg-red-50 text-red-800"
@@ -588,23 +542,12 @@ export default function WholesaleInquiryForm({
       <button
         type="submit"
         disabled={loading}
-        className="mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-5 w-full rounded-lg bg-[#d71920] px-6 py-3 text-base font-bold text-white transition hover:bg-[#b8141a] disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
       >
         {loading
           ? "Submitting..."
           : "Submit Wholesale Inquiry"}
       </button>
-
-      <p className="mt-4 text-xs leading-5 text-black/45">
-        Prefer to speak with us? Call{" "}
-        <a
-          className="font-bold underline"
-          href={`tel:${site.phoneRaw}`}
-        >
-          {site.phone}
-        </a>
-        .
-      </p>
     </form>
   );
 }
