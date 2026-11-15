@@ -96,12 +96,17 @@ export default function CheckoutPageContent({
       .trim()
       .toLowerCase();
 
-  const customerDetailsValid =
-    customerDetails.name.trim() !== "" &&
-    normalizedEmail !== "" &&
+  // Name is required. Email and phone are optional: Stripe/PayPal ask
+  // for an email when it's blank, and the receipt goes there.
+  const emailValid =
+    normalizedEmail === "" ||
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
       normalizedEmail
     );
+
+  const customerDetailsValid =
+    customerDetails.name.trim() !== "" &&
+    emailValid;
 
   const [loading, setLoading] =
     useState(false);
@@ -445,7 +450,9 @@ export default function CheckoutPageContent({
     if (!customerDetailsValid) {
       const validationError =
         new Error(
-          "Please enter your full name and a valid email address."
+          customerDetails.name.trim() === ""
+            ? "Please enter your full name."
+            : "Please enter a valid email address, or leave it blank."
         );
 
       setError(
@@ -955,14 +962,14 @@ export default function CheckoutPageContent({
 
                     <CheckoutField
                       id="checkout-email"
-                      label="Email address"
+                      label="Email (optional)"
+                      placeholder="Email address"
                       type="email"
                       autoComplete="email"
                       value={customerDetails.email}
                       onChange={(value) =>
                         updateCustomerField("email", value)
                       }
-                      required
                     />
 
                     <CheckoutField
