@@ -136,8 +136,10 @@ export async function POST(request) {
       );
     }
 
+    // Email is optional: Stripe and PayPal ask for one when it's missing,
+    // and the receipt goes there. If one is typed, it must be valid.
     if (
-      !customerEmail ||
+      customerEmail &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
         customerEmail
       )
@@ -145,7 +147,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           message:
-            "A valid customer email address is required."
+            "Please enter a valid email address, or leave it blank."
         },
         { status: 400 }
       );
@@ -208,7 +210,10 @@ export async function POST(request) {
           {
             mode: "payment",
 
-            customer_email: customerEmail,
+            // Without an email, Stripe asks for one on its page.
+            ...(customerEmail
+              ? { customer_email: customerEmail }
+              : {}),
 
             line_items: lineItems,
             expires_at: stripeSessionExpiresAt,
@@ -469,7 +474,7 @@ export async function POST(request) {
         payment_provider: "stripe",
 
         email:
-          customerEmail,
+          customerEmail || null,
 
         phone:
           customerPhone,
