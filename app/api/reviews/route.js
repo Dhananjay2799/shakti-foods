@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { readSignedToken } from "@/lib/signed-link";
+import { REVIEW_LINK_PURPOSE } from "@/lib/review-request-email";
 
 export const runtime = "nodejs";
 
@@ -9,6 +11,41 @@ function cleanText(value, maxLength = 500) {
   }
 
   return value.trim().slice(0, maxLength);
+}
+
+/*
+ * A review opened from the "How was your rice?" email carries a signed
+ * code for (order, product). If that order is paid and contains this
+ * product, the review is a verified purchase. Anything else (no code,
+ * changed, expired, other product) is simply an ordinary review.
+ */
+async function findVerifiedPurchase(supabase, reviewToken, productId) {
+  const token = readSignedToken(REVIEW_LINK_PURPOSE, reviewToken);
+
+  if (!token?.o || String(token.p) !== String(productId)) {
+    return null;
+  }
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, payment_status, customer_email")
+    .eq("id", token.o)
+    .maybeSingle();
+
+  if (!order || order.payment_status !== "paid") {
+    return null;
+  }
+
+  const { data: items } = await supabase
+    .from("order_items")
+    .select("product_id")
+    .eq("order_id", order.id)
+    .eq("product_id", String(productId))
+    .limit(1);
+
+  return items?.length
+    ? { email: String(order.customer_email || "").trim().toLowerCase() || null }
+    : null;
 }
 
 export async function POST(request) {
@@ -41,6 +78,11 @@ export async function POST(request) {
     );
 
     const rating = Number(body.rating);
+
+    const reviewToken = cleanText(
+      body.reviewToken,
+      1000
+    );
 
     if (!productId) {
       return NextResponse.json(
@@ -149,6 +191,15 @@ export async function POST(request) {
       );
     }
 
+    const verifiedPurchase =
+      reviewToken
+        ? await findVerifiedPurchase(
+            supabase,
+            reviewToken,
+            product.product_id
+          )
+        : null;
+
     const {
       data: review,
       error: insertError
@@ -163,8 +214,12 @@ export async function POST(request) {
 
         customer_name: customerName,
 
+        // From the order, if the email link was used and the
+        // reviewer left the email field empty.
         email:
-          email || null,
+          email ||
+          verifiedPurchase?.email ||
+          null,
 
         rating,
 
@@ -177,7 +232,8 @@ export async function POST(request) {
         // its own review.
         status: "pending",
 
-        verified_purchase: false
+        // Only true when the server checked the order.
+        verified_purchase: Boolean(verifiedPurchase)
       })
       .select(`
         id,
@@ -207,6 +263,7 @@ export async function POST(request) {
         success: true,
         reviewId: review.id,
         status: review.status,
+        verifiedPurchase: Boolean(verifiedPurchase),
         message:
           "Thank you. Your review has been submitted for approval."
       },
