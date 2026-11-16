@@ -10,6 +10,10 @@ import {
   retryFailedOrderConfirmationEmails
 } from "@/lib/order-confirmation-email";
 
+import {
+  processReviewRequests
+} from "@/lib/review-request-processor";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -84,6 +88,32 @@ export async function GET(request) {
       };
     }
 
+    /*
+     * Also in the daily job: "How was your rice?" review requests.
+     * Independent of the other two; a failure here never stops them.
+     */
+    let reviewRequests;
+
+    try {
+      reviewRequests =
+        await processReviewRequests({
+          limit: 25
+        });
+    } catch (reviewError) {
+      console.error(
+        "Review request emails failed:",
+        reviewError
+      );
+
+      reviewRequests = {
+        success: false,
+        message:
+          reviewError instanceof Error
+            ? reviewError.message
+            : "Unable to send review requests."
+      };
+    }
+
     let summary;
 
     try {
@@ -106,7 +136,9 @@ export async function GET(request) {
               ? recoveryError.message
               : "Unable to process scheduled recovery emails.",
 
-          orderConfirmationRetries
+          orderConfirmationRetries,
+
+          reviewRequests
         },
         {
           status: 500
@@ -117,7 +149,8 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       ...summary,
-      orderConfirmationRetries
+      orderConfirmationRetries,
+      reviewRequests
     });
   } catch (error) {
     console.error(

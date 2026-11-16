@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState
 } from "react";
@@ -179,8 +180,27 @@ export default function ProductReviews({
 
 
   const [success, setSuccess] =
-
     useState(false);
+
+  // Signed code from the "How was your rice?" email link
+  // (?review=...). The server checks it and marks the review
+  // as a verified purchase.
+  const [reviewToken, setReviewToken] =
+    useState("");
+
+  useEffect(() => {
+    try {
+      const token = new URLSearchParams(
+        window.location.search
+      ).get("review");
+
+      if (token) {
+        setReviewToken(token.slice(0, 1000));
+      }
+    } catch {
+      // No code in the address.
+    }
+  }, []);
 
 
 
@@ -271,9 +291,8 @@ export default function ProductReviews({
             rating,
 
             reviewTitle,
-
-            reviewText
-
+            reviewText,
+            reviewToken
           })
 
         }
@@ -635,6 +654,13 @@ export default function ProductReviews({
             </div>
 
 
+
+            {reviewToken && !success ? (
+              <p className="mt-3 flex items-start gap-2 rounded-xl bg-green-50 px-3 py-2.5 text-sm font-semibold leading-6 text-green-800">
+                <CheckCircle2 size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+                Thank you for your order! Your review will show as a verified purchase.
+              </p>
+            ) : null}
 
             <p className="mt-2 text-sm leading-6 text-black/55">
 
