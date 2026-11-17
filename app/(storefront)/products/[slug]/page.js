@@ -47,7 +47,15 @@ export async function generateMetadata({ params }) {
       description: product.seo?.description || product.subtitle,
       url: `${site.baseUrl}/products/${product.slug}`,
       images: productImages,
-      type: "website"
+      type: "website",
+      siteName: "Shakti Foods"
+    },
+    // Same product photo on X/Twitter (instead of the site-wide card).
+    twitter: {
+      card: "summary_large_image",
+      title: product.seo?.title || product.name,
+      description: product.seo?.description || product.subtitle,
+      images: productImages
     }
   };
 }

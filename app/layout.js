@@ -53,7 +53,38 @@ export const metadata = {
       "Premium rice and compostable foodservice products for retail and wholesale buyers.",
     type: "website",
     url: site.baseUrl,
-    siteName: "Shakti Foods"
+    siteName: "Shakti Foods",
+    // Wide preview for shared links (WhatsApp, Facebook, iMessage…).
+    // Pages with their own image (products, Ecoware) replace it.
+    images: [
+      {
+        url: "/images/share/shakti-og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Shakti Foods Premium Basmati Rice: rice bag and a bowl of cooked basmati"
+      }
+    ]
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Shakti Foods | Premium Basmati Rice & Simpli Ecoware",
+    description:
+      "Premium rice and compostable foodservice products for retail and wholesale buyers.",
+    images: ["/images/share/shakti-og.jpg"]
+  },
+
+  // Lets Google show a large image preview (instead of a tiny crop).
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1
+    }
   }
 };
 
