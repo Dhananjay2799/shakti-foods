@@ -10,6 +10,7 @@ import {
   getStorefrontPageUrl
 } from "@/lib/storefront-config";
 import { PUBLIC_STOREFRONTS } from "@/lib/storefront-products";
+import { merchantReturnPolicy, offerShippingDetails } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -318,7 +319,13 @@ export default async function ProductPage({ params }) {
             availableStock > 0
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
-          url: `${site.baseUrl}/products/${product.slug}`
+          url: `${site.baseUrl}/products/${product.slug}`,
+          // Our checkout shipping rates and Returns Policy (lib/structured-data.js).
+          shippingDetails: offerShippingDetails(
+            product.unitPrice,
+            product.currency || "USD"
+          ),
+          hasMerchantReturnPolicy: merchantReturnPolicy()
         }
       : undefined
   };
