@@ -15,6 +15,32 @@ export const metadata = {
   description:
     "Sustainable tableware and food-service packaging made from sugarcane bagasse.",
 
+  // Its own preview for shared links (otherwise Shakti Foods' rice image
+  // from the root layout would show).
+  openGraph: {
+    title: "Simpli Ecoware | Compostable Plates, Bowls & Containers",
+    description:
+      "Sustainable tableware and food-service packaging made from sugarcane bagasse.",
+    type: "website",
+    siteName: "Simpli Ecoware",
+    images: [
+      {
+        url: "/images/share/ecoware-og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Simpli Ecoware compostable plates, bowls and containers made from sugarcane"
+      }
+    ]
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Simpli Ecoware | Compostable Plates, Bowls & Containers",
+    description:
+      "Sustainable tableware and food-service packaging made from sugarcane bagasse.",
+    images: ["/images/share/ecoware-og.jpg"]
+  },
+
   icons: {
     icon: [
       {
