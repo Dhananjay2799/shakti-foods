@@ -234,7 +234,7 @@ export default function EcowareAboutPage() {
               Businesses can request free samples to evaluate quality,
               dimensions and performance before placing a larger order, and
               request volume pricing or a custom quote. We ship within the
-              United States, and local pickup is available in Weston, Florida.
+              United States, and local pickup is available in Fort Lauderdale, Florida.
             </p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">

@@ -45,7 +45,7 @@ function homeJsonLd() {
         email: site.email,
         address: {
           "@type": "PostalAddress",
-          addressLocality: "Weston",
+          addressLocality: "Fort Lauderdale",
           addressRegion: "FL",
           addressCountry: "US"
         }

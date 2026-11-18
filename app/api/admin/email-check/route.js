@@ -198,7 +198,7 @@ export async function GET() {
 
 const SAMPLE_ADDRESS = {
   line1: "123 Sample Street",
-  city: "Weston",
+  city: "Fort Lauderdale",
   state: "FL",
   postal_code: "33326",
   country: "US"
