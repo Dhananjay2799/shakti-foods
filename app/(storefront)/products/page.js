@@ -18,6 +18,8 @@ export const metadata = {
   title: "Premium Basmati Rice | Shakti Foods",
   description:
     "Shop Shakti Foods premium Basmati rice in family, everyday, and wholesale pack sizes.",
+  // One address for Google, also for links like /products?category=...
+  alternates: { canonical: "/products" },
 };
 
 const benefits = [

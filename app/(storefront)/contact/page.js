@@ -8,7 +8,10 @@ export const revalidate = 600;
 
 export const metadata = {
   title: "Contact & Wholesale Inquiry",
-  description: "Contact Shakti Foods for Basmati rice, Simpli Ecoware products, restaurant supply, catering, and wholesale pricing."
+  description: "Contact Shakti Foods for Basmati rice, Simpli Ecoware products, restaurant supply, catering, and wholesale pricing.",
+  // Product pages link to /contact?type=wholesale. This tells Google it's
+  // the same page as /contact (not a duplicate).
+  alternates: { canonical: "/contact" }
 };
 
 const RED = "#d71920";

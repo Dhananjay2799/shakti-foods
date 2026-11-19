@@ -10,6 +10,7 @@ export const metadata = {
   title: "About | Shakti Foods",
   description:
     "Discover the story behind Shakti Foods, our commitment to premium Basmati rice, quality, tradition, and bringing people together around the table.",
+  alternates: { canonical: "/about" },
 };
 
 const grainSteps = [
