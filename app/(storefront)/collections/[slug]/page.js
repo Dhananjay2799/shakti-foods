@@ -156,6 +156,13 @@ export async function generateMetadata({
     title,
     description,
 
+    // These are Simpli Ecoware use cases with no rice products in them,
+    // so they stay out of Google on the rice site.
+    robots: {
+      index: false,
+      follow: true
+    },
+
     alternates: {
       canonical:
         `/collections/${collection.slug}`

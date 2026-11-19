@@ -219,7 +219,15 @@ export default function PolicyPage({ storefront = "shakti_foods", pageId }) {
 export function policyMetadata(storefront, pageId) {
   const policy = getStorePolicy(storefront, pageId);
 
-  return policy
-    ? { title: policy.title, description: policy.description }
-    : {};
+  if (!policy) {
+    return {};
+  }
+
+  return {
+    title: policy.title,
+    description: policy.description,
+    // Shakti Foods' policy pages live at /shipping, /returns, /faq...
+    // (Simpli Ecoware's are on its own website and keep their own setup.)
+    ...(storefront === "shakti_foods" ? { alternates: { canonical: `/${pageId}` } } : {})
+  };
 }
