@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 import {
   whatsappLink,
   mailtoLink
@@ -228,6 +229,16 @@ export default function WholesaleInquiryForm({
             "Unable to submit inquiry."
         );
       }
+
+      // Google Analytics: a wholesale lead (mark it as a key event in GA).
+      trackEvent("generate_lead", {
+        lead_source: "wholesale_inquiry",
+        storefront,
+        ...(form.productId || productId
+          ? { product_id: form.productId || productId }
+          : {})
+      });
+
 
       setStatus({
         type: "success",

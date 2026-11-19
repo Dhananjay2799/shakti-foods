@@ -4,8 +4,10 @@ import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  contactMethodForHref,
   getMeasurementIdForHostname,
-  isUntrackedPath
+  isUntrackedPath,
+  trackEvent
 } from "@/lib/analytics";
 
 /*
@@ -19,6 +21,24 @@ export default function Analytics() {
 
   useEffect(() => {
     setMeasurementId(getMeasurementIdForHostname(window.location.hostname));
+  }, []);
+
+  // Call / WhatsApp / Email taps anywhere (contact page, footer, menus).
+  useEffect(() => {
+    function onClick(event) {
+      const link = event.target?.closest?.("a[href]");
+      const method = link ? contactMethodForHref(link.getAttribute("href")) : null;
+
+      if (method && !isUntrackedPath(window.location.pathname)) {
+        trackEvent("contact", {
+          method,
+          link_location: window.location.pathname
+        });
+      }
+    }
+
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
   }, []);
 
   const untracked = isUntrackedPath(pathname);

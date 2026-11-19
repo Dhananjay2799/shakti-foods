@@ -3,6 +3,7 @@
 import {
   useState
 } from "react";
+import { trackAddToCart } from "@/lib/analytics";
 
 import {
   useCart
@@ -44,6 +45,13 @@ export default function EcowareAddToCart({
             "ecoware"
         }
       );
+
+    if (added?.success) {
+
+      trackAddToCart(product);
+
+    }
+
 
     if (
       added?.reason ===
