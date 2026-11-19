@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { trackAddToCart } from "@/lib/analytics";
 import { motion } from "framer-motion";
 import SectionHeading from "@/components/SectionHeading";
 import VideoBackground from "@/components/VideoBackground";
@@ -59,9 +60,13 @@ export default function EcoWareShowcaseV3({
       return;
     }
 
-    addItem(product, {
+    const added = addItem(product, {
       availableStock
     });
+
+    if (added?.success) {
+      trackAddToCart(product);
+    }
   }
 
   return (

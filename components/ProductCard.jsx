@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { trackAddToCart } from "@/lib/analytics";
 import { motion } from "framer-motion";
 import { ShoppingCart } from "lucide-react";
 
@@ -111,6 +112,13 @@ export default function ProductCard({
         storefront: "shakti_foods",
       }
     );
+
+    if (added?.success) {
+
+      trackAddToCart(product);
+
+    }
+
 
     if (added?.reason === "storefront_mismatch") {
       alert(
