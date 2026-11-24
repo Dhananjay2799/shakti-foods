@@ -18,7 +18,7 @@ function formatPrice(cents) {
   }).format(Number(cents || 0) / 100);
 }
 
-function getStockBadge(inventory) {
+function getStockBadge(inventory, isShaktiFoods = false) {
   if (!inventory) {
     return {
       label: "No inventory",
@@ -34,9 +34,9 @@ function getStockBadge(inventory) {
 
   const detail = `Stock ${stock} · Reserved ${reserved} · Low-stock alert at ${threshold}`;
 
-  if (available === 0) {
+  if (available === 0 || (isShaktiFoods && inventory.is_active === false)) {
     return {
-      label: "Out of stock",
+      label: isShaktiFoods ? "Sold Out" : "Out of stock",
       tone: "bg-red-50 text-red-700 ring-red-600/20",
       detail
     };
@@ -335,7 +335,7 @@ export default async function AdminProductsPage({ params, searchParams }) {
               {products.map((product) => {
                 const inv = inventoryByProductId.get(product.product_id);
                 const cat = categoryById.get(product.category);
-                const stock = getStockBadge(inv);
+                const stock = getStockBadge(inv, storefront.id === "shakti_foods");
                 const status = getStatusBadge(product);
                 const thumbnail = thumbnailByProductId.get(product.product_id);
                 const productPath = `${productsPath}/${encodeURIComponent(product.product_id)}`;
