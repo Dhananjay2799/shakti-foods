@@ -129,7 +129,7 @@ export default function ProductCard({
 
     if (!added && isOutOfStock) {
       alert(
-        "This product is currently out of stock."
+        "This product is currently sold out."
       );
     }
   }
@@ -404,7 +404,7 @@ export default function ProductCard({
           </span>
         ) : isOutOfStock ? (
           <span className="text-[10px] font-bold text-[#c90019]">
-            Out of stock
+            Sold Out
           </span>
         ) : isLowStock ? (
           <span className="text-[10px] font-bold text-[#b56a00]">
@@ -465,7 +465,7 @@ export default function ProductCard({
           {loading
             ? "Checking Stock..."
             : isOutOfStock
-              ? "Out of Stock"
+              ? "Sold Out"
               : !product.canCheckout
                 ? "Unavailable"
                 : "Add to Cart"}

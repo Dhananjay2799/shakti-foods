@@ -102,8 +102,11 @@ function summarize(values, reserved) {
     price,
     compareAt: compareAt > price ? compareAt : 0,
     available,
+    soldOut: values.soldOut === "on",
     stockState:
-      available === 0 ? "out" : available <= threshold ? "low" : "in",
+      values.soldOut === "on" || available === 0
+        ? "out"
+        : available <= threshold ? "low" : "in",
     subscriptionOn: values.subscriptionEnabled === "on",
     discount,
     // Same rounding as lib/subscriptions/prepare-subscription.js
@@ -313,11 +316,14 @@ export default function EditProductForm({
     (category) => category.category_id === currentCategory
   );
 
-  const stockBadge = {
-    in: <Badge tone="green">In stock</Badge>,
-    low: <Badge tone="amber">Low stock</Badge>,
-    out: <Badge tone="red">Out of stock</Badge>
-  }[summary.stockState];
+  const stockBadge =
+    storefront.slug === "shakti-foods" && summary.stockState === "out"
+      ? <Badge tone="red">Sold Out</Badge>
+      : {
+          in: <Badge tone="green">In stock</Badge>,
+          low: <Badge tone="amber">Low stock</Badge>,
+          out: <Badge tone="red">Out of stock</Badge>
+        }[summary.stockState];
 
   return (
     <form
@@ -765,6 +771,20 @@ export default function EditProductForm({
             inputMode="numeric"
             defaultValue={inventory.low_stock_threshold ?? 5}
           />
+          {storefront.slug === "shakti-foods" ? (
+            <div className="sm:col-span-3 rounded-xl border border-red-200 bg-red-50/60 p-4">
+              <Check
+                name="soldOut"
+                title="Mark as Sold Out"
+                defaultChecked={product.status === "active" && inventory.is_active === false}
+              />
+              <p className="mt-2 text-xs leading-5 text-red-800/80">
+                Keep this product visible on Shakti Foods, but prevent new purchases.
+                Stock quantities stay unchanged. Uncheck and save to resume sales
+                once stock is available. Existing checkout reservations are not cancelled.
+              </p>
+            </div>
+          ) : null}
         </Panel>
       </TabPanel>
 
