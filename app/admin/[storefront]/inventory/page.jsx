@@ -68,6 +68,7 @@ export default async function AdminInventoryPage({
   }
 
   const allInventory = data || [];
+  const isShaktiFoods = storefront.id === "shakti_foods";
 
   const filteredInventory = allInventory.filter((item) => {
     const stockQuantity = Number(item.stock_quantity || 0);
@@ -84,7 +85,7 @@ export default async function AdminInventoryPage({
     if (status === "low") {
       matchesStatus = available <= threshold;
     } else if (status === "out") {
-      matchesStatus = available <= 0;
+      matchesStatus = available <= 0 || (isShaktiFoods && !item.is_active);
     } else if (status === "active") {
       matchesStatus = Boolean(item.is_active);
     } else if (status === "inactive") {
@@ -112,7 +113,7 @@ export default async function AdminInventoryPage({
   const statusOptions = [
     { label: "All Items", value: "all" },
     { label: "Low Stock", value: "low" },
-    { label: "Out of Stock", value: "out" },
+    { label: isShaktiFoods ? "Sold Out" : "Out of Stock", value: "out" },
     { label: "Active", value: "active" },
     { label: "Inactive", value: "inactive" }
   ];
@@ -192,6 +193,7 @@ export default async function AdminInventoryPage({
       {adjustingItem ? (
         <InventoryAdjustPanel
           item={adjustingItem}
+          isShaktiFoods={isShaktiFoods}
           closeHref={buildInventoryHref({ basePath, search, status })}
         />
       ) : null}
@@ -223,6 +225,7 @@ export default async function AdminInventoryPage({
                   const reservedQuantity = Number(item.reserved_quantity || 0);
                   const threshold = Number(item.low_stock_threshold || 0);
                   const available = Math.max(stockQuantity - reservedQuantity, 0);
+                  const soldOut = isShaktiFoods && (available <= 0 || !item.is_active);
 
                   return (
                     <tr key={item.product_id} className="transition hover:bg-black/[0.02]">
@@ -244,13 +247,15 @@ export default async function AdminInventoryPage({
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${
-                          available <= 0
+                          (soldOut || available <= 0)
                             ? "bg-red-50 text-red-700"
                             : available <= threshold
                             ? "bg-amber-50 text-amber-700"
                             : "bg-emerald-50 text-emerald-700"
                         }`}>
-                          {available <= 0
+                          {soldOut
+                            ? "Sold Out"
+                            : available <= 0
                             ? "Out of Stock"
                             : available <= threshold
                             ? "Low Stock"
