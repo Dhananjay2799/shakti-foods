@@ -1045,6 +1045,13 @@ export async function updateProduct(
 
   assertProductStore(existingProduct, formData);
 
+  // Keep an active Shakti Foods product visible while preventing checkout.
+  // Inventory stays untouched; the existing inventory availability flag is
+  // already enforced by the checkout API and storefront product data.
+  const isSoldOut =
+    existingProduct.storefront === "shakti_foods" &&
+    formData.get("soldOut") === "on";
+
   await assertIdentifiersAvailable({
     supabase,
     productId,
@@ -1097,7 +1104,7 @@ export async function updateProduct(
         inventoryData.low_stock_threshold,
 
       is_active:
-        productData.is_active
+        productData.is_active && !isSoldOut
     })
     .eq(
       "product_id",
