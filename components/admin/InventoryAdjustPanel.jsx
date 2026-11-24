@@ -37,6 +37,7 @@ export default function InventoryAdjustPanel({ item, closeHref, isShaktiFoods = 
 
         <Link
           href={closeHref}
+          data-admin-cancel=""
           className="rounded-full bg-black/5 px-4 py-2 text-sm font-bold text-black transition hover:bg-black/10"
         >
           Close

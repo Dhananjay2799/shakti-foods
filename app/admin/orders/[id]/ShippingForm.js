@@ -7,6 +7,7 @@ import {
   getShippingRates,
   buyShippingLabel,
 } from "../shipping-actions";
+import { showAdminToast } from "@/components/admin/AdminToaster";
 
 // embedded: shown inside the order page's "Shipping label" section, which
 // already has the title and frame.
@@ -390,8 +391,10 @@ export default function ShippingForm({ order, embedded = false }) {
           result.emailError,
       });
 
+      showAdminToast("success");
       router.refresh();
     } catch (labelError) {
+      showAdminToast("error");
       setError(
         labelError instanceof Error
           ? labelError.message

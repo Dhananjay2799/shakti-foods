@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { useFormState } from "react-dom";
+import { showAdminToast } from "@/components/admin/AdminToaster";
 import {
   ArrowDown,
   ArrowUp,
@@ -151,7 +152,10 @@ function CategoryDialog({ storefront, categories, category, onClose, onSaved }) 
   // Saved: close the dialog and show the message on the page.
   useEffect(() => {
     if (state?.ok) {
+      showAdminToast("success");
       onSavedRef.current(state.message);
+    } else if (state?.error) {
+      showAdminToast("error");
     }
   }, [state]);
 
@@ -181,7 +185,7 @@ function CategoryDialog({ storefront, categories, category, onClose, onSaved }) 
       initialFocus='input[name="name"]'
       wide
     >
-      <form ref={formRef} action={formAction}>
+      <form ref={formRef} action={formAction} data-admin-toast="manual">
         <input type="hidden" name="storefrontId" value={storefront.id} />
         <input type="hidden" name="storefrontSlug" value={storefront.slug} />
         {editing ? <input type="hidden" name="categoryRecordId" value={category.id} /> : null}
