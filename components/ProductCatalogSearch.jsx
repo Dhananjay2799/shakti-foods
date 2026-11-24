@@ -87,6 +87,10 @@ function getStockQuantity(product) {
 }
 
 function getAvailability(product) {
+  if (product.soldOut === true || product.inStock === false) {
+    return "out-of-stock";
+  }
+
   const quantity = getStockQuantity(product);
 
   if (quantity !== null) {
@@ -630,7 +634,7 @@ export default function ProductCatalogSearch({
           />
 
           <FilterCheckbox
-            label="Out of stock"
+            label="Sold out"
             count={availabilityCounts["out-of-stock"]}
             checked={selectedAvailability.includes(
               "out-of-stock"

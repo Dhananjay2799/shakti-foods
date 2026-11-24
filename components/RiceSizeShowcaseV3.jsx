@@ -132,9 +132,11 @@ function RiceProductCard({
       ? inventoryItem.is_active !== false
       : true;
 
+  // Sold Out: marked Sold Out in admin, or no stock left.
   const isOutOfStock =
-    Boolean(inventoryItem) &&
-    (!inventoryActive || availableStock <= 0);
+    (Boolean(inventoryItem) &&
+      (!inventoryActive || availableStock <= 0)) ||
+    product.soldOut === true;
 
   const canAddToCart =
     !loading &&
@@ -283,7 +285,7 @@ function RiceProductCard({
             {loading
               ? "Checking..."
               : isOutOfStock
-                ? "Out of Stock"
+                ? "Sold Out"
                 : product.canCheckout
                   ? "Add to Cart"
                   : "Unavailable"}
@@ -318,9 +320,11 @@ function MobileProductCard({
       ? inventoryItem.is_active !== false
       : true;
 
+  // Sold Out: marked Sold Out in admin, or no stock left.
   const isOutOfStock =
-    Boolean(inventoryItem) &&
-    (!inventoryActive || availableStock <= 0);
+    (Boolean(inventoryItem) &&
+      (!inventoryActive || availableStock <= 0)) ||
+    product.soldOut === true;
 
   const canAddToCart =
     !loading &&
@@ -465,7 +469,7 @@ function MobileProductCard({
         {loading
           ? "Checking Stock..."
           : isOutOfStock
-            ? "Out of Stock"
+            ? "Sold Out"
             : product.canCheckout
               ? "Add to Cart"
               : "Unavailable"}
@@ -583,7 +587,7 @@ export default function RiceSizeShowcaseV3({
 
     if (added?.reason === "out_of_stock") {
       alert(
-        "This product is currently out of stock."
+        "This product is currently sold out."
       );
     }
   }

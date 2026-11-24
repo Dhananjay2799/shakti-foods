@@ -79,6 +79,9 @@ async function requireAdmin() {
 }
 
 function revalidateInventoryPaths(productId) {
+  // Storefront pages too (homepage, catalog, product pages): stock and
+  // Sold Out show there right away instead of after the 10-minute cache.
+  revalidatePath("/", "layout");
   revalidatePath("/admin", "layout");
   revalidatePath("/admin");
   revalidatePath("/admin/inventory");

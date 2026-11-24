@@ -30,9 +30,12 @@ export default function ProductCard({
     ? inventoryItem.is_active !== false
     : true;
 
+  // Sold Out: marked Sold Out in admin, or no stock left (live stock
+  // when loaded, otherwise the product data the page was built with).
   const isOutOfStock =
-    Boolean(inventoryItem) &&
-    (!inventoryActive || availableStock <= 0);
+    (Boolean(inventoryItem) &&
+      (!inventoryActive || availableStock <= 0)) ||
+    product.soldOut === true;
 
   const isLowStock =
     Boolean(inventoryItem) &&
@@ -402,15 +405,11 @@ export default function ProductCard({
           <span className="text-[10px] font-semibold text-[#837a71]">
             Checking stock...
           </span>
-        ) : isOutOfStock ? (
-          <span className="text-[10px] font-bold text-[#c90019]">
-            Sold Out
-          </span>
-        ) : isLowStock ? (
+        ) : isOutOfStock ? null : isLowStock ? (
           <span className="text-[10px] font-bold text-[#b56a00]">
             Only {availableStock} left
           </span>
-        ) : (
+        ) : product.canCheckout ? (
           <span
             className="
               inline-flex
@@ -425,7 +424,7 @@ export default function ProductCard({
           >
             Ready to Ship
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* ACTIONS */}

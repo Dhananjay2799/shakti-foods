@@ -27,7 +27,9 @@ export async function GET(request) {
       );
     }
 
-    const supabase = createSupabaseAdmin();
+    // fresh: product cards read Sold Out and stock from here, so this must
+    // be the current database, not a copy cached by an earlier deployment.
+    const supabase = createSupabaseAdmin({ fresh: true });
 
     const { data, error } = await supabase
       .from("inventory")
