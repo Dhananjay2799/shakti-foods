@@ -167,6 +167,9 @@ function refreshProductPages({
   productId,
   slug
 }) {
+  // Every storefront page (homepage, catalog, product pages: price, stock,
+  // Sold Out) shows the change right away.
+  revalidatePath("/", "layout");
   // Every admin page, including /admin/<store>/products/… .
   revalidatePath("/admin", "layout");
   revalidatePath("/admin");

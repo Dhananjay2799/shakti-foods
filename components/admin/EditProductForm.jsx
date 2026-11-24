@@ -6,6 +6,7 @@ import {
   AlignLeft,
   Boxes,
   ChevronDown,
+  CircleCheck,
   Eye,
   Layers,
   Package,
@@ -14,7 +15,8 @@ import {
   Save,
   Search,
   SlidersHorizontal,
-  Tag
+  Tag,
+  X
 } from "lucide-react";
 import { ProductFormHelpers } from "@/components/admin/ProductFormClient";
 import {
@@ -127,6 +129,28 @@ function SaveButton() {
   );
 }
 
+/* "Changes saved successfully", shown for a few seconds after a save. */
+function SavedToast({ onClose }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-sm items-center gap-3 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg sm:top-6"
+    >
+      <CircleCheck size={20} aria-hidden="true" className="shrink-0" />
+      <span className="flex-1">Changes saved successfully</span>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="-mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-full transition hover:bg-white/15"
+      >
+        <X size={16} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 function TabPanel({ id, active, children }) {
   return (
     <div
@@ -159,11 +183,15 @@ export default function EditProductForm({
   const formRef = useRef(null);
   const baselineRef = useRef("");
   const invalidHandledRef = useRef(false);
+  // True from "Save product" until the next edit: leaving the page then is
+  // the save itself, so no "Leave site?" warning.
+  const savingRef = useRef(false);
 
   const reserved = Math.max(Math.trunc(toNumber(inventory.reserved_quantity)), 0);
 
   const [tab, setTab] = useState(initialTab);
   const [dirty, setDirty] = useState(false);
+  const [showSaved, setShowSaved] = useState(justSaved);
   const [values, setValues] = useState(() => ({
     productId: product.product_id || "",
     price: centsToDollars(product.price_cents),
@@ -191,6 +219,8 @@ export default function EditProductForm({
     if (!form) {
       return;
     }
+
+    savingRef.current = false;
 
     const current = readForm(form);
     setValues(current);
@@ -233,6 +263,10 @@ export default function EditProductForm({
     }
 
     const warn = (event) => {
+      if (savingRef.current) {
+        return;
+      }
+
       event.preventDefault();
       event.returnValue = "";
     };
@@ -240,6 +274,24 @@ export default function EditProductForm({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
+
+  // After a save: show the message, and drop ?saved= from the address so
+  // a reload doesn't show it again.
+  useEffect(() => {
+    if (!justSaved) {
+      return undefined;
+    }
+
+    const url = new URL(window.location.href);
+
+    if (url.searchParams.has("saved")) {
+      url.searchParams.delete("saved");
+      window.history.replaceState(window.history.state, "", url);
+    }
+
+    const timer = window.setTimeout(() => setShowSaved(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [justSaved]);
 
   function discardChanges() {
     const form = formRef.current;
@@ -333,8 +385,13 @@ export default function EditProductForm({
       onInput={sync}
       onChange={sync}
       onInvalidCapture={onInvalidCapture}
+      onSubmit={() => {
+        savingRef.current = true;
+      }}
       className="grid grid-cols-1 gap-5"
     >
+      {showSaved ? <SavedToast onClose={() => setShowSaved(false)} /> : null}
+
       <input type="hidden" name="storefrontSlug" value={storefront.slug} />
       <input type="hidden" name="originalProductId" value={product.product_id} />
       <input type="hidden" name="currency" value={product.currency || "USD"} />

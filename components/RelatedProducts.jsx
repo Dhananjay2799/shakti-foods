@@ -44,6 +44,7 @@ export default function RelatedProducts({
               Number(product.inventory?.reserved_quantity || 0),
             0
           );
+          const inStock = availableStock > 0 && product.soldOut !== true;
 
           return (
             <article
@@ -89,14 +90,14 @@ export default function RelatedProducts({
 
                     <span
                       className={`text-xs font-bold ${
-                        availableStock > 0
+                        inStock
                           ? "text-green-700"
                           : "text-red-700"
                       }`}
                     >
-                      {availableStock > 0
+                      {inStock
                         ? "In Stock"
-                        : "Out of Stock"}
+                        : "Sold Out"}
                     </span>
                   </div>
                 </div>

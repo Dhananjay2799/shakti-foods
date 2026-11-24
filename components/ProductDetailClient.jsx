@@ -356,7 +356,7 @@ export default function ProductDetailClient({
                               <button type="button" onClick={increaseQuantity} disabled={availableStock > 0 && quantity >= availableStock} aria-label="Increase quantity" className="grid h-10 w-8 place-items-center text-lg font-semibold disabled:opacity-30 sm:w-9">+</button>
                             </div>
                             <button type="button" onClick={handleAddToCart} disabled={availableStock === 0} className="shrink-0 rounded-xl bg-[#E42027] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#c81920] disabled:cursor-not-allowed disabled:opacity-50 sm:px-5 sm:text-sm">
-                              {availableStock === 0 ? "Out of Stock" : "Add to Cart"}
+                              {availableStock === 0 ? "Sold Out" : "Add to Cart"}
                             </button>
                             <span className="ml-auto whitespace-nowrap text-sm font-bold text-black">Total: {formatPrice(currentTotal)}</span>
                           </div>
@@ -393,7 +393,7 @@ export default function ProductDetailClient({
                                   const params = new URLSearchParams({ productId: product.id, frequencyId: subscriptionFrequency, quantity: String(quantity) });
                                   window.location.href = `/subscriptions/checkout?${params.toString()}`;
                                 }} disabled={availableStock === 0 || !subscriptionFrequency} className="mt-3 w-full rounded-xl bg-green-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
-                                  {availableStock === 0 ? "Out of Stock" : "Subscribe Now"}
+                                  {availableStock === 0 ? "Sold Out" : "Subscribe Now"}
                                 </button>
                               </div>
                             ) : null}
@@ -401,7 +401,15 @@ export default function ProductDetailClient({
                         ) : null}
                       </>
                     ) : (
-                      <a href="#wholesale" className="mt-4 inline-flex rounded-xl bg-[#E42027] px-5 py-3 text-sm font-bold text-white">Request Wholesale Price</a>
+                      <>
+                        {product.soldOut ? (
+                          <div className="mt-5 border-t border-black/10 pt-4">
+                            <button type="button" disabled className="cursor-not-allowed rounded-xl bg-[#d8b5b9] px-5 py-2.5 text-sm font-bold text-white">Sold Out</button>
+                            <p className="mt-2 text-xs text-black/60">This item is sold out right now. Please check back soon.</p>
+                          </div>
+                        ) : null}
+                        <a href="#wholesale" className="mt-4 inline-flex rounded-xl bg-[#E42027] px-5 py-3 text-sm font-bold text-white">Request Wholesale Price</a>
+                      </>
                     )}
                   </div>
                 ) : (
@@ -781,7 +789,7 @@ export default function ProductDetailClient({
                         className="mt-5 w-full rounded-full bg-green-700 px-6 py-4 font-bold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       >
                         {availableStock === 0
-                          ? "Out of Stock"
+                          ? "Sold Out"
                           : "Subscribe Now"}
                       </button>
                     ) : (
@@ -796,7 +804,7 @@ export default function ProductDetailClient({
                         className="mt-5 w-full rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       >
                         {availableStock === 0
-                          ? "Out of Stock"
+                          ? "Sold Out"
                           : `Add ${quantity} to Cart`}
                       </button>
                     )}
@@ -814,6 +822,20 @@ export default function ProductDetailClient({
                   </>
                 ) : (
                   <div className="mt-6">
+                    {product.soldOut ? (
+                      <div className="mb-4">
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex w-full cursor-not-allowed justify-center rounded-full bg-black/25 px-6 py-4 font-bold text-white sm:w-auto"
+                        >
+                          Sold Out
+                        </button>
+                        <p className="mt-2 text-sm text-black/60">
+                          This item is sold out right now. Please check back soon.
+                        </p>
+                      </div>
+                    ) : null}
                     <a
                       href="#wholesale"
                       className="inline-flex w-full justify-center rounded-full bg-black px-6 py-4 font-bold text-white transition hover:bg-[#333333] sm:w-auto"

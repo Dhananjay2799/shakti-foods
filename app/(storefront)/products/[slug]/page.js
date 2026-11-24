@@ -324,7 +324,7 @@ export default async function ProductPage({ params }) {
           priceCurrency: product.currency || "USD",
           price: product.unitPrice,
           availability:
-            availableStock > 0
+            availableStock > 0 && product.soldOut !== true
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
           url: `${site.baseUrl}/products/${product.slug}`,
