@@ -6,7 +6,6 @@ import {
   AlignLeft,
   Boxes,
   ChevronDown,
-  CircleCheck,
   Eye,
   Layers,
   Package,
@@ -15,8 +14,7 @@ import {
   Save,
   Search,
   SlidersHorizontal,
-  Tag,
-  X
+  Tag
 } from "lucide-react";
 import { ProductFormHelpers } from "@/components/admin/ProductFormClient";
 import {
@@ -129,28 +127,6 @@ function SaveButton() {
   );
 }
 
-/* "Changes saved successfully", shown for a few seconds after a save. */
-function SavedToast({ onClose }) {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-sm items-center gap-3 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg sm:top-6"
-    >
-      <CircleCheck size={20} aria-hidden="true" className="shrink-0" />
-      <span className="flex-1">Changes saved successfully</span>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="-mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-full transition hover:bg-white/15"
-      >
-        <X size={16} aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
 function TabPanel({ id, active, children }) {
   return (
     <div
@@ -191,7 +167,6 @@ export default function EditProductForm({
 
   const [tab, setTab] = useState(initialTab);
   const [dirty, setDirty] = useState(false);
-  const [showSaved, setShowSaved] = useState(justSaved);
   const [values, setValues] = useState(() => ({
     productId: product.product_id || "",
     price: centsToDollars(product.price_cents),
@@ -275,11 +250,11 @@ export default function EditProductForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  // After a save: show the message, and drop ?saved= from the address so
-  // a reload doesn't show it again.
+  // After a save, drop ?saved= from the address. ("Changes saved
+  // successfully" itself comes from components/admin/AdminToaster.jsx.)
   useEffect(() => {
     if (!justSaved) {
-      return undefined;
+      return;
     }
 
     const url = new URL(window.location.href);
@@ -288,9 +263,6 @@ export default function EditProductForm({
       url.searchParams.delete("saved");
       window.history.replaceState(window.history.state, "", url);
     }
-
-    const timer = window.setTimeout(() => setShowSaved(false), 4000);
-    return () => window.clearTimeout(timer);
   }, [justSaved]);
 
   function discardChanges() {
@@ -390,8 +362,6 @@ export default function EditProductForm({
       }}
       className="grid grid-cols-1 gap-5"
     >
-      {showSaved ? <SavedToast onClose={() => setShowSaved(false)} /> : null}
-
       <input type="hidden" name="storefrontSlug" value={storefront.slug} />
       <input type="hidden" name="originalProductId" value={product.product_id} />
       <input type="hidden" name="currency" value={product.currency || "USD"} />
