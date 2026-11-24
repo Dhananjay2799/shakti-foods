@@ -8,7 +8,7 @@ import {
  * Stock adjustment and inventory settings for one product, shown on the
  * store's own Inventory page (/admin/<store>/inventory?adjust=<productId>).
  */
-export default function InventoryAdjustPanel({ item, closeHref }) {
+export default function InventoryAdjustPanel({ item, closeHref, isShaktiFoods = false }) {
   const stock = Number(item.stock_quantity || 0);
   const reserved = Number(item.reserved_quantity || 0);
   const available = Math.max(stock - reserved, 0);
@@ -182,9 +182,16 @@ export default function InventoryAdjustPanel({ item, closeHref }) {
           />
 
           <span className="font-bold text-black">
-            Product is active
+            {isShaktiFoods ? "Available for sale (uncheck for Sold Out)" : "Product is active"}
           </span>
         </label>
+
+        {isShaktiFoods ? (
+          <p className="mt-2 text-xs text-black/60">
+            Sold Out prevents new checkouts while preserving the recorded stock quantity.
+            Re-enable sales only when inventory is available.
+          </p>
+        ) : null}
 
         <button
           type="submit"
