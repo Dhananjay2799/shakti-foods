@@ -29,10 +29,17 @@ export const metadata = {
     template: "%s | Shakti Foods"
   },
 
+  // Square icons (Google shows only square ones, at least 48 x 48, in
+  // search results). Made from /images/logo-shakti_1.png on its own background.
   icons: {
-  icon: "/images/logo-shakti.png",
-  shortcut: "/images/logo-shakti.png",
-  apple: "/images/logo-shakti.png"
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icons/shakti-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icons/shakti-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/shakti-192.png", sizes: "192x192", type: "image/png" }
+    ],
+    shortcut: "/favicon.ico",
+    apple: { url: "/icons/shakti-apple-180.png", sizes: "180x180" }
   },
 
   description:

@@ -41,15 +41,17 @@ export const metadata = {
     images: ["/images/share/ecoware-og.jpg"]
   },
 
+  // Square icons for Google (see app/layout.js). /favicon.ico on the
+  // Ecoware website serves the Ecoware one (next.config.mjs).
   icons: {
     icon: [
-      {
-        url: "/images/logo-ecoware-icon.png",
-        type: "image/png"
-      }
+      { url: "/icons/ecoware-favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icons/ecoware-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icons/ecoware-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/ecoware-192.png", sizes: "192x192", type: "image/png" }
     ],
-    shortcut: "/images/logo-ecoware-icon.png",
-    apple: "/images/logo-ecoware-icon.png"
+    shortcut: "/icons/ecoware-favicon.ico",
+    apple: { url: "/icons/ecoware-apple-180.png", sizes: "180x180" }
   }
 };
 
