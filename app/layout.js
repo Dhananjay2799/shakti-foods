@@ -30,7 +30,7 @@ export const metadata = {
   },
 
   // Square icons (Google shows only square ones, at least 48 x 48, in
-  // search results). Made from /images/logo-shakti.png on white.
+  // search results). Made from /images/logo-shakti_1.png on its own background.
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
