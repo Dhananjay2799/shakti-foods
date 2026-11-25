@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "About | Shakti Foods",
+  title: "About",
   description:
     "Discover the story behind Shakti Foods, our commitment to premium Basmati rice, quality, tradition, and bringing people together around the table.",
   alternates: { canonical: "/about" },

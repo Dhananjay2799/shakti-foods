@@ -15,7 +15,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Premium Basmati Rice | Shakti Foods",
+  title: "Premium Basmati Rice",
   description:
     "Shop Shakti Foods premium Basmati rice in family, everyday, and wholesale pack sizes.",
   // One address for Google, also for links like /products?category=...
