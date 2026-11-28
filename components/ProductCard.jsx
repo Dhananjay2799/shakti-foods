@@ -401,11 +401,9 @@ export default function ProductCard({
 
       {/* STOCK */}
       <div className="mt-2 min-h-[20px]">
-        {loading ? (
-          <span className="text-[10px] font-semibold text-[#837a71]">
-            Checking stock...
-          </span>
-        ) : isOutOfStock ? null : isLowStock ? (
+        {/* Stock from the page data first, then live stock (no
+            "Checking stock..." text: Google showed it in search). */}
+        {isOutOfStock ? null : isLowStock ? (
           <span className="text-[10px] font-bold text-[#b56a00]">
             Only {availableStock} left
           </span>
@@ -461,13 +459,11 @@ export default function ProductCard({
             strokeWidth={2}
           />
 
-          {loading
-            ? "Checking Stock..."
-            : isOutOfStock
-              ? "Sold Out"
-              : !product.canCheckout
-                ? "Unavailable"
-                : "Add to Cart"}
+          {isOutOfStock
+            ? "Sold Out"
+            : !product.canCheckout
+              ? "Unavailable"
+              : "Add to Cart"}
         </button>
 
         <Link
