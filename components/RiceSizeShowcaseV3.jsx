@@ -282,13 +282,13 @@ function RiceProductCard({
               strokeWidth={2}
             />
 
-            {loading
-              ? "Checking..."
-              : isOutOfStock
-                ? "Sold Out"
-                : product.canCheckout
-                  ? "Add to Cart"
-                  : "Unavailable"}
+            {/* Real label from the start (also what Google reads); the
+                button stays disabled until live stock has loaded. */}
+            {isOutOfStock
+              ? "Sold Out"
+              : product.canCheckout
+                ? "Add to Cart"
+                : "Unavailable"}
           </button>
         </div>
       </div>
@@ -466,13 +466,13 @@ function MobileProductCard({
           strokeWidth={2}
         />
 
-        {loading
-          ? "Checking Stock..."
-          : isOutOfStock
-            ? "Sold Out"
-            : product.canCheckout
-              ? "Add to Cart"
-              : "Unavailable"}
+        {/* Real label from the start (also what Google reads); the
+            button stays disabled until live stock has loaded. */}
+        {isOutOfStock
+          ? "Sold Out"
+          : product.canCheckout
+            ? "Add to Cart"
+            : "Unavailable"}
       </button>
     </motion.article>
   );
